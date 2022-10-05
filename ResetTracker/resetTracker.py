@@ -142,22 +142,6 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
-        iron_source = "None"
-        if "minecraft:story/smelt_iron" in adv or "minecraft:story/iron_tools" in adv or (
-                "minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]):
-            iron_source = "Structureless"
-            # If mined haybale or killed golem then village
-            if ("minecraft:mined" in stats and "minecraft:hay_block" in stats["minecraft:mined"]) or (
-                    "minecraft:killed" in stats and "minecraft:iron_golem" in stats["minecraft:killed"]):
-                iron_source = "Village"
-            elif "minecraft:used" in stats and ("minecraft:cooked_salmon" in stats["minecraft:used"] or "minecraft:cooked_cod" in stats["minecraft:used"]):
-                iron_source = "Buried Treasure"
-            elif "minecraft:adventure/adventuring_time" in adv:
-                for biome in adv["minecraft:adventure/adventuring_time"]["criteria"]:
-                    # If youre in an ocean before 3m
-                    if "ocean" in biome and int(adv["minecraft:adventure/adventuring_time"]["criteria"][biome]["igt"]) < 180000:
-                        iron_source = "Ship/BT"
-                        break
 
         enter_type = "None"
         if "minecraft:story/enter_the_nether" in adv:
@@ -185,6 +169,66 @@ class NewRecord(FileSystemEventHandler):
             for biome in adv["minecraft:adventure/adventuring_time"]["criteria"]:
                 if adv["minecraft:adventure/adventuring_time"]["criteria"][biome]["igt"] == 0:
                     spawn_biome = biome.split(":")[1]
+
+        iron_source = "None"
+        # if iron acquired
+        if "minecraft:story/smelt_iron" in adv or "minecraft:story/iron_tools" in adv or (
+                "minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]):
+            iron_source = "Misc"
+            # if iron not obtained before nether enter
+            if ("minecraft:story/enter_the_nether" in adv and "minecraft:story/smelt_iron" in adv) and (int(adv[
+                    "minecraft:story/enter_the_nether"]["igt"]) < int(adv["minecraft:story/smelt_iron"]["igt"])):
+                iron_source = "Nether"
+            # if furnace crafted and iron ore mined
+            elif ("minecraft:crafted" in stats and "minecraft:furnace" in stats["minecraft:crafted"]) and (
+                    "minecraft:mined" in stats and "minecraft:iron_ore" in stats["minecraft:mined"]):
+                iron_source = "Structureless"
+            # if haybale mined or iron golem killed or iron pickaxe obtained from chest
+            elif ("minecraft:mined" in stats and "minecraft:hay_block" in stats["minecraft:mined"]) or (
+                    "minecraft:killed" in stats and "minecraft:iron_golem" in stats["minecraft:killed"]) or (
+                    not("minecraft:crafted" in stats and ("minecraft:iron_pickaxe" in stats[
+                    "minecraft:crafted"] or "minecraft:diamond_pickaxe" in stats["minecraft:crafted"])) and (
+                    "minecraft:story/iron_tools" in adv)):
+                iron_source = "Village"
+            # if more than 7 tnt mined
+            elif ("minecraft:mined" in stats and "minecraft:tnt" in stats["minecraft:mined"] and stats[
+                    "minecraft:mined"]["minecraft:tnt"] > 7):
+                iron_source = "Desert Temple"
+            # if stepped foot in ocean or beach under 3 minutes
+            elif "minecraft:adventure/adventuring_time" in adv:
+                for biome in adv["minecraft:adventure/adventuring_time"]["criteria"]:
+                    if ("beach" in biome or "ocean" in biome) and int(
+                            adv["minecraft:adventure/adventuring_time"]["criteria"][biome]["igt"]) < 180000:
+                        # if cooked salmon or cod eaten
+                        if "minecraft:used" in stats and ("minecraft:cooked_salmon" in stats[
+                                "minecraft:used"] or "minecraft:cooked_cod" in stats["minecraft:used"]):
+                            iron_source = "Buried Treasure"
+                        # if potato, wheat, or carrot obtained
+                        elif "minecraft:recipes/food/baked_potato" in adv or (
+                                "minecraft:recipes/food/bread" in adv) or (
+                                "minecraft:recipes/transportation/carrot_on_a_stick" in adv):
+                            iron_source = "Full Shipwreck"
+                        # if sus stew or rotten flesh eaten
+                        elif "minecraft:used" in stats and ("minecraft:suspicious_stew" in stats[
+                                "minecraft:used"] or "minecraft:rotten_flesh" in stats["minecraft:used"]):
+                            iron_source = "Full Shipwreck"
+                        # if tnt exploded
+                        elif "minecraft:used" in stats and "minecraft:tnt" in stats["minecraft:used"]:
+                            iron_source = "Buried Treasure"
+                        # if wood mined before iron obtained
+                        elif (("minecraft:story/smelt_iron" in adv and "minecraft:recipes/misc/charcoal" in adv) and (
+                                int(adv["minecraft:story/smelt_iron"]["igt"]) > int(
+                                adv["minecraft:recipes/misc/charcoal"][
+                                "igt"]))) or ("minecraft:recipes/misc/charcoal" in adv and not(
+                                "minecraft:story/iron_tools" in adv)):
+                            if ("minecraft:custom" in stats and ("minecraft:open_chest" in stats[
+                                    "minecraft:custom"] and stats["minecraft:custom"][
+                                    "minecraft:open_chest"] == 1)) or ("minecraft:nether/find_bastion" in adv):
+                                iron_source = "Half Shipwreck"
+                            else:
+                                iron_source = "Full Shipwreck"
+                        else:
+                            iron_source = "Buried Treasure"
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 
