@@ -44,7 +44,8 @@ class NewRecord(FileSystemEventHandler):
     wall_resets = 0
     rta_spent = 0
     splitless_count = 0
-    break_rta = 0
+    break_time = 0
+    wall_time = 0
 
     def __init__(self):
         self.path = None
@@ -60,6 +61,7 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt):
+        print("-------")
         self.this_run = [None] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
@@ -78,12 +80,22 @@ class NewRecord(FileSystemEventHandler):
 
         # Calculate breaks
         if self.prev_datetime is not None:
-            run_offset = self.prev_datetime + \
-                timedelta(milliseconds=self.data["final_rta"])
-            self.prev_datetime = datetime.now()
-            run_differ = self.prev_datetime - run_offset
+            print("previous run finished at: " + str(self.prev_datetime))
+            print("rta: " + str(timedelta(milliseconds=self.data["final_rta"])))
+            print("this run finished at: " + str(datetime.now()))
+            run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
+            if run_differ < timedelta(0):
+                self.data['final_rta'] = self.data["final_igt"]
+                run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
+            print("run differ: " + str(run_differ))
             if run_differ > timedelta(seconds=settings["break-offset"]):
-                self.break_rta += run_differ.total_seconds() * 1000
+                print("run counted to break")
+                self.break_time += run_differ.total_seconds() * 1000
+            else:
+                self.wall_time += run_differ.total_seconds() * 1000
+            print("break time: " + str(self.break_time))
+            print("wall time: " + str(self.wall_time))
+            self.prev_datetime = datetime.now()
         else:
             self.prev_datetime = datetime.now()
 
@@ -125,6 +137,7 @@ class NewRecord(FileSystemEventHandler):
             self.splitless_count += 1
             # Only account for splitless RTA
             self.rta_spent += self.data["final_rta"]
+            print("rta cumulative: " + str(self.rta_spent))
             return
 
         # Stats
@@ -142,6 +155,8 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
+
+
 
         enter_type = "None"
         if "minecraft:story/enter_the_nether" in adv:
@@ -215,6 +230,11 @@ class NewRecord(FileSystemEventHandler):
                         # if tnt exploded
                         elif "minecraft:used" in stats and "minecraft:tnt" in stats["minecraft:used"]:
                             iron_source = "Buried Treasure"
+                        #if sand/gravel mined in first 40 seconds
+                        elif "minecraft:recipes/building_blocks/magenta_concrete_powder" in adv and (
+                                adv["minecraft:recipes/building_blocks/magenta_concrete_powder"]["criteria"][
+                                "has_the_recipe"]["igt"] < adv["minecraft:story/smelt_iron"]["igt"]):
+                            iron_source = "Buried Treasure"
                         # if wood mined before iron obtained
                         elif (("minecraft:story/smelt_iron" in adv and "minecraft:recipes/misc/charcoal" in adv) and (
                                 int(adv["minecraft:story/smelt_iron"]["igt"]) > int(
@@ -236,7 +256,7 @@ class NewRecord(FileSystemEventHandler):
         d = ms_to_string(int(self.data["date"]), returnTime=True)
         data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run +
                 [ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 ms_to_string(self.rta_spent), ms_to_string(self.break_rta)])
+                 ms_to_string(self.rta_spent), ms_to_string(self.wall_time), ms_to_string(self.break_time)])
 
         with open(statsCsv, "r") as infile:
             reader = list(csv.reader(infile))
@@ -250,7 +270,8 @@ class NewRecord(FileSystemEventHandler):
         self.wall_resets = 0
         self.rta_spent = 0
         self.splitless_count = 0
-        self.break_rta = 0
+        self.wall_time = 0
+        self.break_time = 0
 
 
 if __name__ == "__main__":
