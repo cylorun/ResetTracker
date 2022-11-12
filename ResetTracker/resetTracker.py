@@ -9,7 +9,10 @@ import threading
 from Sheets import main, setup
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from typing import Optional
+from ctypes import wintypes, windll, create_unicode_buffer
 from checks import advChecks, statsChecks
+
 
 statsCsv = "stats.csv"
 try:
@@ -22,6 +25,19 @@ except Exception as e:
         "Could not find settings.json, make sure you have the file in the same directory as the exe, and named exactly 'settings.json'"
     )
     wait = input("")
+
+
+def getForegroundWindowTitle() -> Optional[str]:
+    hWnd = windll.user32.GetForegroundWindow()
+    length = windll.user32.GetWindowTextLengthW(hWnd)
+    buf = create_unicode_buffer(length + 1)
+    windll.user32.GetWindowTextW(hWnd, buf, length + 1)
+
+    # 1-liner alternative: return buf.value if buf.value else None
+    if buf.value:
+        return buf.value
+    else:
+        return None
 
 
 def ms_to_string(ms, returnTime=False):
@@ -88,14 +104,16 @@ class NewRecord(FileSystemEventHandler):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
             print("run differ: " + str(run_differ))
-            if run_differ > timedelta(seconds=settings["break-offset"]):
-                print("run counted to break")
-                self.break_time += run_differ.total_seconds() * 1000
-            else:
-                self.wall_time += run_differ.total_seconds() * 1000
+            if 'Projector' in getForegroundWindowTitle():
+                if run_differ > timedelta(seconds=settings["break-offset"]):
+                    print("run counted to break")
+                    self.break_time += run_differ.total_seconds() * 1000
+                else:
+                    self.wall_time += run_differ.total_seconds() * 1000
+                self.prev_datetime = datetime.now()
+
             print("break time: " + str(self.break_time))
             print("wall time: " + str(self.wall_time))
-            self.prev_datetime = datetime.now()
         else:
             self.prev_datetime = datetime.now()
 
