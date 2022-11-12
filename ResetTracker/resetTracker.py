@@ -230,7 +230,7 @@ class NewRecord(FileSystemEventHandler):
                         # if tnt exploded
                         elif "minecraft:used" in stats and "minecraft:tnt" in stats["minecraft:used"]:
                             iron_source = "Buried Treasure"
-                        #if sand/gravel mined in first 40 seconds
+                        #if sand/gravel mined before iron acquired
                         elif "minecraft:recipes/building_blocks/magenta_concrete_powder" in adv and (
                                 adv["minecraft:recipes/building_blocks/magenta_concrete_powder"]["criteria"][
                                 "has_the_recipe"]["igt"] < adv["minecraft:story/smelt_iron"]["igt"]):
@@ -248,7 +248,7 @@ class NewRecord(FileSystemEventHandler):
                             else:
                                 iron_source = "Full Shipwreck"
                         else:
-                            iron_source = "Buried Treasure"
+                            iron_source = "Half Shipwreck"
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 
