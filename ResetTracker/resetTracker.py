@@ -37,7 +37,7 @@ def getForegroundWindowTitle() -> Optional[str]:
     if buf.value:
         return buf.value
     else:
-        return None
+        return ''
 
 
 def ms_to_string(ms, returnTime=False):
