@@ -2,5 +2,6 @@
   "path": "PATH",
   "spreadsheet-link": "LINK",
   "delete-old-records": true,
-  "break-offset": 20
+  "break-offset": 20,
+  "wall": true
 }

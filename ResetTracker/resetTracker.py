@@ -105,7 +105,7 @@ class NewRecord(FileSystemEventHandler):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
             print("run differ: " + str(run_differ))
-            if 'Projector' in getForegroundWindowTitle():
+            if 'Projector' in getForegroundWindowTitle() or not settings['wall']:
                 if run_differ > timedelta(seconds=settings["break-offset"]):
                     print("run counted to break")
                     self.break_time += run_differ.total_seconds() * 1000
