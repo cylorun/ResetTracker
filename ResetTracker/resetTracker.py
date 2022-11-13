@@ -62,6 +62,7 @@ class NewRecord(FileSystemEventHandler):
     splitless_count = 0
     break_time = 0
     wall_time = 0
+    isFirstRun = 'X'
 
     def __init__(self):
         self.path = None
@@ -274,7 +275,8 @@ class NewRecord(FileSystemEventHandler):
         d = ms_to_string(int(self.data["date"]), returnTime=True)
         data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run +
                 [ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 ms_to_string(self.rta_spent), ms_to_string(self.wall_time), ms_to_string(self.break_time)])
+                 ms_to_string(self.rta_spent), ms_to_string(self.break_time), ms_to_string(self.wall_time), self.isFirstRun])
+        self.isFirstRun = ''
 
         with open(statsCsv, "r") as infile:
             reader = list(csv.reader(infile))
