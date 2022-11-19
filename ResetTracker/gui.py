@@ -22,6 +22,7 @@ from ctypes import windll, create_unicode_buffer
 import gspread
 import json
 import time
+from os.path import exists
 
 
 # class methods for miscellaneous
@@ -29,13 +30,13 @@ class Logistics:
 
     @classmethod
     def getSettings(cls):
-        with open(mother_folder + "/data/settings.json", "r") as settingsJson:
+        with open("data/settings.json", "r") as settingsJson:
             loadedSettings = json.load(settingsJson)
             return loadedSettings
 
     @classmethod
     def getSessions(cls):
-        with open(mother_folder + "/data/sessionData.json", "r") as sessionsJson:
+        with open("data/sessionData.json", "r") as sessionsJson:
             loadedSessions = json.load(sessionsJson)
             return loadedSessions
 
@@ -71,6 +72,22 @@ class Logistics:
         links = TDString.split(":")
         return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
+    @classmethod
+    def formatValue(cls, value):
+        if value is None:
+            return ""
+        if type(value) == str:
+            return value
+        if type(value) == int:
+             return str(value)
+        if type(value) == float:
+            if value <= 1:
+                return str(round(value * 100, 1)) + '%'
+            else:
+                return str(round(value, 1))
+        if type(value) == timedelta:
+            valueDatetime = datetime(year=1970, month=1, day=1) + value
+            return valueDatetime.strftime("%M:%S.") + str(round(int(10 * ((value / second) % 1)), 0))
 
     @classmethod
     def getSessionData(cls, sessionString):
@@ -148,67 +165,68 @@ class Stats:
                 columns[header] += temp_col[session['end row']:session['start row']]
 
         for row_num in range(len(columns['Date and Time'])):
-            # formatting
-            rowCells = {}
-            for key in columns:
-                cell = columns[key][row_num]
-                if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
-                    if len(cell) == 8:
-                        rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:])) / timedelta(seconds=1)
+            if columns['Date and Time'][row_num] != 0:
+                # formatting
+                rowCells = {}
+                for key in columns:
+                    cell = columns[key][row_num]
+                    if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
+                        if len(cell) == 8:
+                            rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:])) / second
+                        else:
+                            rowCells[key] = timedelta(hours=int(cell[0]), minutes=int(cell[2:4]), seconds=int(cell[5:])) / second
                     else:
-                        rowCells[key] = timedelta(hours=int(cell[0]), minutes=int(cell[2:4]), seconds=int(cell[5:])) / timedelta(seconds=1)
+                        rowCells[key] = cell
+
+                # resets/time
+                total_RTA += rowCells['RTA'] + rowCells['RTA Since Prev']
+                total_wallResets += int(rowCells['Wall Resets Since Prev'])
+                total_played += int(rowCells['Played Since Prev']) + 1
+                total_wallTime += int(rowCells['Wall Time Since Prev'])
+
+                # overworld
+                for split in ['Wood', 'Iron Pickaxe', 'Iron']:
+                    if rowCells[split] != '':
+                        cumulativeSplitDists[split].append(rowCells[split])
+
+                # nether
+                if rowCells['Nether'] != '':
+                    cumulativeSplitDists['Nether'].append(rowCells['Nether'])
+                    total_owTime += rowCells['Nether']
+                    entry_labels.append(rowCells['Iron Source'])
+                    enters.append({'time': rowCells['Nether'], 'method': rowCells['Enter Type'], 'type': rowCells['Iron Source']})
+                    bast = (rowCells['Bastion'] != '')
+                    fort = (rowCells['Fortress'] != '')
+
+                    if fort and bast:
+                        fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
+                        st1 = 'Bastion'
+                        st2 = 'Fortress'
+                        if fortFirst:
+                            st1 = 'Fortress'
+                            st2 = 'Bastion'
+                        cumulativeSplitDists['Structure 1'].append(rowCells[st1])
+                        cumulativeSplitDists['Structure 2'].append(rowCells[st2])
+                        relativeSplitDists['Structure 1'].append(rowCells[st1] - rowCells['Nether'])
+                        relativeSplitDists['Structure 2'].append(rowCells[st2] - rowCells[st1])
+
+                        if rowCells['Nether Exit'] != '':
+                            cumulativeSplitDists['Nether Exit'].append(rowCells['Nether Exit'])
+                            relativeSplitDists['Nether Exit'].append(rowCells['Nether Exit'] - rowCells[st2])
+                            if rowCells['Stronghold'] != '':
+                                cumulativeSplitDists['Stronghold'].append(rowCells['Stronghold'])
+                                relativeSplitDists['Stronghold'].append(rowCells['Stronghold'] - rowCells['Nether Exit'])
+                                if rowCells['End'] != '':
+                                    cumulativeSplitDists['End'].append(rowCells['End'])
+                                    relativeSplitDists['End'].append(rowCells['End'] - rowCells['Stronghold'])
+                    elif bast:
+                        cumulativeSplitDists['Structure 1'].append(rowCells['Bastion'])
+                        relativeSplitDists['Structure 1'].append(rowCells['Bastion'] - rowCells['Nether'])
+                    elif fort:
+                        cumulativeSplitDists['Structure 1'].append(rowCells['Fortress'])
+                        relativeSplitDists['Structure 1'].append(rowCells['Fortress'] - rowCells['Nether'])
                 else:
-                    rowCells[key] = cell
-
-            # resets/time
-            total_RTA += rowCells['RTA'] + rowCells['RTA Since Prev']
-            total_wallResets += int(rowCells['Wall Resets Since Prev'])
-            total_played += int(rowCells['Played Since Prev']) + 1
-            total_wallTime += int(rowCells['Wall Time Since Prev'])
-
-            # overworld
-            for split in ['Wood', 'Iron Pickaxe', 'Iron']:
-                if rowCells[split] != '':
-                    cumulativeSplitDists[split].append(rowCells[split])
-
-            # nether
-            if rowCells['Nether'] != '':
-                cumulativeSplitDists['Nether'].append(rowCells['Nether'])
-                total_owTime += rowCells['Nether']
-                entry_labels.append(rowCells['Iron Source'])
-                enters.append({'time': rowCells['Nether'], 'method': rowCells['Enter Type'], 'type': rowCells['Iron Source']})
-                bast = (rowCells['Bastion'] != '')
-                fort = (rowCells['Fortress'] != '')
-
-                if fort and bast:
-                    fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
-                    st1 = 'Bastion'
-                    st2 = 'Fortress'
-                    if fortFirst:
-                        st1 = 'Fortress'
-                        st2 = 'Bastion'
-                    cumulativeSplitDists['Structure 1'].append(rowCells[st1])
-                    cumulativeSplitDists['Structure 2'].append(rowCells[st2])
-                    relativeSplitDists['Structure 1'].append(rowCells[st1] - rowCells['Nether'])
-                    relativeSplitDists['Structure 2'].append(rowCells[st2] - rowCells[st1])
-
-                    if rowCells['Nether Exit'] != '':
-                        cumulativeSplitDists['Nether Exit'].append(rowCells['Nether Exit'])
-                        relativeSplitDists['Nether Exit'].append(rowCells['Nether Exit'] - rowCells[st2])
-                        if rowCells['Stronghold'] != '':
-                            cumulativeSplitDists['Stronghold'].append(rowCells['Stronghold'])
-                            relativeSplitDists['Stronghold'].append(rowCells['Stronghold'] - rowCells['Nether Exit'])
-                            if rowCells['End'] != '':
-                                cumulativeSplitDists['End'].append(rowCells['End'])
-                                relativeSplitDists['End'].append(rowCells['End'] - rowCells['Stronghold'])
-                elif bast:
-                    cumulativeSplitDists['Structure 1'].append(rowCells['Bastion'])
-                    relativeSplitDists['Structure 1'].append(rowCells['Bastion'] - rowCells['Nether'])
-                elif fort:
-                    cumulativeSplitDists['Structure 1'].append(rowCells['Fortress'])
-                    relativeSplitDists['Structure 1'].append(rowCells['Fortress'] - rowCells['Nether'])
-            else:
-                total_owTime += rowCells['RTA']
+                    total_owTime += rowCells['RTA']
 
         # preparing returndict
         prevKey = None
@@ -256,7 +274,7 @@ class Stats:
         es_keys = {}
         entry_types = ['Full Shipwreck', 'Half Shipwreck', 'Buried Treasure']
         for entry_type in entry_types:
-            es_keys[entry_type] = json.load(open(mother_folder + '/data/es_keys_' + entry_type[0:2]))
+            es_keys[entry_type] = json.load(open('data/es_keys_' + entry_type[0:2]))
         for i in range(len(entry_distribution)):
             entry = entry_distribution[i]
             if 390 <= (es_interval * (math.floor((settings['playstyle']['target time'] - entry) / es_interval))) <= 600:
@@ -270,7 +288,7 @@ class Stats:
         for session in sessions:
             stats.append(Stats.get_stats([session]))
         sessionData = {'sessions': sessions, 'stats': stats}
-        with open(mother_folder + "/data/sessionData.json", "w") as sessionDataJson:
+        with open("data/sessionData.json", "w") as sessionDataJson:
             json.dump(sessionData, sessionDataJson)
 
     @classmethod
@@ -278,96 +296,108 @@ class Stats:
         sh = gc_sheets_database.open_by_url(databaseLink)
         careerData = Logistics.getSessionData("All")
         wks = sh[0]
-        values = [settings['playstyle']['instance count'], settings['playstyle']['target time']]
+        nameList = (wks.get_col(col=1, returnas='matrix', include_tailing_empty=False))
+        userCount = len(nameList)
+        if exists('data/name.txt'):
+            nameFile = open('data/name.txt')
+            name = nameFile.readline()
+        else:
+            if settings['display']['upload anonymity'] == 1:
+                name = "Anonymous" + str(userCount).zfill(5)
+            else:
+                name = settings['display']['twitch username']
+        values = [name, settings['playstyle']['instance count'], settings['playstyle']['target time']]
         for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
         for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion']:
             for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
                 values.append(careerData['splits stats'][split][statistic])
-        wks.insert_rows(row=1, number=1, values=values, inherit=False)
+        if name in nameList:
+            rownum = nameList.index(name) + 1
+            wks.update_row(index=rownum, values=values, col_offset=0)
+        else:
+            wks.insert_rows(row=userCount, number=1, values=values, inherit=False)
 
     @classmethod
     def updateCurrentSession(cls, data):
         global currentSession
-        for rownum in range(len(data)):
-            row = data[rownum]
-            rowCells = {'RTA': Logistics.stringToTimedelta(row[5]),
-                        'Wood': Logistics.stringToTimedelta(row[6]),
-                        'Iron Pickaxe': Logistics.stringToTimedelta(row[7]),
-                        'Nether': Logistics.stringToTimedelta(row[8]),
-                        'Bastion': Logistics.stringToTimedelta(row[9]),
-                        'Fortress': Logistics.stringToTimedelta(row[10]),
-                        'Nether Exit': Logistics.stringToTimedelta(row[11]),
-                        'Stronghold': Logistics.stringToTimedelta(row[12]),
-                        'End': Logistics.stringToTimedelta(row[13]),
-                        'Iron': Logistics.stringToTimedelta(row[25]),
-                        'RTA Since Prev': Logistics.stringToTimedelta(row[26]),
-                        'Wall Time Since Prev': Logistics.stringToTimedelta(row[27])}
+        if len(data) > 0:
+            for rownum in range(len(data)):
+                row = data[rownum]
+                labels = ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Wall Time Since Prev']
+                columnIndices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 25, 26, 27, 28, 29]
+                rowCells = {}
+                for i in range(len(labels)):
+                    if ':' in row[columnIndices[i]]:
+                        rowCells[labels[i]] = Logistics.stringToTimedelta(row[columnIndices[i]])/second
+                    else:
+                        rowCells[labels[i]] = row[columnIndices[i]]
 
-            # resets/time
-            currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev']
-            currentSession['general stats']['total wall resets'] += int(rowCells['Wall Resets Since Prev'])
-            currentSession['general stats']['total played'] += int(rowCells['Played Since Prev']) + 1
-            currentSession['general stats']['total wall time'] += int(rowCells['Wall Time Since Prev'])
+                # resets/time
+                currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev']
+                currentSession['general stats']['total wall resets'] += int(rowCells['Wall Resets Since Prev'])
+                currentSession['general stats']['total played'] += int(rowCells['Played Since Prev']) + 1
+                currentSession['general stats']['total wall time'] += int(rowCells['Wall Time Since Prev'])
 
-            # overworld
-            for split in ['Wood', 'Iron Pickaxe', 'Iron']:
-                if rowCells[split] != '':
-                    currentSession['splits stats'][split]['Cumulative Sum'] += rowCells[split]
-                    currentSession['splits stats'][split]['Relative Sum'] += rowCells[split]
-                    currentSession['splits stats'][split]['Count'] += 1
-                    
 
-            # nether
-            if rowCells['Nether'] != '':
-                currentSession['splits stats']['Nether']['Cumulative Sum'] += rowCells['Nether']
-                currentSession['splits stats']['Nether']['Relative Sum'] += rowCells['Nether']
-                currentSession['splits stats']['Nether']['Count'] += 1
-                currentSession['general stats']['total ow time'] += rowCells['Nether']
-                bast = (rowCells['Bastion'] != '')
-                fort = (rowCells['Fortress'] != '')
+                # overworld
+                for split in ['Wood', 'Iron Pickaxe', 'Iron']:
+                    if rowCells[split] != '':
+                        currentSession['splits stats'][split]['Cumulative Sum'] += rowCells[split]
+                        currentSession['splits stats'][split]['Relative Sum'] += rowCells[split]
+                        currentSession['splits stats'][split]['Count'] += 1
 
-                if fort and bast:
-                    fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
-                    st1 = 'Bastion'
-                    st2 = 'Fortress'
-                    if fortFirst:
-                        st1 = 'Fortress'
-                        st2 = 'Bastion'
-                    currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells[st1]
-                    currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells[st1] - rowCells['Nether']
-                    currentSession['splits stats']['Structure 1']['Count'] += 1
-                    currentSession['splits stats']['Structure 2']['Cumulative Sum'] += rowCells[st2]
-                    currentSession['splits stats']['Structure 2']['Relative Sum'] += rowCells[st2] - rowCells[st1]
-                    currentSession['splits stats']['Structure 2']['Count'] += 1
 
-                    if rowCells['Nether Exit'] != '':
-                        currentSession['splits stats']['Nether Exit']['Cumulative Sum'] += rowCells['Nether Exit']
-                        currentSession['splits stats']['Nether Exit']['Relative Sum'] += rowCells['Nether Exit'] - rowCells[st2]
-                        currentSession['splits stats']['Nether Exit']['Count'] += 1
-                        if rowCells['Stronghold'] != '':
-                            currentSession['splits stats']['End']['Cumulative Sum'] += rowCells['End']
-                            currentSession['splits stats']['End']['Relative Sum'] += rowCells['End'] - rowCells['Stronghold']
-                            currentSession['splits stats']['End']['Count'] += 1
-                            if rowCells['End'] != '':
-                                'Stronghold'
-                elif bast:
-                    currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Bastion']
-                    currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Bastion'] - rowCells['Nether']
-                    currentSession['splits stats']['Structure 1']['Count'] += 1
-                elif fort:
-                    currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Fortress']
-                    currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Fortress'] - rowCells['Nether']
-                    currentSession['splits stats']['Structure 1']['Count'] += 1
-            else:
-                currentSession['general stats']['total RTA'] += rowCells['RTA']
+                # nether
+                if rowCells['Nether'] != '':
+                    currentSession['splits stats']['Nether']['Cumulative Sum'] += rowCells['Nether']
+                    currentSession['splits stats']['Nether']['Relative Sum'] += rowCells['Nether']
+                    currentSession['splits stats']['Nether']['Count'] += 1
+                    currentSession['general stats']['total ow time'] += rowCells['Nether']
+                    bast = (rowCells['Bastion'] != '')
+                    fort = (rowCells['Fortress'] != '')
+
+                    if fort and bast:
+                        fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
+                        st1 = 'Bastion'
+                        st2 = 'Fortress'
+                        if fortFirst:
+                            st1 = 'Fortress'
+                            st2 = 'Bastion'
+                        currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells[st1]
+                        currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells[st1] - rowCells['Nether']
+                        currentSession['splits stats']['Structure 1']['Count'] += 1
+                        currentSession['splits stats']['Structure 2']['Cumulative Sum'] += rowCells[st2]
+                        currentSession['splits stats']['Structure 2']['Relative Sum'] += rowCells[st2] - rowCells[st1]
+                        currentSession['splits stats']['Structure 2']['Count'] += 1
+
+                        if rowCells['Nether Exit'] != '':
+                            currentSession['splits stats']['Nether Exit']['Cumulative Sum'] += rowCells['Nether Exit']
+                            currentSession['splits stats']['Nether Exit']['Relative Sum'] += rowCells['Nether Exit'] - rowCells[st2]
+                            currentSession['splits stats']['Nether Exit']['Count'] += 1
+                            if rowCells['Stronghold'] != '':
+                                currentSession['splits stats']['End']['Cumulative Sum'] += rowCells['End']
+                                currentSession['splits stats']['End']['Relative Sum'] += rowCells['End'] - rowCells['Stronghold']
+                                currentSession['splits stats']['End']['Count'] += 1
+                                if rowCells['End'] != '':
+                                    'Stronghold'
+                    elif bast:
+                        currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Bastion']
+                        currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Bastion'] - rowCells['Nether']
+                        currentSession['splits stats']['Structure 1']['Count'] += 1
+                    elif fort:
+                        currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Fortress']
+                        currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Fortress'] - rowCells['Nether']
+                        currentSession['splits stats']['Structure 1']['Count'] += 1
+                else:
+                    currentSession['general stats']['total RTA'] += rowCells['RTA']
                 
         # calculate and update other statistics
         prevSplit = None
         for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
             currentSession['splits stats'][split]['Cumulative Average'] = Logistics.getQuotient(currentSession['splits stats'][split]['Cumulative Sum'], currentSession['splits stats'][split]['Count'])
             currentSession['splits stats'][split]['Relative Average'] = Logistics.getQuotient(currentSession['splits stats'][split]['Relative Sum'], currentSession['splits stats'][split]['Count'])
-            currentSession['splits stats'][split]['Cumulative Conversion'] = Logistics.getQuotient((currentSession['splits stats'][split]['Count']), currentSession['general stats']['total wall resets'] + currentSession['general stats']['total played'])
+            currentSession['splits stats'][split]['Cumulative Conversion'] = Logistics.getQuotient((currentSession['splits stats'][split]['Count']), currentSession['general stats']['total played'])
             if prevSplit is not None:
                 currentSession['splits stats'][split]['Relative Conversion'] = Logistics.getQuotient(currentSession['splits stats'][split]['Count'], currentSession['splits stats'][prevSplit]['Count'])
             else:
@@ -378,9 +408,6 @@ class Stats:
         currentSession['general stats']['rnph'] = Logistics.getQuotient(currentSession['splits stats']['Nether']['Count'], currentSession['general stats']['total wall time'] + currentSession['general stats']['total ow time'])
         currentSession['general stats']['% played'] = Logistics.getQuotient(currentSession['general stats']['total played'], currentSession['general stats']['total played'] + currentSession['general stats']['total wall resets'])
         currentSession['general stats']['rpe'] = Logistics.getQuotient(1, currentSession['splits stats']['Nether']['Count'])
-
-        print("current session updated")
-
 
         Graphs.graph6()
         Graphs.graph7()
@@ -402,7 +429,7 @@ class Graphs:
     def graph1(cls, dist, smoothness):
         data = {'dist': dist}
         sns.kdeplot(data=data, x='dist', legend=False, bw_adjust=smoothness)
-        plt.savefig(mother_folder + '/data/plots/plot1.png', dpi=1000)
+        plt.savefig('data/plots/plot1.png', dpi=1000)
         plt.close()
 
     # makes a pie chart given a list of strings
@@ -418,7 +445,7 @@ class Graphs:
                 itemsCount[itemsUnique.index(item)] += 1
         fig = plt.figure(figsize=(10, 7))
         plt.pie(itemsCount, labels=itemsUnique)
-        plt.savefig(mother_folder + '/data/plots/plot2.png', dpi=1000)
+        plt.savefig('data/plots/plot2.png', dpi=1000)
         plt.close()
 
     # makes a table for relevant information of a split
@@ -427,7 +454,7 @@ class Graphs:
         fig = go.Figure(data=[go.Table(header=dict(values=['Count', 'Average', 'Average Split', 'Conversion Rate']),
                                        cells=dict(values=[[splitStats['Count']], [splitStats['Cumulative Average'], [splitStats['Relative Average']], [splitStats['Relative Conversion']]]]))
                               ])
-        fig.write_image(mother_folder + '/data/plots/plot3.png')
+        fig.write_image('data/plots/plot3.png')
 
     # makes a 2-way table showing the frequency of each combination of iron source and entry method
     @classmethod
@@ -485,7 +512,7 @@ class Graphs:
                 align='center', font=dict(color='white', size=11)
             ))
         ])
-        fig.write_image(mother_folder + '/data/plots/plot4.png')
+        fig.write_image('data/plots/plot4.png')
 
     # table displaying info about a specific split
     @classmethod
@@ -503,14 +530,14 @@ class Graphs:
                 align='center', font=dict(color='white', size=11)
             ))
         ])
-        fig.write_image(mother_folder + '/data/plots/plot5.png')
+        fig.write_image('data/plots/plot5.png')
 
     # table display split stats of current session
     @classmethod
     def graph6(cls):
         values = [['Count', 'Average', 'Average Split', 'Conversion']]
         for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
-            values.append([currentSession['splits stats'][split]['Count'], currentSession['splits stats'][split]['Cumulative Average'], currentSession['splits stats'][split]['Relative Average'], currentSession['splits stats'][split]['Relative Conversion']])
+            values.append([Logistics.formatValue(currentSession['splits stats'][split]['Count']), Logistics.formatValue(currentSession['splits stats'][split]['Cumulative Average']), Logistics.formatValue(currentSession['splits stats'][split]['Relative Average']), Logistics.formatValue(currentSession['splits stats'][split]['Relative Conversion'])])
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=['', 'Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End'],
@@ -524,11 +551,11 @@ class Graphs:
                 align='center', font=dict(color='white', size=11)
             ))
         ])
-        fig.write_image(mother_folder + '/data/plots/plot6.png')
+        fig.write_image('data/plots/plot6.png')
 
     @classmethod
     def graph7(cls):
-        values = [currentSession['general stats']['rnph'], currentSession['general stats']['% played'], currentSession['general stats']['rpe']]
+        values = [Logistics.formatValue(currentSession['general stats']['rnph']), Logistics.formatValue(currentSession['general stats']['% played']), Logistics.formatValue(currentSession['general stats']['rpe'])]
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=['rnph', '% played', 'rpe'],
@@ -542,7 +569,7 @@ class Graphs:
                 align='center', font=dict(color='white', size=11)
             ))
         ])
-        fig.write_image(mother_folder + '/data/plots/plot7.png')
+        fig.write_image('data/plots/plot7.png')
 
 
 # class methods for giving feedback
@@ -573,7 +600,6 @@ class Sheets:
                     reader = csv.reader(f)
                     data = list(reader)
                     f.close()
-
                 Stats.updateCurrentSession(data)
                 try:
                     if len(data) == 0:
@@ -588,7 +614,6 @@ class Sheets:
                         endColumn1 = ord("A") + (endColumn // ord("A")) - 1
                         endColumn2 = ord("A") + ((endColumn - ord("A")) % 26)
                         endColumn = chr(endColumn1) + chr(endColumn2)
-                        # print("A2:" + endColumn + str(1 + len(data)))
                         dataSheet.format(
                             "A2:" + endColumn + str(1 + len(data)),
                             {
@@ -607,6 +632,7 @@ class Sheets:
 
 
                 except Exception as e:
+                    print("test")
                     print(e)
 
             live = True
@@ -640,7 +666,9 @@ class Utilities:
     def ms_to_string(cls, ms, returnTime=False):
         if ms is None:
             return None
+
         ms = int(ms)
+
         t = datetime(1970, 1, 1) + timedelta(milliseconds=ms)
         if returnTime:
             return t
@@ -676,7 +704,6 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt):
-        print("-------")
         self.this_run = [None] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
@@ -695,24 +722,17 @@ class NewRecord(FileSystemEventHandler):
 
         # Calculate breaks
         if self.prev_datetime is not None:
-            print("previous run finished at: " + str(self.prev_datetime))
-            print("rta: " + str(timedelta(milliseconds=self.data["final_rta"])))
-            print("this run finished at: " + str(datetime.now()))
             run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            print("run differ: " + str(run_differ))
-            if 'Projector' in Utilities.getForegroundWindowTitle() or settings['tracking']["instance count"] == "1":
-                if run_differ > timedelta(seconds=settings["tracking"]["break threshold"]):
-                    print("run counted to break")
+            if 'Projector' in Utilities.getForegroundWindowTitle() or settings['playstyle']["instance count"] == "1":
+                if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
                     self.wall_time += run_differ.total_seconds() * 1000
                 self.prev_datetime = datetime.now()
 
-            print("break time: " + str(self.break_time))
-            print("wall time: " + str(self.wall_time))
         else:
             self.prev_datetime = datetime.now()
 
@@ -754,7 +774,6 @@ class NewRecord(FileSystemEventHandler):
             self.splitless_count += 1
             # Only account for splitless RTA
             self.rta_spent += self.data["final_rta"]
-            print("rta cumulative: " + str(self.rta_spent))
             return
 
         # Stats
@@ -942,12 +961,12 @@ class Tracking:
 global variables
 """
 
-mother_folder = os.path.dirname(os.path.realpath(__file__))
 databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-gc_sheets = pygsheets.authorize(service_file=mother_folder + "/credentials/credentials.json")
-gc_sheets_database = pygsheets.authorize(service_file=mother_folder + "/credentials/databaseCredentials.json")
+gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
+gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
 settings = Logistics.getSettings()
 sessions = Logistics.getSessions()
+second = timedelta(seconds=1)
 currentSession = {'splits stats': {}, 'general stats': {}}
 pages = []
 selectedSession = None
@@ -1016,7 +1035,7 @@ class SettingsPage(Page):
         for i1 in range(len(self.varStrings)):
             for i2 in range(len(self.varStrings[i1])):
                 settings[self.varGroups[i1]][self.varStrings[i1][i2]] = self.settingsVars[i1][i2].get()
-        with open(mother_folder + "/data/settings.json", "w") as settingsJson:
+        with open("data/settings.json", "w") as settingsJson:
             json.dump(settings, settingsJson)
 
     def populate(self):
@@ -1065,7 +1084,7 @@ class CurrentSessionPage(Page):
     def updateTables(self):
         if self.panel1 is not None:
             self.panel1.grid_forget()
-        img1 = Image.open(mother_folder + "/data/plots/plot6.png")
+        img1 = Image.open("data/plots/plot6.png")
         img1 = img1.resize((600, 300), Image.LANCZOS)
         img1 = ImageTk.PhotoImage(img1)
         self.panel1 = Label(self, image=img1)
@@ -1074,7 +1093,7 @@ class CurrentSessionPage(Page):
 
         if self.panel2 is not None:
             self.panel2.grid_forget()
-        img2 = Image.open(mother_folder + "/data/plots/plot7.png")
+        img2 = Image.open("data/plots/plot7.png")
         img2 = img2.resize((600, 300), Image.LANCZOS)
         img2 = ImageTk.PhotoImage(img2)
         self.panel2 = Label(self, image=img2)
@@ -1096,7 +1115,7 @@ class SplitsPage(Page):
             self.panel1.grid_forget()
         sessionData = Logistics.getSessionData(selectedSession.get())
         Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.9)
-        img1 = Image.open(mother_folder + "/data/plots/plot1.png")
+        img1 = Image.open("data/plots/plot1.png")
         img1 = img1.resize((400, 400), Image.LANCZOS)
         img1 = ImageTk.PhotoImage(img1)
         self.panel1 = Label(self, image=img1)
@@ -1106,7 +1125,7 @@ class SplitsPage(Page):
         if self.panel2 is not None:
             self.panel2.grid_forget()
         Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
-        img2 = Image.open(mother_folder + "/data/plots/plot5.png")
+        img2 = Image.open("data/plots/plot5.png")
         img2 = img2.resize((400, 200), Image.LANCZOS)
         img2 = ImageTk.PhotoImage(img2)
         self.panel2 = Label(self, image=img2)
@@ -1138,7 +1157,7 @@ class EntryBreakdownPage(Page):
             self.panel1.grid_forget()
         sessionData = Logistics.getSessionData(selectedSession.get())
         Graphs.graph4(sessionData['general stats']['enters'])
-        img = Image.open(mother_folder + "/data/plots/plot4.png")
+        img = Image.open("data/plots/plot4.png")
         img = img.crop((30, 80, 670, 280))
         img = ImageTk.PhotoImage(img)
         self.panel1 = Label(self, image=img)
@@ -1231,5 +1250,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     main = MainView(root)
     main.pack(side="top", fill="both", expand=True)
-    root.wm_geometry("800x800")
+    root.wm_geometry("1200x800")
     root.mainloop()
