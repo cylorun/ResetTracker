@@ -4,6 +4,8 @@ from functools import partial
 import pygsheets
 import datetime
 from statistics import mean
+import statistics
+from statistics import quantiles
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import ImageTk, Image
@@ -23,6 +25,10 @@ import gspread
 import json
 import time
 from os.path import exists
+import numpy as np
+import math
+from scipy.stats import percentileofscore
+from speedrun_models import BasicSpeedrunModel, SplitDistribution
 
 
 # class methods for miscellaneous
@@ -99,6 +105,12 @@ class Logistics:
                 break
         return sessions['stats'][index]
 
+    @classmethod
+    def floatList(cls, list):
+        for i in range(len(list)):
+            list[i] = float(list[i])
+        return list
+
 
 # class methods for analyzing stats
 class Stats:
@@ -133,16 +145,19 @@ class Stats:
                 session_end = i+3
                 if i != len(session_col) - 1:
                     end_time = Logistics.stringToDatetime(time_col[i+1]) + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
+        sessionList.insert(0, {'start row': session_start, 'end row': 2, 'string': "All"})
         return sessionList
 
 
     @classmethod
-    def get_stats(cls, sessions):
+    def get_stats(cls, sessionList, makeScoreKeys):
 
         returndict = {'splits stats': {}, 'general stats': {}}
 
         relativeSplitDists = {'Iron': None, 'Wood': None, 'Iron Pickaxe': None, 'Nether': [], 'Structure 1': [], 'Structure 2': [], 'Nether Exit': [], 'Stronghold': [], 'End': []}
         cumulativeSplitDists = {'Iron': [], 'Wood': [], 'Iron Pickaxe': [], 'Nether': [], 'Structure 1': [], 'Structure 2': [], 'Nether Exit': [], 'Stronghold': [], 'End': []}
+
+        endgameDists = json.load(open('data/endgameDists.json'))
 
         total_RTA = 0
         total_wallResets = 0
@@ -161,9 +176,20 @@ class Stats:
         for header in headers:
             temp_col = wks.get_col(col=headers.index(header) + 1, returnas='matrix', include_tailing_empty=True)
             columns[header] = []
-            for session in sessions:
+            for session in sessionList:
                 columns[header] += temp_col[session['end row']:session['start row']]
 
+        # setting up score keys
+        if makeScoreKeys:
+            enterTypeOptions = ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']
+            scoreKeys = {}
+            for enterType in enterTypeOptions:
+                if settings['playstyle cont.'][enterType] == 1:
+                    scoreKeys[enterType] = {'data': [], 'isValid': False}
+            scoreKeys['other'] = {'data': [], 'isValid': False}
+            enterTypeOptions = scoreKeys.keys()
+
+        # iterating through rows
         for row_num in range(len(columns['Date and Time'])):
             if columns['Date and Time'][row_num] != 0:
                 # formatting
@@ -184,6 +210,8 @@ class Stats:
                 total_played += int(rowCells['Played Since Prev']) + 1
                 total_wallTime += int(rowCells['Wall Time Since Prev'])
 
+
+
                 # overworld
                 for split in ['Wood', 'Iron Pickaxe', 'Iron']:
                     if rowCells[split] != '':
@@ -195,6 +223,22 @@ class Stats:
                     total_owTime += rowCells['Nether']
                     entry_labels.append(rowCells['Iron Source'])
                     enters.append({'time': rowCells['Nether'], 'method': rowCells['Enter Type'], 'type': rowCells['Iron Source']})
+
+                    if makeScoreKeys:
+                        if rowCells['Stronghold'] != '':
+
+                            if rowCells['Iron Source'] in enterTypeOptions:
+                                scoreKeys[rowCells['Iron Source']]['data'].append((rowCells['Stronghold'] - rowCells['Nether']))
+                                scoreKeys[rowCells['Iron Source']]['isValid'] = True
+                            else:
+                                scoreKeys['other']['data'].append((rowCells['Stronghold'] - rowCells['Nether']))
+                                scoreKeys['other']['isValid'] = True
+                        else:
+                            if rowCells['Iron Source'] in enterTypeOptions:
+                                scoreKeys[rowCells['Iron Source']]['data'].append('run kill')
+                            else:
+                                scoreKeys['other']['data'].append('run kill')
+
                     bast = (rowCells['Bastion'] != '')
                     fort = (rowCells['Fortress'] != '')
 
@@ -227,6 +271,20 @@ class Stats:
                         relativeSplitDists['Structure 1'].append(rowCells['Fortress'] - rowCells['Nether'])
                 else:
                     total_owTime += rowCells['RTA']
+
+        # making/updating scoreKeys
+        if makeScoreKeys:
+            for key in scoreKeys.keys():
+                if scoreKeys[key]['isValid']:
+                    splitDist = SplitDistribution.from_data(scoreKeys[key]['data'], 1)
+                    splitDist.convolve(SplitDistribution.from_data(endgameDists['Stronghold'], 1))
+                    splitDist.convolve(SplitDistribution.from_data(endgameDists['End'], 1))
+                    scoreKeys[key]['dist'] = splitDist.to_data()
+                else:
+                    scoreKeys[key]['dist'] = None
+            jsonFile = open('data/scoreKeys.json', 'w')
+            json.dump(scoreKeys, jsonFile)
+
 
         # preparing returndict
         prevKey = None
@@ -283,13 +341,24 @@ class Stats:
 
     @classmethod
     def saveSessionData(cls):
-        sessions = Stats.get_sessions()
+        t = threading.Thread(target=Stats.appendStats, name="sessions")
+        t.daemon = True
+        t.start()
+
+    # used for saveSessionData
+    @classmethod
+    def appendStats(cls):
+        sessionList = Stats.get_sessions()
         stats = []
-        for session in sessions:
-            stats.append(Stats.get_stats([session]))
-        sessionData = {'sessions': sessions, 'stats': stats}
+        for i in range(len(sessionList)):
+            if sessionList[i]['string'] == "All":
+                stats.append(Stats.get_stats([sessionList[i]], True))
+            else:
+                stats.append(Stats.get_stats([sessionList[i]], False))
+        sessionData = {'sessions': sessionList, 'stats': stats}
         with open("data/sessionData.json", "w") as sessionDataJson:
             json.dump(sessionData, sessionDataJson)
+        print('done')
 
     @classmethod
     def uploadData(cls):
@@ -299,13 +368,16 @@ class Stats:
         nameList = (wks.get_col(col=1, returnas='matrix', include_tailing_empty=False))
         userCount = len(nameList)
         if exists('data/name.txt'):
-            nameFile = open('data/name.txt')
+            nameFile = open('data/name.txt', 'r')
             name = nameFile.readline()
+            nameFile.close()
         else:
             if settings['display']['upload anonymity'] == 1:
                 name = "Anonymous" + str(userCount).zfill(5)
             else:
                 name = settings['display']['twitch username']
+            nameFile = open('data/name.txt', 'w')
+            nameFile.write(name)
         values = [name, settings['playstyle']['instance count'], settings['playstyle']['target time']]
         for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
@@ -339,7 +411,6 @@ class Stats:
                 currentSession['general stats']['total played'] += int(rowCells['Played Since Prev']) + 1
                 currentSession['general stats']['total wall time'] += int(rowCells['Wall Time Since Prev'])
 
-
                 # overworld
                 for split in ['Wood', 'Iron Pickaxe', 'Iron']:
                     if rowCells[split] != '':
@@ -348,12 +419,14 @@ class Stats:
                         currentSession['splits stats'][split]['Count'] += 1
 
 
+
                 # nether
                 if rowCells['Nether'] != '':
                     currentSession['splits stats']['Nether']['Cumulative Sum'] += rowCells['Nether']
                     currentSession['splits stats']['Nether']['Relative Sum'] += rowCells['Nether']
                     currentSession['splits stats']['Nether']['Count'] += 1
                     currentSession['general stats']['total ow time'] += rowCells['Nether']
+
                     bast = (rowCells['Bastion'] != '')
                     fort = (rowCells['Fortress'] != '')
 
@@ -376,11 +449,13 @@ class Stats:
                             currentSession['splits stats']['Nether Exit']['Relative Sum'] += rowCells['Nether Exit'] - rowCells[st2]
                             currentSession['splits stats']['Nether Exit']['Count'] += 1
                             if rowCells['Stronghold'] != '':
-                                currentSession['splits stats']['End']['Cumulative Sum'] += rowCells['End']
-                                currentSession['splits stats']['End']['Relative Sum'] += rowCells['End'] - rowCells['Stronghold']
-                                currentSession['splits stats']['End']['Count'] += 1
+                                currentSession['splits stats']['Stronghold']['Cumulative Sum'] += rowCells['Stronghold']
+                                currentSession['splits stats']['Stronghold']['Relative Sum'] += rowCells['Stronghold'] - rowCells['Nether Exit']
+                                currentSession['splits stats']['Stronghold']['Count'] += 1
                                 if rowCells['End'] != '':
-                                    'Stronghold'
+                                    currentSession['splits stats']['End']['Cumulative Sum'] += rowCells['End']
+                                    currentSession['splits stats']['End']['Relative Sum'] += rowCells['End'] - rowCells['Stronghold']
+                                    currentSession['splits stats']['End']['Count'] += 1
                     elif bast:
                         currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Bastion']
                         currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Bastion'] - rowCells['Nether']
@@ -452,7 +527,7 @@ class Graphs:
     @classmethod
     def graph3(cls, splitStats):
         fig = go.Figure(data=[go.Table(header=dict(values=['Count', 'Average', 'Average Split', 'Conversion Rate']),
-                                       cells=dict(values=[[splitStats['Count']], [splitStats['Cumulative Average'], [splitStats['Relative Average']], [splitStats['Relative Conversion']]]]))
+                                       cells=dict(values=[[Logistics.formatValue(splitStats['Count'])], [Logistics.formatValue(splitStats['Cumulative Average']), [Logistics.formatValue(splitStats['Relative Average'])], [Logistics.formatValue(splitStats['Relative Conversion'])]]]))
                               ])
         fig.write_image('data/plots/plot3.png')
 
@@ -471,13 +546,18 @@ class Graphs:
             else:
                 ironSourceList.append('Other')
             entryMethodList.append(enter['method'])
-        ironSourceOptions = ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village', 'Other']
-        entryTypeOptions = ['Magma Ravine', 'Lava Pool', 'Obsidian']
+        ironSourceOptionsAll = ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village', 'Other']
+        ironSourceOptionsValid = []
+        for i in range(len(ironSourceOptionsAll) - 1):
+            if settings['playstyle cont.'][ironSourceOptionsAll[i]] == 1:
+                ironSourceOptionsValid.append(ironSourceOptionsAll[i])
+        ironSourceOptionsValid.append('other')
+        entryTypeOptions = ['Magma Ravine', 'Lava Pool', 'Obsidian', 'Bucketless']
         colors = n_colors(lowcolor='rgb(255, 200, 200)', highcolor='rgb(200, 0, 0)', n_colors=len(ironSourceList) + 1, colortype='rgb')
         data = []
         fill_color = []
 
-        for i1 in range(len(ironSourceOptions)):
+        for i1 in range(len(ironSourceOptionsValid)):
             data.append([])
             fill_color.append([])
             for i2 in range(len(entryTypeOptions)):
@@ -486,9 +566,9 @@ class Graphs:
         for i in range(len(ironSourceList)):
             ironSource = ironSourceList[i]
             entryMethod = entryMethodList[i]
-            index1 = len(ironSourceOptions) - 1
-            if ironSource in ironSourceOptions:
-                index1 = ironSourceOptions.index(ironSource)
+            index1 = len(ironSourceOptionsValid) - 1
+            if ironSource in ironSourceOptionsValid:
+                index1 = ironSourceOptionsValid.index(ironSource)
             index2 = entryTypeOptions.index(entryMethod)
             data[index1][index2] += round(1/len(ironSourceList), 3)
 
@@ -496,12 +576,16 @@ class Graphs:
             for i2 in range(len(fill_color[i1])):
                 fill_color[i1][i2] = colors[round(data[i1][i2] * len(ironSourceList))]
 
+        for i1 in range(len(data)):
+            for i2 in range(len(data[i1])):
+                data[i1][i2] = Logistics.formatValue(data[i1][i2])
+
         data.insert(0, entryTypeOptions)
         fill_color.insert(0, n_colors(lowcolor='rgb(0, 200, 0)', highcolor='rgb(0, 200, 0)', n_colors=len(entryTypeOptions), colortype='rgb'))
-
+        print('checkpoint1')
         fig = go.Figure(data=[go.Table(
             header=dict(
-                values=[''] + ironSourceOptions,
+                values=[''] + ironSourceOptionsValid,
                 line_color='white', fill_color='white',
                 align='center', font=dict(color='black', size=12)
             ),
@@ -512,7 +596,9 @@ class Graphs:
                 align='center', font=dict(color='white', size=11)
             ))
         ])
+        print('checkpoint2')
         fig.write_image('data/plots/plot4.png')
+
 
     # table displaying info about a specific split
     @classmethod
@@ -553,6 +639,7 @@ class Graphs:
         ])
         fig.write_image('data/plots/plot6.png')
 
+    # table displaying general stats of the current session
     @classmethod
     def graph7(cls):
         values = [Logistics.formatValue(currentSession['general stats']['rnph']), Logistics.formatValue(currentSession['general stats']['% played']), Logistics.formatValue(currentSession['general stats']['rpe'])]
@@ -571,11 +658,83 @@ class Graphs:
         ])
         fig.write_image('data/plots/plot7.png')
 
+    # pie chart from dict of numerical data
+    @classmethod
+    def graph8(cls, data):
+        fig = plt.figure(figsize=(10, 7))
+        plt.pie(data.values(), labels=data.keys())
+        plt.savefig('data/plots/plot8.png', dpi=1000)
+        plt.close()
+
+    # scatterplot displaying nph and average enter, with a canvas based on efficiency score
+    @classmethod
+    def graph9(cls):
+        nph_list = []
+        avg_enter_list = []
+        for sessionStats in sessions['stats']:
+            nph_list.append(sessionStats['general stats']['nph list'])
+            avg_enter_list.append(sessionStats['splits stats']['Nether']['Cumulative Average'])
+
+        canvas = []
+        for x in range(60, 140):
+            canvas.append([])
+            for y in range(80, 140):
+                effscore = None
+                (canvas[x - 60]).append(effscore)
+
+        dict1 = {'nph': nph_list, 'avg_enter': avg_enter_list}
+
+        x1 = np.linspace(6, 14.0, 60)
+        x2 = np.linspace(90, 150, 80)
+        x, y = np.meshgrid(x1, x2)
+        cm = plt.cm.get_cmap('cividis')
+        fig1, ax1 = plt.subplots(figsize=(6, 4))
+        p1 = plt.contourf(x, y, canvas, levels=1000)
+        p2 = sns.scatterplot(x='nph', y='avg_enter', data=dict1, legend=False)
+        plt.savefig("", dpi=1000)
+        plt.close()
+
 
 # class methods for giving feedback
 class Feedback:
     @classmethod
-    def splits(cls, split):
+    def splits(cls):
+        sh = gc_sheets_database.open_by_url(databaseLink)
+        wks = sh[0]
+        nameList = (wks.get_col(col=1, returnas='matrix', include_tailing_empty=False))
+        nameFile = open('data/name.txt', 'r')
+        name = nameFile.readline()
+        myData = wks.get_row(row=nameList.index(name) + 1, returnas='matrix', include_tailing_empty=True)
+        myData = myData[7:]
+        splits = ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']
+        sh = gc_sheets_database.open_by_url(databaseLink)
+        wks = sh[0]
+        targetTimeCol = wks.get_col(col=3, returnas='matrix', include_tailing_empty=False)
+        targetTimeCol.pop(0)
+        similarUserList = []
+        for i in range(len(targetTimeCol)):
+            if -1 * int(settings['display']['comparison threshold']) < (int(targetTimeCol[i]) - int(settings['playstyle']['target time'])) < int(settings['display']['comparison threshold']):
+                row = wks.get_row(row=i, returnas='matrix', include_tailing_empty=True)
+                similarUserList.append(row)
+        splitLists = np.transpose(np.array(similarUserList))
+        splitLists = splitLists[7:]
+        percentiles = {}
+        for i in range(len(splitLists)):
+            if i < 9:
+                percentiles[splits[i % 9]] = {}
+                percentiles[splits[i % 9]]["cAverage"] = percentileofscore(Logistics.floatList(splitLists[i]), myData[i])
+            elif i < 18:
+                percentiles[splits[i % 9]]["rAverage"] = percentileofscore(Logistics.floatList(splitLists[i]), myData[i])
+            elif i < 27:
+                percentiles[splits[i % 9]]["Conversion"] = percentileofscore(Logistics.floatList(splitLists[i]), myData[i])
+        return percentiles
+
+    @classmethod
+    def efficiencyScore(cls):
+        pass
+
+    @classmethod
+    def general(cls):
         pass
 
 
@@ -1000,7 +1159,7 @@ global variables
 """
 
 
-#class for making pages
+# gui
 class Page(tk.Frame):
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
@@ -1009,7 +1168,7 @@ class Page(tk.Frame):
         self.lift()
 
 
-# not currently doing anything
+# gui
 class IntroPage(Page):
     def populate(self):
         pass
@@ -1019,10 +1178,10 @@ class IntroPage(Page):
         IntroPage.populate(self)
 
 
-# Page
+# gui
 class SettingsPage(Page):
-    varStrings = [['sheet link', 'records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'use local timezone', 'upload stats', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check']]
+    varStrings = [['sheet link', 'records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload stats', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
+    varTypes = [['entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check']]
     varGroups = ['tracking', 'display', 'playstyle', 'playstyle cont.']
     settingsVars = []
     labels = []
@@ -1076,7 +1235,7 @@ class SettingsPage(Page):
         SettingsPage.populate(self)
 
 
-#Page
+# gui
 class CurrentSessionPage(Page):
     panel1 = None
     panel2 = None
@@ -1104,33 +1263,43 @@ class CurrentSessionPage(Page):
         Page.__init__(self, *args, **kwargs)
 
 
-# Page
+# gui
 class SplitsPage(Page):
     panel1 = None
     panel2 = None
     selectedSplit = None
 
-    def displayInfo(self):
-        if self.panel1 is not None:
-            self.panel1.grid_forget()
+    def displayInfo_sub(self):
         sessionData = Logistics.getSessionData(selectedSession.get())
-        Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.9)
+
+        Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'],0.9)
+        Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
+
         img1 = Image.open("data/plots/plot1.png")
         img1 = img1.resize((400, 400), Image.LANCZOS)
         img1 = ImageTk.PhotoImage(img1)
+        if self.panel1 is not None:
+            self.panel1.grid_forget()
         self.panel1 = Label(self, image=img1)
         self.panel1.image = img1
         self.panel1.grid(row=0, column=1)
 
-        if self.panel2 is not None:
-            self.panel2.grid_forget()
-        Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
+
         img2 = Image.open("data/plots/plot5.png")
         img2 = img2.resize((400, 200), Image.LANCZOS)
         img2 = ImageTk.PhotoImage(img2)
+        if self.panel2 is not None:
+            self.panel2.grid_forget()
         self.panel2 = Label(self, image=img2)
         self.panel2.image = img2
         self.panel2.grid(row=1, column=1)
+
+    def displayInfo(self):
+        t1 = threading.Thread(
+            target=self.displayInfo_sub, name="graph5"
+        )
+        t1.daemon = True
+        t1.start()
 
     def populate(self):
         splits = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End', 'Iron']
@@ -1147,22 +1316,31 @@ class SplitsPage(Page):
         SplitsPage.populate(self)
 
 
-# Page
+# gui
 class EntryBreakdownPage(Page):
     panel1 = None
     panel2 = None
 
-    def displayInfo(self):
-        if self.panel1 is not None:
-            self.panel1.grid_forget()
+    def displayInfo_sub(self):
         sessionData = Logistics.getSessionData(selectedSession.get())
         Graphs.graph4(sessionData['general stats']['enters'])
         img = Image.open("data/plots/plot4.png")
         img = img.crop((30, 80, 670, 280))
         img = ImageTk.PhotoImage(img)
+        print('checkpoint 3')
+        if self.panel1 is not None:
+            self.panel1.grid_forget()
         self.panel1 = Label(self, image=img)
         self.panel1.image = img
         self.panel1.grid(row=1, column=0)
+
+    def displayInfo(self):
+        cmd = partial(self.displayInfo_sub)
+        t1 = threading.Thread(
+            target=cmd, name="graph4"
+        )
+        t1.daemon = True
+        t1.start()
 
     def populate(self):
         cmd = partial(self.displayInfo)
@@ -1174,25 +1352,19 @@ class EntryBreakdownPage(Page):
         EntryBreakdownPage.populate(self)
 
 
-# not currently doing anything
+# gui
 class SpawnImagePage(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
 
 
-# not currently doing anything
+# gui
 class CompareSessionsPage(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
 
 
-# code snippet for copy paste purposes
-class GenericPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-
-
-# "overlay" page
+# gui
 class MainView(tk.Frame):
 
     def startResetTracker(self):
@@ -1250,5 +1422,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     main = MainView(root)
     main.pack(side="top", fill="both", expand=True)
-    root.wm_geometry("1200x800")
+    root.wm_geometry("1200x700")
     root.mainloop()
