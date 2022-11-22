@@ -21,7 +21,6 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from typing import Optional
 from ctypes import windll, create_unicode_buffer
-import gspread
 import json
 import time
 from os.path import exists
@@ -140,15 +139,13 @@ class Stats:
     @classmethod
     def get_sessions(cls):
         sessionList = []
-        sh = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-        wks = sh.worksheet_by_title('Raw Data')
-        headers = wks.get_row(row=1, returnas='matrix', include_tailing_empty=False)
+        headers = wks1.get_row(row=1, returnas='matrix', include_tailing_empty=False)
 
-        time_col = wks.get_col(col=headers.index('Date and Time') + 1, returnas='matrix', include_tailing_empty=True)
+        time_col = wks1.get_col(col=headers.index('Date and Time') + 1, returnas='matrix', include_tailing_empty=True)
         time_col.pop(0)
-        session_col = wks.get_col(col=headers.index('Session Marker') + 1, returnas='matrix', include_tailing_empty=True)
+        session_col = wks1.get_col(col=headers.index('Session Marker') + 1, returnas='matrix', include_tailing_empty=True)
         session_col.pop(0)
-        rta_col = wks.get_col(col=headers.index('RTA') + 1, returnas='matrix', include_tailing_empty=True)
+        rta_col = wks1.get_col(col=headers.index('RTA') + 1, returnas='matrix', include_tailing_empty=True)
         rta_col.pop(0)
 
         count = 0
@@ -189,14 +186,11 @@ class Stats:
         enters = []
         exitSuccess = {}
 
-        sh = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-        wks = sh.worksheet_by_title('Raw Data')
-
-        headers = wks.get_row(row=1, returnas='matrix', include_tailing_empty=False)
+        headers = wks1.get_row(row=1, returnas='matrix', include_tailing_empty=False)
         columns = {}
 
         for header in headers:
-            temp_col = wks.get_col(col=headers.index(header) + 1, returnas='matrix', include_tailing_empty=True)
+            temp_col = wks1.get_col(col=headers.index(header) + 1, returnas='matrix', include_tailing_empty=True)
             columns[header] = temp_col[session['end row']:session['start row']]
 
         # setting up score keys
@@ -351,9 +345,9 @@ class Stats:
             if key in ['Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End']:
                 prevKey = key
 
-        returndict['general stats'] = {'inph': Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime)),
-                                       'rnph': Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)),
-                                       'tnph': Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_RTA + total_wallTime)),
+        returndict['general stats'] = {'inph': 3600 * Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime)),
+                                       'rnph': 3600 * Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)),
+                                       'tnph': 3600 * Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_RTA + total_wallTime)),
                                        'total time': total_RTA,
                                        'total Walltime': total_wallTime,
                                        'total ow time': total_owTime,
@@ -418,10 +412,8 @@ class Stats:
 
     @classmethod
     def uploadData(cls):
-        sh = gc_sheets_database.open_by_url(databaseLink)
         careerData = Logistics.getSessionData("All")
-        wks = sh[0]
-        nameList = (wks.get_col(col=1, returnas='matrix', include_tailing_empty=False))
+        nameList = (wks2.get_col(col=1, returnas='matrix', include_tailing_empty=False))
         userCount = len(nameList)
         if exists('data/name.txt'):
             nameFile = open('data/name.txt', 'r')
@@ -442,9 +434,9 @@ class Stats:
                 values.append(careerData['splits stats'][split][statistic])
         if name in nameList:
             rownum = nameList.index(name) + 1
-            wks.update_row(index=rownum, values=values, col_offset=0)
+            wks2.update_row(index=rownum, values=values, col_offset=0)
         else:
-            wks.insert_rows(row=userCount, number=1, values=values, inherit=False)
+            wks2.insert_rows(row=userCount, number=1, values=values, inherit=False)
 
     @classmethod
     def updateCurrentSession(cls, data):
@@ -538,7 +530,7 @@ class Stats:
 
         currentSession['general stats']['rnph'] = Logistics.getQuotient(currentSession['splits stats']['Nether']['Count'], currentSession['general stats']['total wall time'] + currentSession['general stats']['total ow time'])
         currentSession['general stats']['% played'] = Logistics.getQuotient(currentSession['general stats']['total played'], currentSession['general stats']['total played'] + currentSession['general stats']['total wall resets'])
-        currentSession['general stats']['rpe'] = Logistics.getQuotient(1, currentSession['splits stats']['Nether']['Count'])
+        currentSession['general stats']['rpe'] = Logistics.getQuotient(currentSession['general stats']['total wall resets'] + currentSession['general stats']['total played'], currentSession['splits stats']['Nether']['Count'])
 
         Graphs.graph6()
         Graphs.graph7()
@@ -777,20 +769,18 @@ class Graphs:
 class Feedback:
     @classmethod
     def readDatabase(cls):
-        sh = gc_sheets_database.open_by_url(databaseLink)
-        wks = sh[0]
-        nameList = (wks.get_col(col=1, returnas='matrix', include_tailing_empty=False))
+        nameList = (wks2.get_col(col=1, returnas='matrix', include_tailing_empty=False))
         nameFile = open('data/name.txt', 'r')
         name = nameFile.readline()
-        myData = wks.get_row(row=nameList.index(name) + 1, returnas='matrix', include_tailing_empty=True)
-        targetTimeCol = wks.get_col(col=3, returnas='matrix', include_tailing_empty=False)
+        myData = wks2.get_row(row=nameList.index(name) + 1, returnas='matrix', include_tailing_empty=True)
+        targetTimeCol = wks2.get_col(col=3, returnas='matrix', include_tailing_empty=False)
         targetTimeCol.pop(0)
         similarUserList = []
         for i in range(len(targetTimeCol)):
             if -1 * int(settings['display']['comparison threshold']) < (
                     int(targetTimeCol[i]) - int(settings['playstyle']['target time'])) < int(
                     settings['display']['comparison threshold']):
-                row = wks.get_row(row=i, returnas='matrix', include_tailing_empty=True)
+                row = wks2.get_row(row=i, returnas='matrix', include_tailing_empty=True)
                 similarUserList.append(row)
         return myData, similarUserList
 
@@ -865,19 +855,13 @@ class CompareProfiles:
 class Sheets:
     @classmethod
     def setup(cls):
-        sh = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-        wks = sh.worksheet_by_title('Raw Data')
-        wks.update_row(index=0, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker'], col_offset=0)
-
+        wks1.update_row(index=0, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker'], col_offset=0)
 
     @classmethod
     def sheets(cls):
         try:
             Sheets.setup()
             # Setting up constants and verifying
-            gc = gspread.service_account(filename="credentials/credentials.json")
-            sh = gc.open_by_url(settings['tracking']['sheet link'])
-            dataSheet = sh.worksheet("Raw Data")
             color = (15.0, 15.0, 15.0)
             global pushedLines
             pushedLines = 1
@@ -893,26 +877,13 @@ class Sheets:
                 try:
                     if len(data) == 0:
                         return
-                    dataSheet.insert_rows(
-                        data,
-                        row=2,
-                        value_input_option="USER_ENTERED",
-                    )
+                    wks1.insert_rows(values=data, row=2, number=1, inherit=False)
                     if pushedLines == 1:
                         endColumn = ord("A") + len(data)
                         endColumn1 = ord("A") + (endColumn // ord("A")) - 1
                         endColumn2 = ord("A") + ((endColumn - ord("A")) % 26)
                         endColumn = chr(endColumn1) + chr(endColumn2)
-                        dataSheet.format(
-                            "A2:" + endColumn + str(1 + len(data)),
-                            {
-                                "backgroundColor": {
-                                    "red": color[0],
-                                    "green": color[1],
-                                    "blue": color[2],
-                                }
-                            },
-                        )
+                        # dataSheet.format("A2:" + endColumn + str(1 + len(data)),{"backgroundColor": {"red": color[0], "green": color[1], "blue": color[2]}})
 
                     pushedLines += len(data)
                     f = open(statsCsv, "w+")
@@ -1254,10 +1225,14 @@ global variables
 """
 
 databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
-gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
 settings = Logistics.getSettings()
 sessions = Logistics.getSessions()
+gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
+sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+wks1 = sh1.worksheet_by_title('Raw Data')
+gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
+sh2 = gc_sheets_database.open_by_url(databaseLink)
+wks2 = sh2[0]
 second = timedelta(seconds=1)
 currentSession = {'splits stats': {}, 'general stats': {}}
 pages = []
