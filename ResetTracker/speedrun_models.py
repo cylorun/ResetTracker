@@ -37,7 +37,13 @@ class SplitDistribution:
                                  np.convolve(self.probabilities, other.probabilities))
 
     def to_data(self):
-        return {'start split': self.start_split, 'split step': self.split_step, 'probabilities': list(self.probabilities)}
+        cumulativeProbabilities = []
+        sum = 0
+        for i in range(len(self.probabilities) + 120):
+            if i < len(self.probabilities):
+                sum += self.probabilities[i]
+            cumulativeProbabilities.append(sum)
+        return {'start split': self.start_split, 'split step': self.split_step, 'probabilities': list(cumulativeProbabilities)}
 
     # creates a SplitDistribution with a normal distribution
     @classmethod
