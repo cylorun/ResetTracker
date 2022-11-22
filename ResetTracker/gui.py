@@ -54,10 +54,12 @@ class Logistics:
 
     @classmethod
     def getQuotient(cls, dividend, divisor):
-        if divisor == 0:
-            return None
-        else:
-            return dividend/divisor
+        quotient = None
+        try:
+            quotient = dividend/divisor
+        except Exception as e:
+            pass
+        return quotient
 
     @classmethod
     def getTimezoneOffset(cls):
@@ -345,9 +347,9 @@ class Stats:
             if key in ['Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End']:
                 prevKey = key
 
-        returndict['general stats'] = {'inph': 3600 * Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime)),
-                                       'rnph': 3600 * Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)),
-                                       'tnph': 3600 * Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_RTA + total_wallTime)),
+        returndict['general stats'] = {'inph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime)), 1/3600),
+                                       'rnph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)), 1/3600),
+                                       'tnph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_RTA + total_wallTime)), 1/3600),
                                        'total time': total_RTA,
                                        'total Walltime': total_wallTime,
                                        'total ow time': total_owTime,
@@ -528,7 +530,7 @@ class Stats:
             if split not in ['Iron', 'Wood', 'Iron Pickaxe']:
                 prevSplit = split
 
-        currentSession['general stats']['rnph'] = Logistics.getQuotient(currentSession['splits stats']['Nether']['Count'], currentSession['general stats']['total wall time'] + currentSession['general stats']['total ow time'])
+        currentSession['general stats']['rnph'] = Logistics.getQuotient(Logistics.getQuotient(currentSession['splits stats']['Nether']['Count'], currentSession['general stats']['total wall time'] + currentSession['general stats']['total ow time']), 1/3600)
         currentSession['general stats']['% played'] = Logistics.getQuotient(currentSession['general stats']['total played'], currentSession['general stats']['total played'] + currentSession['general stats']['total wall resets'])
         currentSession['general stats']['rpe'] = Logistics.getQuotient(currentSession['general stats']['total wall resets'] + currentSession['general stats']['total played'], currentSession['splits stats']['Nether']['Count'])
 
@@ -855,12 +857,11 @@ class CompareProfiles:
 class Sheets:
     @classmethod
     def setup(cls):
-        wks1.update_row(index=0, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker'], col_offset=0)
+        wks1.update_row(index=1, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker'], col_offset=0)
 
     @classmethod
     def sheets(cls):
         try:
-            Sheets.setup()
             # Setting up constants and verifying
             color = (15.0, 15.0, 15.0)
             global pushedLines
@@ -1178,6 +1179,7 @@ class NewRecord(FileSystemEventHandler):
 class Tracking:
     @classmethod
     def trackResets(cls):
+        Sheets.setup()
         while True:
             try:
                 newRecordObserver = Observer()
@@ -1624,6 +1626,7 @@ class MainView(tk.Frame):
         container.pack(side="top", fill="both", expand=True)
 
         pages[0].show()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
