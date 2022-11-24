@@ -1,14 +1,27 @@
 # ResetTracker
 
-## Installation:
+## Setup
 
-Follow [TalkingMime's Tutorial](https://youtu.be/KIAo3Lgsk_Q), but instead of giving the program your saves path you give it your SpeedrunIGT record folder (ie: C:\\Users\\NAME\\speedrunigt\\records)
+### Required Mods
 
-Use the [new stats sheet](https://docs.google.com/spreadsheets/d/1XvRLLQ5J1zAqraUkJ06qAGdYTeCFHhnmrv2nkWoXIO0/edit#gid=1357582403) instead of the one Mime uses, and make sure its publicly viewable! :]
+### Settings
 
-## Required Mods:
-- Atum 1.0.5+
-- SpeedrunIGT 10.7+
+### Updating
 
-## To add in future:
-- Version-specific stats
+## Tracking
+
+### Start Tracking
+
+### How It Works
+
+### Tracked Stats
+
+## Analysis
+
+### Splits
+
+### Entry Breakdown
+
+### Comparison
+
+## Credit
