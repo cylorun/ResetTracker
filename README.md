@@ -1,6 +1,6 @@
 # ResetTracker
 
-## <span style="color: red;">Setup</span>
+## <span style="color:red;">Setup</span>
 
 ### Required Mods
 
@@ -8,7 +8,7 @@
 
 ### Updating
 
-## <span style="color: red;">Tracking</span>
+## <span style="color:red;">Tracking</span>
 
 ### Start Tracking
 
@@ -16,7 +16,7 @@
 
 ### Tracked Stats
 
-## <span style="color: red;">Analysis</span>
+## <span style="color:red;">Analysis</span>
 
 ### Splits
 
@@ -24,4 +24,4 @@
 
 ### Comparison
 
-## <span style="color: red;">Credits</span>
+## <span style="color:red;">Credits</span>
