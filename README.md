@@ -1,6 +1,6 @@
 # ResetTracker
 
-## <span style="color:red;">Setup</span>
+## <span style="color:red;">*Setup*</span>
 
 ### Required Mods
 
