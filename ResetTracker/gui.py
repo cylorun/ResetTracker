@@ -164,18 +164,24 @@ class Logistics:
         webUrl = urllib.request.urlopen('https://github.com/pncakespoon1/ResetTracker')
 
 
-    # class methods for analyzing stats
+# class methods for analyzing stats
 class Stats:
     @classmethod
     def get_sessions(cls):
-        sessionList = []
-        headers = wks1.get_row(row=1, returnas='matrix', include_tailing_empty=False)
+        with open('stats.csv', newline="") as f:
+            reader = csv.reader(f)
+            data = list(reader)
+            f.close()
+        data = np.ndarray(data)[::-1]
 
-        time_col = wks1.get_col(col=headers.index('Date and Time') + 1, returnas='matrix', include_tailing_empty=True)
+        sessionList = []
+        headers = data[0]
+
+        time_col = (np.transpose(data))[headers.index('Date and Time')]
         time_col.pop(0)
-        session_col = wks1.get_col(col=headers.index('Session Marker') + 1, returnas='matrix', include_tailing_empty=True)
+        session_col = (np.transpose(data))[headers.index('Session Marker')]
         session_col.pop(0)
-        rta_col = wks1.get_col(col=headers.index('RTA') + 1, returnas='matrix', include_tailing_empty=True)
+        rta_col = (np.transpose(data))[headers.index('RTA')]
         rta_col.pop(0)
 
         count = 0
@@ -218,12 +224,13 @@ class Stats:
         enters = []
         exitSuccess = {}
 
-        headers = wks1.get_row(row=1, returnas='matrix', include_tailing_empty=False)
-        columns = {}
+        with open('stats.csv', newline="") as f:
+            reader = csv.reader(f)
+            data = list(reader)
+            f.close()
+        data = np.ndarray(data)[::-1]
 
-        for header in headers:
-            temp_col = wks1.get_col(col=headers.index(header) + 1, returnas='matrix', include_tailing_empty=True)
-            columns[header] = temp_col[session['end row']:session['start row']]
+        headers = data[0]
 
         # setting up score keys
         if makeScoreKeys:
@@ -241,12 +248,12 @@ class Stats:
         exitSuccess['other'] = {'Enter Count': 0, 'Exit Count': 0, 'Conversion': None, 'Sum Enter': 0, 'Average Enter': None, 'Sum Split': 0, 'Average Split': None}
 
         # iterating through rows
-        for row_num in range(len(columns['Date and Time'])):
-            if columns['Date and Time'][row_num] != 0:
+        for row_num in range(len(data) - 1):
+            if data[row_num + 1][0] != '':
                 # formatting
                 rowCells = {}
-                for key in columns:
-                    cell = columns[key][row_num]
+                for key in headers:
+                    cell = data[row_num + 1][headers.index[key]]
                     if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
                         if len(cell) == 8:
                             rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:])) / second
@@ -394,6 +401,7 @@ class Stats:
                                        }
         returndict['profile'] = session['profile']
 
+        print('d')
         return returndict
 
     @classmethod
@@ -428,20 +436,26 @@ class Stats:
     # used for saveSessionData
     @classmethod
     def appendStats(cls):
+        global updateStatsLoadingProgress
         global sessions
         global isUpdating
         sessionList = Stats.get_sessions()
         stats = []
+        updateStatsLoadingProgress = '0%'
         for i in range(len(sessionList)):
+            print(i)
             if sessionList[i]['string'] == "All":
                 stats.append(Stats.get_stats(sessionList[i], True))
+                updateStatsLoadingProgress = '40%'
             else:
                 stats.append(Stats.get_stats(sessionList[i], False))
+                updateStatsLoadingProgress = str(40 + round((60*i/(len(sessionList) - 1)), 0)) + '%'
         sessions = {'sessions': sessionList, 'stats': stats}
         with open("data/sessionData.json", "w") as sessionDataJson:
             json.dump(sessions, sessionDataJson)
         sessionDataJson.close()
         isUpdating = False
+        print('finished')
 
     @classmethod
     def uploadData(cls):
@@ -503,7 +517,7 @@ class Stats:
                     currentSession['splits stats']['Nether']['Cumulative Sum'] += rowCells['Nether']
                     currentSession['splits stats']['Nether']['Relative Sum'] += rowCells['Nether']
                     currentSession['splits stats']['Nether']['Count'] += 1
-                    currentSession['general stats']['total ow time'] += rowCells['Nether']
+                    currentSession['general stats']['total ow time'] += rowCells['Nether'] + rowCells['RTA Since Prev']
 
                     bast = (rowCells['Bastion'] != '')
                     fort = (rowCells['Fortress'] != '')
@@ -543,7 +557,7 @@ class Stats:
                         currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Fortress'] - rowCells['Nether']
                         currentSession['splits stats']['Structure 1']['Count'] += 1
                 else:
-                    currentSession['general stats']['total RTA'] += rowCells['RTA']
+                    currentSession['general stats']['total ow time'] += rowCells['RTA'] + rowCells['RTA Since Prev']
                 
         # calculate and update other statistics
         prevSplit = None
@@ -890,9 +904,6 @@ config = Logistics.getConfig()
 settings = Logistics.getSettings()
 sessions = Logistics.getSessions()
 gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
-if settings['tracking']['sheet link'] != '':
-    sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-    wks1 = sh1.worksheet_by_title('Raw Data')
 gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
 sh2 = gc_sheets_database.open_by_url(databaseLink)
 wks2 = sh2[0]
@@ -905,6 +916,7 @@ isTracking = False
 isUpdating = False
 isGraphingSplit = False
 isGraphingEntry = False
+updateStatsLoadingProgress = ''
 advChecks = [
     ("minecraft:recipes/misc/charcoal", "has_log"),
     ("minecraft:story/iron_tools", "iron_pickaxe"),
@@ -932,57 +944,6 @@ statsChecks = [
 """
 global variables
 """
-
-# tracking
-class Sheets:
-    @classmethod
-    def setup(cls):
-        wks1.update_row(index=1, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker'], col_offset=0)
-
-    @classmethod
-    def sheets(cls):
-        try:
-            # Setting up constants and verifying
-            color = (15.0, 15.0, 15.0)
-            global pushedLines
-            pushedLines = 1
-            statsCsv = "stats.csv"
-
-            def push_data():
-                global pushedLines
-                with open(statsCsv, newline="") as f:
-                    reader = csv.reader(f)
-                    data = list(reader)
-                    f.close()
-                Stats.updateCurrentSession(data)
-                try:
-                    if len(data) == 0:
-                        return
-                    wks1.insert_rows(values=data, row=1, number=1, inherit=False)
-                    if pushedLines == 1:
-                        endColumn = ord("A") + len(data)
-                        endColumn1 = ord("A") + (endColumn // ord("A")) - 1
-                        endColumn2 = ord("A") + ((endColumn - ord("A")) % 26)
-                        endColumn = chr(endColumn1) + chr(endColumn2)
-                        # dataSheet.format("A2:" + endColumn + str(1 + len(data)),{"backgroundColor": {"red": color[0], "green": color[1], "blue": color[2]}})
-
-                    pushedLines += len(data)
-                    f = open(statsCsv, "w+")
-                    f.close()
-
-                except Exception as e:
-                    print(e)
-
-            live = True
-            print("Finished authorizing, will update sheet every 30 seconds")
-
-            while live:
-                push_data()
-                pages[2].updateTables()
-                time.sleep(30)
-        except Exception as e:
-            print(e)
-            input("")
 
 
 # tracking
@@ -1076,9 +1037,11 @@ class NewRecord(FileSystemEventHandler):
 
         if self.data["final_rta"] == 0:
             self.wall_resets += 1
+            print('wall reset')
             return
         uids = list(self.data["stats"].keys())
         if len(uids) == 0:
+            print('no stats')
             return
         stats = self.data["stats"][uids[0]]["stats"]
         adv = self.data["advancements"]
@@ -1115,6 +1078,7 @@ class NewRecord(FileSystemEventHandler):
             self.splitless_count += 1
             # Only account for splitless RTA
             self.rta_spent += self.data["final_rta"]
+            print('splitless')
             return
 
         # Stats
@@ -1236,14 +1200,14 @@ class NewRecord(FileSystemEventHandler):
                  Utilities.ms_to_string(self.rta_spent), Utilities.ms_to_string(self.break_time), Utilities.ms_to_string(self.wall_time), self.isFirstRun])
         self.isFirstRun = ''
 
-        with open("stats.csv", "r") as infile:
-            reader = list(csv.reader(infile))
-            reader.insert(0, data)
-
         with open("stats.csv", "w", newline="") as outfile:
             writer = csv.writer(outfile)
-            for line in reader:
-                writer.writerow(line)
+            writer.writerow(data)
+
+        # updates displayed stats
+        Stats.updateCurrentSession(data)
+        pages[2].updateTables()
+
         # Reset all counters/sums
         self.wall_resets = 0
         self.rta_spent = 0
@@ -1256,7 +1220,6 @@ class NewRecord(FileSystemEventHandler):
 class Tracking:
     @classmethod
     def trackResets(cls):
-        Sheets.setup()
         while True:
             try:
                 newRecordObserver = Observer()
@@ -1274,12 +1237,6 @@ class Tracking:
             files = glob.glob(f'{settings["tracking"]["records path"]}\\*.json')
             for f in files:
                 os.remove(f)
-
-        t = threading.Thread(
-            target=Sheets.sheets, name="sheets"
-        )  # < Note that I did not actually call the function, but instead sent it as a parameter
-        t.daemon = True
-        t.start()  # < This actually starts the thread execution in the background
 
         print("Tracking...")
         print("Type 'quit' when you are done")
@@ -1331,8 +1288,8 @@ class IntroPage(Page):
 
 # gui
 class SettingsPage(Page):
-    varStrings = [['sheet link', 'records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload stats', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check']]
+    varStrings = [['records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload stats', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
+    varTypes = [['entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check']]
     varGroups = ['tracking', 'display', 'playstyle', 'playstyle cont.']
     settingsVars = []
     labels = []
@@ -1342,16 +1299,12 @@ class SettingsPage(Page):
 
     def saveSettings(self):
         global settings
-        global sh1
-        global wks1
         for i1 in range(len(self.varStrings)):
             for i2 in range(len(self.varStrings[i1])):
                 settings[self.varGroups[i1]][self.varStrings[i1][i2]] = self.settingsVars[i1][i2].get()
         settingsJson = open("data/settings.json", "w")
         json.dump(settings, settingsJson)
         settingsJson.close()
-        sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-        wks1 = sh1.worksheet_by_title('Raw Data')
 
     def populate(self):
         loadedSettings = Logistics.getSettings()
@@ -1614,20 +1567,19 @@ class EntryBreakdownPage(Page):
 class MainView(tk.Frame):
     top = None
     sessionMarkerInput = None
+    loadingLabel = None
 
     def startResetTracker(self):
         global currentSessionMarker
         global isTracking
         currentSessionMarker = self.sessionMarkerInput.get()
+        print(currentSessionMarker)
         isTracking = True
         self.top.destroy()
         Stats.resetCurrentSession()
-        t1 = threading.Thread(
-            target=Tracking.trackResets, name="tracker"
-        )  # < Note that I did not actually call the function, but instead sent it as a parameter
+        t1 = threading.Thread(target=Tracking.trackResets, name="tracker")  # < Note that I did not actually call the function, but instead sent it as a parameter
         t1.daemon = True
         t1.start()
-
 
     def promptUserForTracking(self):
         self.top = Toplevel()
@@ -1638,19 +1590,22 @@ class MainView(tk.Frame):
         label.pack()
 
         self.sessionMarkerInput = tk.StringVar()
+        self.sessionMarkerInput.set('X')
         sessionMarkerEntry = Entry(self.top, textvariable=self.sessionMarkerInput)
         sessionMarkerEntry.pack()
 
         startTrackingButton = Button(self.top, text="Start Tracking", command=self.startResetTracker)
         startTrackingButton.pack()
 
-
     def watchUpdating(self):
-        loadingLabel = Label(text="updating data...", foreground='green')
-        loadingLabel.place(x=500, y=500)
+        prevUpdateStatsLoadingProgress = ''
         while isUpdating:
-            pass
-        loadingLabel.place_forget()
+            if updateStatsLoadingProgress != prevUpdateStatsLoadingProgress:
+                self.loadingLabel = Label(text="Updating... " + updateStatsLoadingProgress, foreground='green')
+                self.loadingLabel.place(x=500, y=500)
+            prevUpdateStatsLoadingProgress = updateStatsLoadingProgress
+            time.sleep(1)
+        self.loadingLabel.place_forget()
 
     def updateData(self):
         global isUpdating
