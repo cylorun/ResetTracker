@@ -172,34 +172,35 @@ class Stats:
             reader = csv.reader(f)
             data = list(reader)
             f.close()
-        data = np.ndarray(data)[::-1]
+        data = [data[0]] + data[::-1]
+        data.pop(len(data) - 1)
 
         sessionList = []
         headers = data[0]
 
-        time_col = (np.transpose(data))[headers.index('Date and Time')]
+        time_col = list((np.transpose(data))[headers.index('Date and Time')])
         time_col.pop(0)
-        session_col = (np.transpose(data))[headers.index('Session Marker')]
+        session_col = list((np.transpose(data))[headers.index('Session Marker')])
         session_col.pop(0)
-        rta_col = (np.transpose(data))[headers.index('RTA')]
+        rta_col = list((np.transpose(data))[headers.index('RTA')])
         rta_col.pop(0)
 
         count = 0
         session_end = 2
-        end_time = Logistics.stringToDatetime(time_col[0+1]) + Logistics.stringToTimedelta(rta_col[0+1]) + Logistics.getTimezoneOffset()
+        end_time = datetime.strptime(time_col[0+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[0+1]) + Logistics.getTimezoneOffset()
         for i in range(len(session_col)):
             if session_col[i] != '':
                 count += 1
                 session_start = i+2
                 if count == int(settings['display']['latest x sessions']):
                     sessionList.insert(1, {'start row': session_start, 'end row': 2, 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None})
-                start_time = Logistics.stringToDatetime(time_col[i]) + Logistics.getTimezoneOffset()
+                start_time = datetime.strptime(time_col[i], '%Y-%m-%d %H:%M:%S.%f') + Logistics.getTimezoneOffset()
                 sessionString = start_time.strftime('%m/%d %H:%M') + " - " + end_time.strftime('%m/%d %H:%M')
                 profile = session_col[i]
                 sessionList.append({'start row': session_start, 'end row': session_end, 'string': sessionString, 'profile': profile})
                 session_end = i+3
                 if i != len(session_col) - 1 and time_col[i+1] != '':
-                    end_time = Logistics.stringToDatetime(time_col[i+1]) + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
+                    end_time = datetime.strptime(time_col[i+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
         sessionList.insert(0, {'start row': session_start, 'end row': 2, 'string': "All", 'profile': None})
         return sessionList
 
@@ -228,7 +229,8 @@ class Stats:
             reader = csv.reader(f)
             data = list(reader)
             f.close()
-        data = np.ndarray(data)[::-1]
+        data = [data[0]] + data[::-1]
+        data.pop(len(data) - 1)
 
         headers = data[0]
 
@@ -253,7 +255,9 @@ class Stats:
                 # formatting
                 rowCells = {}
                 for key in headers:
-                    cell = data[row_num + 1][headers.index[key]]
+                    print(key)
+                    cell = data[row_num + 1][headers.index(key)]
+                    print(cell)
                     if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
                         if len(cell) == 8:
                             rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:])) / second
@@ -401,7 +405,6 @@ class Stats:
                                        }
         returndict['profile'] = session['profile']
 
-        print('d')
         return returndict
 
     @classmethod
@@ -443,7 +446,6 @@ class Stats:
         stats = []
         updateStatsLoadingProgress = '0%'
         for i in range(len(sessionList)):
-            print(i)
             if sessionList[i]['string'] == "All":
                 stats.append(Stats.get_stats(sessionList[i], True))
                 updateStatsLoadingProgress = '40%'
@@ -455,7 +457,6 @@ class Stats:
             json.dump(sessions, sessionDataJson)
         sessionDataJson.close()
         isUpdating = False
-        print('finished')
 
     @classmethod
     def uploadData(cls):
