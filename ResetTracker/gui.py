@@ -1,17 +1,15 @@
+import subprocess
 import tkinter as tk
 from tkinter import *
 from functools import partial
 import pygsheets
 import datetime
 from statistics import mean
-import statistics
-from statistics import quantiles
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import ImageTk, Image
 import plotly.graph_objects as go
 from plotly.colors import n_colors
-import math
 import csv
 import glob
 import os
@@ -28,22 +26,34 @@ import numpy as np
 import math
 from scipy.stats import percentileofscore
 from speedrun_models import BasicSpeedrunModel, SplitDistribution
+import requests
+import urllib.request
+import subprocess
 
 
 # class methods for miscellaneous
 class Logistics:
 
     @classmethod
+    def getConfig(cls):
+        configJson = open("data/config.json", "r")
+        loadedConfig = json.load(configJson)
+        configJson.close()
+        return loadedConfig
+
+    @classmethod
     def getSettings(cls):
-        with open("data/settings.json", "r") as settingsJson:
-            loadedSettings = json.load(settingsJson)
-            return loadedSettings
+        settingsJson = open("data/settings.json", "r")
+        loadedSettings = json.load(settingsJson)
+        settingsJson.close()
+        return loadedSettings
 
     @classmethod
     def getSessions(cls):
-        with open("data/sessionData.json", "r") as sessionsJson:
-            loadedSessions = json.load(sessionsJson)
-            return loadedSessions
+        sessionsJson = open("data/sessionData.json", "r")
+        loadedSessions = json.load(sessionsJson)
+        sessionsJson.close()
+        return loadedSessions
 
     @classmethod
     def getMean(cls, data):
@@ -135,8 +145,26 @@ class Logistics:
 
         return m, b, s
 
+    @classmethod
+    def checkGithub(cls):
+        latest = requests.get("https://api.github.com/repos/pncakespoon1/ResetTracker/releases/latest")
+        if latest == config['version']:
+            return False
+        else:
+            return True
 
-# class methods for analyzing stats
+    @classmethod
+    def update(cls):
+        subprocess.Popen('update.exe')
+        root.destroy()
+
+
+    @classmethod
+    def openGithub(cls):
+        webUrl = urllib.request.urlopen('https://github.com/pncakespoon1/ResetTracker')
+
+
+    # class methods for analyzing stats
 class Stats:
     @classmethod
     def get_sessions(cls):
@@ -177,7 +205,9 @@ class Stats:
         relativeSplitDists = {'Iron': None, 'Wood': None, 'Iron Pickaxe': None, 'Nether': [], 'Structure 1': [], 'Structure 2': [], 'Nether Exit': [], 'Stronghold': [], 'End': []}
         cumulativeSplitDists = {'Iron': [], 'Wood': [], 'Iron Pickaxe': [], 'Nether': [], 'Structure 1': [], 'Structure 2': [], 'Nether Exit': [], 'Stronghold': [], 'End': []}
 
-        endgameDists = json.load(open('data/endgameDists.json'))
+        endgameDistsJson = open('data/endgameDists.json')
+        endgameDists = json.load(endgameDistsJson)
+        endgameDistsJson.close()
 
         total_RTA = 0
         total_wallResets = 0
@@ -410,33 +440,31 @@ class Stats:
         sessions = {'sessions': sessionList, 'stats': stats}
         with open("data/sessionData.json", "w") as sessionDataJson:
             json.dump(sessions, sessionDataJson)
+        sessionDataJson.close()
         isUpdating = False
 
     @classmethod
     def uploadData(cls):
+        global config
         careerData = Logistics.getSessionData("All")
         nameList = (wks2.get_col(col=1, returnas='matrix', include_tailing_empty=False))
         userCount = len(nameList)
-        if exists('data/name.txt'):
-            nameFile = open('data/name.txt', 'r')
-            name = nameFile.readline()
-            nameFile.close()
-        else:
+        if config['lbName'] == '':
             if settings['display']['upload anonymity'] == 1:
-                name = "Anonymous" + str(userCount).zfill(5)
+                config['lbName'] = "Anonymous" + str(userCount).zfill(5)
             else:
-                name = settings['display']['twitch username']
-            nameFile = open('data/name.txt', 'w')
-            nameFile.write(name)
-        values = [name, settings['playstyle']['instance count'], settings['playstyle']['target time']]
+                config['lbName'] = settings['display']['twitch username']
+            configFile = open('data/config.json')
+            json.dump(config, configFile)
+        values = [config['lbName'], settings['playstyle']['instance count'], settings['playstyle']['target time']]
         for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
         for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion']:
             for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
                 values.append(careerData['splits stats'][split][statistic])
-        if name in nameList:
-            rownum = nameList.index(name) + 1
-            wks2.update_row(index=rownum, values=values, col_offset=0)
+        if config['lbName'] in nameList:
+            rownum = nameList.index(config['lbName']) + 1
+            wks2.update_row(index=rownum - 1, values=values, col_offset=0)
         else:
             wks2.insert_rows(row=userCount, number=1, values=values, inherit=False)
 
@@ -647,7 +675,6 @@ class Graphs:
         ])
         fig.write_image('data/plots/plot4.png')
 
-
     # table displaying info about a specific split
     @classmethod
     def graph5(cls, splitData):
@@ -745,6 +772,7 @@ class Graphs:
         plt.savefig('data/plots/plot9.png', dpi=1000)
         plt.close()
 
+    # table displaying some nether stats for each enter type
     @classmethod
     def graph10(cls, exitSuccess):
         values = []
@@ -853,6 +881,58 @@ class CompareProfiles:
     pass
 
 
+"""
+global variables
+"""
+
+databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
+config = Logistics.getConfig()
+settings = Logistics.getSettings()
+sessions = Logistics.getSessions()
+gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
+if settings['tracking']['sheet link'] != '':
+    sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+    wks1 = sh1.worksheet_by_title('Raw Data')
+gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
+sh2 = gc_sheets_database.open_by_url(databaseLink)
+wks2 = sh2[0]
+second = timedelta(seconds=1)
+currentSession = {'splits stats': {}, 'general stats': {}}
+currentSessionMarker = 'X'
+pages = []
+selectedSession = None
+isTracking = False
+isUpdating = False
+isGraphingSplit = False
+isGraphingEntry = False
+advChecks = [
+    ("minecraft:recipes/misc/charcoal", "has_log"),
+    ("minecraft:story/iron_tools", "iron_pickaxe"),
+    ("timelines", "enter_nether"),
+    ("timelines", "enter_bastion"),
+    ("timelines", "enter_fortress"),
+    ("timelines", "nether_travel"),
+    ("timelines", "enter_stronghold"),
+    ("timelines", "enter_end"),
+]
+
+statsChecks = [
+    "nothing lol",
+    ("minecraft:dropped", "minecraft:gold_ingot"),
+    ("minecraft:picked_up", "minecraft:blaze_rod"),
+    ("minecraft:killed", "minecraft:blaze"),
+    ("minecraft:picked_up", "minecraft:flint"),
+    ("minecraft:mined", "minecraft:gravel"),
+    ("minecraft:custom", "minecraft:deaths"),
+    ("minecraft:custom", "minecraft:traded_with_villager"),
+    ("minecraft:killed", "minecraft:enderman"),
+    ("minecraft:picked_up", "minecraft:ender_eye")
+]
+
+"""
+global variables
+"""
+
 # tracking
 class Sheets:
     @classmethod
@@ -878,7 +958,7 @@ class Sheets:
                 try:
                     if len(data) == 0:
                         return
-                    wks1.insert_rows(values=data, row=2, number=1, inherit=False)
+                    wks1.insert_rows(values=data, row=1, number=1, inherit=False)
                     if pushedLines == 1:
                         endColumn = ord("A") + len(data)
                         endColumn1 = ord("A") + (endColumn // ord("A")) - 1
@@ -890,10 +970,7 @@ class Sheets:
                     f = open(statsCsv, "w+")
                     f.close()
 
-
-
                 except Exception as e:
-                    print("test")
                     print(e)
 
             live = True
@@ -949,7 +1026,7 @@ class NewRecord(FileSystemEventHandler):
     splitless_count = 0
     break_time = 0
     wall_time = 0
-    isFirstRun = 'X'
+    isFirstRun = currentSessionMarker
 
     def __init__(self):
         self.path = None
@@ -971,7 +1048,7 @@ class NewRecord(FileSystemEventHandler):
             try:
                 self.data = json.load(record_file)
             except Exception as e:
-                # skip
+                print(e)
                 return
         if self.data is None:
             print("Record file couldnt be read")
@@ -1148,7 +1225,7 @@ class NewRecord(FileSystemEventHandler):
                             else:
                                 iron_source = "Full Shipwreck"
                         else:
-                            iron_source = "Half Shipwreck"
+                            iron_source = "Buried Treasure"
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 
@@ -1197,6 +1274,7 @@ class Tracking:
             files = glob.glob(f'{settings["tracking"]["records path"]}\\*.json')
             for f in files:
                 os.remove(f)
+
         t = threading.Thread(
             target=Sheets.sheets, name="sheets"
         )  # < Note that I did not actually call the function, but instead sent it as a parameter
@@ -1213,61 +1291,17 @@ class Tracking:
                     val = input("")
                 except:
                     val = ""
+
                 if (val == "help") or (val == "?"):
                     print("there is literally one other command and it's quit")
                 if (val == "stop") or (val == "quit"):
                     live = False
                 time.sleep(1)
+        except Exception as e:
+            print(e)
         finally:
             newRecordObserver.stop()
             newRecordObserver.join()
-
-"""
-global variables
-"""
-
-databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-settings = Logistics.getSettings()
-sessions = Logistics.getSessions()
-gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
-sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-wks1 = sh1.worksheet_by_title('Raw Data')
-gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
-sh2 = gc_sheets_database.open_by_url(databaseLink)
-wks2 = sh2[0]
-second = timedelta(seconds=1)
-currentSession = {'splits stats': {}, 'general stats': {}}
-pages = []
-selectedSession = None
-isTracking = False
-isUpdating = False
-advChecks = [
-    ("minecraft:recipes/misc/charcoal", "has_log"),
-    ("minecraft:story/iron_tools", "iron_pickaxe"),
-    ("timelines", "enter_nether"),
-    ("timelines", "enter_bastion"),
-    ("timelines", "enter_fortress"),
-    ("timelines", "nether_travel"),
-    ("timelines", "enter_stronghold"),
-    ("timelines", "enter_end"),
-]
-
-statsChecks = [
-    "nothing lol",
-    ("minecraft:dropped", "minecraft:gold_ingot"),
-    ("minecraft:picked_up", "minecraft:blaze_rod"),
-    ("minecraft:killed", "minecraft:blaze"),
-    ("minecraft:picked_up", "minecraft:flint"),
-    ("minecraft:mined", "minecraft:gravel"),
-    ("minecraft:custom", "minecraft:deaths"),
-    ("minecraft:custom", "minecraft:traded_with_villager"),
-    ("minecraft:killed", "minecraft:enderman"),
-    ("minecraft:picked_up", "minecraft:ender_eye")
-]
-
-"""
-global variables
-"""
 
 
 # gui
@@ -1308,11 +1342,16 @@ class SettingsPage(Page):
 
     def saveSettings(self):
         global settings
+        global sh1
+        global wks1
         for i1 in range(len(self.varStrings)):
             for i2 in range(len(self.varStrings[i1])):
                 settings[self.varGroups[i1]][self.varStrings[i1][i2]] = self.settingsVars[i1][i2].get()
-        with open("data/settings.json", "w") as settingsJson:
-            json.dump(settings, settingsJson)
+        settingsJson = open("data/settings.json", "w")
+        json.dump(settings, settingsJson)
+        settingsJson.close()
+        sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+        wks1 = sh1.worksheet_by_title('Raw Data')
 
     def populate(self):
         loadedSettings = Logistics.getSettings()
@@ -1361,7 +1400,7 @@ class CurrentSessionPage(Page):
         if self.panel1 is not None:
             self.panel1.grid_forget()
         img1 = Image.open("data/plots/plot6.png")
-        img1 = img1.resize((600, 300), Image.LANCZOS)
+        img1 = img1.resize((600, 300))
         img1 = ImageTk.PhotoImage(img1)
         self.panel1 = Label(self, image=img1)
         self.panel1.image = img1
@@ -1370,7 +1409,7 @@ class CurrentSessionPage(Page):
         if self.panel2 is not None:
             self.panel2.grid_forget()
         img2 = Image.open("data/plots/plot7.png")
-        img2 = img2.resize((600, 300), Image.LANCZOS)
+        img2 = img2.resize((600, 300))
         img2 = ImageTk.PhotoImage(img2)
         self.panel2 = Label(self, image=img2)
         self.panel2.image = img2
@@ -1391,34 +1430,38 @@ class SplitsPage(Page):
     selectedSplit = None
 
     def displayInfo_sub(self):
-        sessionData = Logistics.getSessionData(selectedSession.get())
+        global isGraphingSplit
+        if not isGraphingSplit:
+            isGraphingSplit = True
+            sessionData = Logistics.getSessionData(selectedSession.get())
 
-        Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.9)
-        img1 = Image.open("data/plots/plot1.png")
-        img1 = img1.resize((400, 400), Image.LANCZOS)
-        img1 = ImageTk.PhotoImage(img1)
+            Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.9)
+            img1 = Image.open("data/plots/plot1.png")
+            img1 = img1.resize((400, 400))
+            img1 = ImageTk.PhotoImage(img1)
 
-        Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
-        img2 = Image.open("data/plots/plot5.png")
-        img2 = img2.crop((0, 0, 700, 300))
-        img2 = img2.resize((400, 200), Image.LANCZOS)
-        img2 = ImageTk.PhotoImage(img2)
+            Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
+            img2 = Image.open("data/plots/plot5.png")
+            img2 = img2.crop((0, 0, 700, 300))
+            img2 = img2.resize((400, 200))
+            img2 = ImageTk.PhotoImage(img2)
 
-        if self.panel1 is not None:
-            self.panel1.grid_forget()
-        else:
-            self.label1.grid_forget()
-        self.panel1 = Label(self.container1, image=img1)
-        self.panel1.image = img1
-        self.panel1.grid(row=0, column=0, sticky="nsew")
+            if self.panel1 is not None:
+                self.panel1.grid_forget()
+            else:
+                self.label1.grid_forget()
+            self.panel1 = Label(self.container1, image=img1)
+            self.panel1.image = img1
+            self.panel1.grid(row=0, column=0, sticky="nsew")
 
-        if self.panel2 is not None:
-            self.panel2.grid_forget()
-        else:
-            self.label2.grid_forget()
-        self.panel2 = Label(self.container2, image=img2)
-        self.panel2.image = img2
-        self.panel2.grid(row=0, column=0, sticky="nsew")
+            if self.panel2 is not None:
+                self.panel2.grid_forget()
+            else:
+                self.label2.grid_forget()
+            self.panel2 = Label(self.container2, image=img2)
+            self.panel2.image = img2
+            self.panel2.grid(row=0, column=0, sticky="nsew")
+            isGraphingSplit = False
 
     def displayInfo(self):
         t1 = threading.Thread(
@@ -1468,65 +1511,69 @@ class EntryBreakdownPage(Page):
     container4 = None
 
     def displayInfo_sub(self):
-        sessionData = Logistics.getSessionData(selectedSession.get())
-        enterTypeList = []
-        enterMethodList = []
-        for enter in sessionData['general stats']['enters']:
-            enterTypeList.append(enter['type'])
-            enterMethodList.append(enter['method'])
+        global isGraphingEntry
+        if not isGraphingEntry:
+            isGraphingEntry = True
+            sessionData = Logistics.getSessionData(selectedSession.get())
+            enterTypeList = []
+            enterMethodList = []
+            for enter in sessionData['general stats']['enters']:
+                enterTypeList.append(enter['type'])
+                enterMethodList.append(enter['method'])
 
-        Graphs.graph4(sessionData['general stats']['enters'])
-        img1 = Image.open("data/plots/plot4.png")
-        img1 = img1.crop((30, 80, 670, 280))
-        img1 = img1.resize((300, 200))
-        img1 = ImageTk.PhotoImage(img1)
+            Graphs.graph4(sessionData['general stats']['enters'])
+            img1 = Image.open("data/plots/plot4.png")
+            img1 = img1.crop((30, 80, 670, 280))
+            img1 = img1.resize((300, 200))
+            img1 = ImageTk.PhotoImage(img1)
 
-        Graphs.graph2(enterTypeList)
-        img2 = Image.open("data/plots/plot2.png")
-        img2 = img2.resize((300, 200))
-        img2 = ImageTk.PhotoImage(img2)
+            Graphs.graph2(enterTypeList)
+            img2 = Image.open("data/plots/plot2.png")
+            img2 = img2.resize((300, 200))
+            img2 = ImageTk.PhotoImage(img2)
 
-        Graphs.graph2(enterMethodList)
-        img3 = Image.open("data/plots/plot2.png")
-        img3 = img3.resize((300, 200))
-        img3 = ImageTk.PhotoImage(img3)
+            Graphs.graph2(enterMethodList)
+            img3 = Image.open("data/plots/plot2.png")
+            img3 = img3.resize((300, 200))
+            img3 = ImageTk.PhotoImage(img3)
 
-        Graphs.graph10(sessionData['general stats']['Exit Success'])
-        img4 = Image.open("data/plots/plot10.png")
-        img4 = img4.resize((300, 200))
-        img4 = ImageTk.PhotoImage(img4)
+            Graphs.graph10(sessionData['general stats']['Exit Success'])
+            img4 = Image.open("data/plots/plot10.png")
+            img4 = img4.resize((300, 200))
+            img4 = ImageTk.PhotoImage(img4)
 
-        if self.panel1 is not None:
-            self.panel1.grid_forget()
-        else:
-            self.label1.grid_forget()
-        self.panel1 = Label(self.container1, image=img1)
-        self.panel1.image = img1
-        self.panel1.grid(row=0, column=0, sticky="nsew")
+            if self.panel1 is not None:
+                self.panel1.grid_forget()
+            else:
+                self.label1.grid_forget()
+            self.panel1 = Label(self.container1, image=img1)
+            self.panel1.image = img1
+            self.panel1.grid(row=0, column=0, sticky="nsew")
 
-        if self.panel2 is not None:
-            self.panel2.grid_forget()
-        else:
-            self.label2.grid_forget()
-        self.panel2 = Label(self.container2, image=img2)
-        self.panel2.image = img2
-        self.panel2.grid(row=0, column=0, sticky="nsew")
+            if self.panel2 is not None:
+                self.panel2.grid_forget()
+            else:
+                self.label2.grid_forget()
+            self.panel2 = Label(self.container2, image=img2)
+            self.panel2.image = img2
+            self.panel2.grid(row=0, column=0, sticky="nsew")
 
-        if self.panel3 is not None:
-            self.panel3.grid_forget()
-        else:
-            self.label3.grid_forget()
-        self.panel3 = Label(self.container3, image=img3)
-        self.panel3.image = img3
-        self.panel3.grid(row=0, column=0, sticky="nsew")
+            if self.panel3 is not None:
+                self.panel3.grid_forget()
+            else:
+                self.label3.grid_forget()
+            self.panel3 = Label(self.container3, image=img3)
+            self.panel3.image = img3
+            self.panel3.grid(row=0, column=0, sticky="nsew")
 
-        if self.panel4 is not None:
-            self.panel4.grid_forget()
-        else:
-            self.label4.grid_forget()
-        self.panel4 = Label(self.container4, image=img4)
-        self.panel4.image = img4
-        self.panel4.grid(row=0, column=0, sticky="nsew")
+            if self.panel4 is not None:
+                self.panel4.grid_forget()
+            else:
+                self.label4.grid_forget()
+            self.panel4 = Label(self.container4, image=img4)
+            self.panel4.image = img4
+            self.panel4.grid(row=0, column=0, sticky="nsew")
+            isGraphingEntry = False
 
     def displayInfo(self):
         t1 = threading.Thread(target=self.displayInfo_sub, name="graph4")
@@ -1565,16 +1612,38 @@ class EntryBreakdownPage(Page):
 
 # gui
 class MainView(tk.Frame):
+    top = None
+    sessionMarkerInput = None
 
     def startResetTracker(self):
+        global currentSessionMarker
         global isTracking
+        currentSessionMarker = self.sessionMarkerInput.get()
         isTracking = True
+        self.top.destroy()
         Stats.resetCurrentSession()
         t1 = threading.Thread(
             target=Tracking.trackResets, name="tracker"
         )  # < Note that I did not actually call the function, but instead sent it as a parameter
         t1.daemon = True
-        t1.start()  # < This actually starts the thread execution in the background
+        t1.start()
+
+
+    def promptUserForTracking(self):
+        self.top = Toplevel()
+        self.top.geometry("180x100")
+        self.top.title("toplevel")
+
+        label = Label(self.top, text="Enter a Session Marker")
+        label.pack()
+
+        self.sessionMarkerInput = tk.StringVar()
+        sessionMarkerEntry = Entry(self.top, textvariable=self.sessionMarkerInput)
+        sessionMarkerEntry.pack()
+
+        startTrackingButton = Button(self.top, text="Start Tracking", command=self.startResetTracker)
+        startTrackingButton.pack()
+
 
     def watchUpdating(self):
         loadingLabel = Label(text="updating data...", foreground='green')
@@ -1604,9 +1673,17 @@ class MainView(tk.Frame):
 
         actionsMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Actions', menu=actionsMenu)
-        actionsMenu.add_command(label="Start Tracking", command=self.startResetTracker)
+        actionsMenu.add_command(label="Start Tracking", command=self.promptUserForTracking)
         actionsMenu.add_command(label="Update Stats", command=self.updateData)
         actionsMenu.add_command(label="Upload Data", command=Stats.uploadData)
+
+        updateMenu = Menu(menubar, tearoff=0)
+        if Logistics.checkGithub():
+            menubar.add_cascade(label='Update', menu=updateMenu)
+            updateMenu.add_command(label="Update", command=Logistics.update)
+        else:
+            menubar.add_cascade(label='Update', menu=updateMenu)
+        updateMenu.add_command(label="Open Github", command=Logistics.openGithub)
 
         for i in range(len(pages)):
             pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
