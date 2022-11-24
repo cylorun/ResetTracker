@@ -2,26 +2,31 @@
 
 ## **Setup**
 
-### Required Mods
+#### Required Mods
 
-### Settings
+ - Atum 1.0.5+
+ - SpeedrunIGT 10.7+
 
-### Updating
+#### Settings
+
+ - records path: path to your srigt records file, usually *C:/Users/`user`/speedrunigt/records*
+
+#### Updating
 
 ## **Tracking**
 
-### Start Tracking
+#### Start Tracking
 
-### How It Works
+#### How It Works
 
-### Tracked Stats
+#### Tracked Stats
 
 ## **Analysis**
 
-### Splits
+#### Splits
 
-### Entry Breakdown
+#### Entry Breakdown
 
-### Comparison
+#### Comparison
 
 ## **Credits**
