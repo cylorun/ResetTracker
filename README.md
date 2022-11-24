@@ -32,9 +32,17 @@
 
 #### Start Tracking
 
+ - to start tracking, click the actions menu-button to reveal a dropdown
+ - it will prompt you to put a session marker; these session markers are used in analysis, so you can associate certain certain strategies with different session markers to distinguish them in analysis and comparison
+
 #### How It Works
 
+The tracker requires the speedrunigt mod, as it creates records files. These records files provide useful information, including the timeline of the run, information found in the in-game statistics menu, advancements, recipes, and some other things. This tracker stores your stats locally, in the *stats.csv* file. It only stores a run if it has achieved any split, otherwise, it is just added to to the cumulating statistics.
+
 #### Tracked Stats
+
+ - Date and Time: the date and time at which the run ended in UTC
+ - 
 
 ## **Analysis**
 
