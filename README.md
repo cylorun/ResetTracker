@@ -9,7 +9,7 @@
 
 #### Settings
 
- - records path: path to your srigt records file, usually *C:/Users/`user`/speedrunigt/records*
+ - records path: path to your srigt records file, usually `C:/Users/*user*/speedrunigt/records`
 
 #### Updating
 
