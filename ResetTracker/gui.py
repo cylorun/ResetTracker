@@ -13,7 +13,7 @@ from plotly.colors import n_colors
 import csv
 import glob
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time, timezone
 import threading
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -87,21 +87,30 @@ class Logistics:
     @classmethod
     def stringToTimedelta(cls, TDString):
         links = TDString.split(":")
+        print(links)
         return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
     @classmethod
-    def formatValue(cls, value):
+    def formatValue(cls, value, isTime=False, isPercent=False):
         if value is None:
             return ""
         if type(value) == str:
             return value
         if type(value) == int:
-             return str(value)
-        if type(value) == float:
-            if value <= 1:
-                return str(round(value * 100, 1)) + '%'
+            if isTime:
+                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value)
+                return valueDatetime.strftime('%M:%S')
             else:
-                return str(round(value, 1))
+                return str(value)
+        if type(value) == float:
+            if isTime:
+                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value)
+                return valueDatetime.strftime('%M:%S')
+            else:
+                if isPercent:
+                    return str(round(value * 100, 1)) + '%'
+                else:
+                    return str(round(value, 1))
         if type(value) == timedelta:
             valueDatetime = datetime(year=1970, month=1, day=1) + value
             return valueDatetime.strftime("%M:%S.") + str(round(int(10 * ((value / second) % 1)), 0))
@@ -172,6 +181,7 @@ class Stats:
             reader = csv.reader(f)
             data = list(reader)
             f.close()
+
         data = [data[0]] + data[::-1]
         data.pop(len(data) - 1)
 
@@ -186,22 +196,23 @@ class Stats:
         rta_col.pop(0)
 
         count = 0
-        session_end = 2
-        end_time = datetime.strptime(time_col[0+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[0+1]) + Logistics.getTimezoneOffset()
+        session_end = 1
+        end_time = datetime.strptime(time_col[0], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[0]) + Logistics.getTimezoneOffset()
         for i in range(len(session_col)):
             if session_col[i] != '':
                 count += 1
-                session_start = i+2
+                session_start = i
                 if count == int(settings['display']['latest x sessions']):
-                    sessionList.insert(1, {'start row': session_start, 'end row': 2, 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None})
+                    sessionList.insert(0, {'start row': session_start + 1, 'end row': 1, 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None})
                 start_time = datetime.strptime(time_col[i], '%Y-%m-%d %H:%M:%S.%f') + Logistics.getTimezoneOffset()
                 sessionString = start_time.strftime('%m/%d %H:%M') + " - " + end_time.strftime('%m/%d %H:%M')
                 profile = session_col[i]
-                sessionList.append({'start row': session_start, 'end row': session_end, 'string': sessionString, 'profile': profile})
-                session_end = i+3
+                sessionList.append({'start row': session_start + 1, 'end row': session_end, 'string': sessionString, 'profile': profile})
+                session_end = i + 1
                 if i != len(session_col) - 1 and time_col[i+1] != '':
                     end_time = datetime.strptime(time_col[i+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
-        sessionList.insert(0, {'start row': session_start, 'end row': 2, 'string': "All", 'profile': None})
+        sessionList.insert(0, {'start row': session_start + 1, 'end row': 1, 'string': "All", 'profile': None})
+        print(sessionList)
         return sessionList
 
 
@@ -230,9 +241,8 @@ class Stats:
             data = list(reader)
             f.close()
         data = [data[0]] + data[::-1]
-        data.pop(len(data) - 1)
-
         headers = data[0]
+        data = data[(session['end row']):(session['start row'])]
 
         # setting up score keys
         if makeScoreKeys:
@@ -385,12 +395,14 @@ class Stats:
                                                    'Cumulative Average': Logistics.getMean(cumulativeSplitDists[key]),
                                                    'Count': len(cumulativeSplitDists[key])
                                                    }
+            if key in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether']:
+                returndict['splits stats'][key]['xph'] = Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats'][key]['Count'], (total_owTime + total_wallTime)), 1/3600)
+            else:
+                returndict['splits stats'][key]['xph'] = Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats'][key]['Count'], (total_RTA + total_wallTime)), 1/3600)
             if key in ['Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End']:
                 prevKey = key
 
-        returndict['general stats'] = {'inph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime)), 1/3600),
-                                       'rnph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)), 1/3600),
-                                       'tnph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_RTA + total_wallTime)), 1/3600),
+        returndict['general stats'] = {'rnph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)), 1/3600),
                                        'total time': total_RTA,
                                        'total Walltime': total_wallTime,
                                        'total ow time': total_owTime,
@@ -428,6 +440,8 @@ class Stats:
                 index = int(((postEnterMax) - scoreKeys[enterType]['dist']['start split'])/scoreKeys[enterType]['dist']['split step'])
                 if index >= 0:
                     sum += scoreKeys[enterType]['dist']['probabilities'][index]
+        if nph is None:
+            nph = 0
         return Logistics.getQuotient(nph * sum, len(enters))
 
     @classmethod
@@ -484,81 +498,79 @@ class Stats:
             wks2.insert_rows(row=userCount, number=1, values=values, inherit=False)
 
     @classmethod
-    def updateCurrentSession(cls, data):
+    def updateCurrentSession(cls, row):
         global currentSession
-        if len(data) > 0:
-            for rownum in range(len(data)):
-                row = data[rownum]
-                labels = ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Wall Time Since Prev']
-                columnIndices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 25, 26, 27, 28, 29]
-                rowCells = {}
-                for i in range(len(labels)):
-                    if ':' in row[columnIndices[i]]:
-                        rowCells[labels[i]] = Logistics.stringToTimedelta(row[columnIndices[i]])/second
-                    else:
-                        rowCells[labels[i]] = row[columnIndices[i]]
+        labels = ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Wall Time Since Prev']
+        columnIndices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 25, 26, 27, 28, 29]
+        rowCells = {}
+        for i in range(len(labels)):
+            print(row[columnIndices[i]])
+            if row[columnIndices[i]] is not None and ':' in row[columnIndices[i]]:
+                rowCells[labels[i]] = Logistics.stringToTimedelta(row[columnIndices[i]])/second
+            else:
+                rowCells[labels[i]] = row[columnIndices[i]]
 
-                # resets/time
-                currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev']
-                currentSession['general stats']['total wall resets'] += int(rowCells['Wall Resets Since Prev'])
-                currentSession['general stats']['total played'] += int(rowCells['Played Since Prev']) + 1
-                currentSession['general stats']['total wall time'] += int(rowCells['Wall Time Since Prev'])
+        # resets/time
+        currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev']
+        currentSession['general stats']['total wall resets'] += int(rowCells['Wall Resets Since Prev'])
+        currentSession['general stats']['total played'] += int(rowCells['Played Since Prev']) + 1
+        currentSession['general stats']['total wall time'] += int(rowCells['Wall Time Since Prev'])
 
-                # overworld
-                for split in ['Wood', 'Iron Pickaxe', 'Iron']:
-                    if rowCells[split] != '':
-                        currentSession['splits stats'][split]['Cumulative Sum'] += rowCells[split]
-                        currentSession['splits stats'][split]['Relative Sum'] += rowCells[split]
-                        currentSession['splits stats'][split]['Count'] += 1
+        # overworld
+        for split in ['Wood', 'Iron Pickaxe', 'Iron']:
+            if rowCells[split] is not None:
+                currentSession['splits stats'][split]['Cumulative Sum'] += rowCells[split]
+                currentSession['splits stats'][split]['Relative Sum'] += rowCells[split]
+                currentSession['splits stats'][split]['Count'] += 1
 
 
 
-                # nether
-                if rowCells['Nether'] != '':
-                    currentSession['splits stats']['Nether']['Cumulative Sum'] += rowCells['Nether']
-                    currentSession['splits stats']['Nether']['Relative Sum'] += rowCells['Nether']
-                    currentSession['splits stats']['Nether']['Count'] += 1
-                    currentSession['general stats']['total ow time'] += rowCells['Nether'] + rowCells['RTA Since Prev']
+        # nether
+        if rowCells['Nether'] is not None:
+            currentSession['splits stats']['Nether']['Cumulative Sum'] += rowCells['Nether']
+            currentSession['splits stats']['Nether']['Relative Sum'] += rowCells['Nether']
+            currentSession['splits stats']['Nether']['Count'] += 1
+            currentSession['general stats']['total ow time'] += rowCells['Nether'] + rowCells['RTA Since Prev']
 
-                    bast = (rowCells['Bastion'] != '')
-                    fort = (rowCells['Fortress'] != '')
+            bast = (rowCells['Bastion'] is not None)
+            fort = (rowCells['Fortress'] is not None)
 
-                    if fort and bast:
-                        fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
-                        st1 = 'Bastion'
-                        st2 = 'Fortress'
-                        if fortFirst:
-                            st1 = 'Fortress'
-                            st2 = 'Bastion'
-                        currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells[st1]
-                        currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells[st1] - rowCells['Nether']
-                        currentSession['splits stats']['Structure 1']['Count'] += 1
-                        currentSession['splits stats']['Structure 2']['Cumulative Sum'] += rowCells[st2]
-                        currentSession['splits stats']['Structure 2']['Relative Sum'] += rowCells[st2] - rowCells[st1]
-                        currentSession['splits stats']['Structure 2']['Count'] += 1
+            if fort and bast:
+                fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
+                st1 = 'Bastion'
+                st2 = 'Fortress'
+                if fortFirst:
+                    st1 = 'Fortress'
+                    st2 = 'Bastion'
+                currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells[st1]
+                currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells[st1] - rowCells['Nether']
+                currentSession['splits stats']['Structure 1']['Count'] += 1
+                currentSession['splits stats']['Structure 2']['Cumulative Sum'] += rowCells[st2]
+                currentSession['splits stats']['Structure 2']['Relative Sum'] += rowCells[st2] - rowCells[st1]
+                currentSession['splits stats']['Structure 2']['Count'] += 1
 
-                        if rowCells['Nether Exit'] != '':
-                            currentSession['splits stats']['Nether Exit']['Cumulative Sum'] += rowCells['Nether Exit']
-                            currentSession['splits stats']['Nether Exit']['Relative Sum'] += rowCells['Nether Exit'] - rowCells[st2]
-                            currentSession['splits stats']['Nether Exit']['Count'] += 1
-                            if rowCells['Stronghold'] != '':
-                                currentSession['splits stats']['Stronghold']['Cumulative Sum'] += rowCells['Stronghold']
-                                currentSession['splits stats']['Stronghold']['Relative Sum'] += rowCells['Stronghold'] - rowCells['Nether Exit']
-                                currentSession['splits stats']['Stronghold']['Count'] += 1
-                                if rowCells['End'] != '':
-                                    currentSession['splits stats']['End']['Cumulative Sum'] += rowCells['End']
-                                    currentSession['splits stats']['End']['Relative Sum'] += rowCells['End'] - rowCells['Stronghold']
-                                    currentSession['splits stats']['End']['Count'] += 1
-                    elif bast:
-                        currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Bastion']
-                        currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Bastion'] - rowCells['Nether']
-                        currentSession['splits stats']['Structure 1']['Count'] += 1
-                    elif fort:
-                        currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Fortress']
-                        currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Fortress'] - rowCells['Nether']
-                        currentSession['splits stats']['Structure 1']['Count'] += 1
-                else:
-                    currentSession['general stats']['total ow time'] += rowCells['RTA'] + rowCells['RTA Since Prev']
+                if rowCells['Nether Exit'] is not None:
+                    currentSession['splits stats']['Nether Exit']['Cumulative Sum'] += rowCells['Nether Exit']
+                    currentSession['splits stats']['Nether Exit']['Relative Sum'] += rowCells['Nether Exit'] - rowCells[st2]
+                    currentSession['splits stats']['Nether Exit']['Count'] += 1
+                    if rowCells['Stronghold'] is not None:
+                        currentSession['splits stats']['Stronghold']['Cumulative Sum'] += rowCells['Stronghold']
+                        currentSession['splits stats']['Stronghold']['Relative Sum'] += rowCells['Stronghold'] - rowCells['Nether Exit']
+                        currentSession['splits stats']['Stronghold']['Count'] += 1
+                        if rowCells['End'] is not None:
+                            currentSession['splits stats']['End']['Cumulative Sum'] += rowCells['End']
+                            currentSession['splits stats']['End']['Relative Sum'] += rowCells['End'] - rowCells['Stronghold']
+                            currentSession['splits stats']['End']['Count'] += 1
+            elif bast:
+                currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Bastion']
+                currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Bastion'] - rowCells['Nether']
+                currentSession['splits stats']['Structure 1']['Count'] += 1
+            elif fort:
+                currentSession['splits stats']['Structure 1']['Cumulative Sum'] += rowCells['Fortress']
+                currentSession['splits stats']['Structure 1']['Relative Sum'] += rowCells['Fortress'] - rowCells['Nether']
+                currentSession['splits stats']['Structure 1']['Count'] += 1
+        else:
+            currentSession['general stats']['total ow time'] += rowCells['RTA'] + rowCells['RTA Since Prev']
                 
         # calculate and update other statistics
         prevSplit = None
@@ -620,7 +632,7 @@ class Graphs:
     @classmethod
     def graph3(cls, splitStats):
         fig = go.Figure(data=[go.Table(header=dict(values=['Count', 'Avg.', 'Avg. Split', 'Rate']),
-                                       cells=dict(values=[[Logistics.formatValue(splitStats['Count'])], [Logistics.formatValue(splitStats['Cumulative Average']), [Logistics.formatValue(splitStats['Relative Average'])], [Logistics.formatValue(splitStats['Relative Conversion'])]]]))
+                                       cells=dict(values=[[Logistics.formatValue(splitStats['Count'])], [Logistics.formatValue(splitStats['Cumulative Average'], isTime=True), [Logistics.formatValue(splitStats['Relative Average'], isTime=True)], [Logistics.formatValue(splitStats['Relative Conversion'], isPercent=True)]]]))
                               ])
         fig.write_image('data/plots/plot3.png')
 
@@ -671,7 +683,7 @@ class Graphs:
 
         for i1 in range(len(data)):
             for i2 in range(len(data[i1])):
-                data[i1][i2] = Logistics.formatValue(data[i1][i2])
+                data[i1][i2] = Logistics.formatValue(data[i1][i2], isPercent=True)
 
         data.insert(0, entryTypeOptions)
         fill_color.insert(0, n_colors(lowcolor='rgb(0, 200, 0)', highcolor='rgb(0, 200, 0)', n_colors=len(entryTypeOptions), colortype='rgb'))
@@ -700,7 +712,7 @@ class Graphs:
                 align='center', font=dict(color='black', size=12)
             ),
             cells=dict(
-                values=[Logistics.formatValue(splitData['Count']), Logistics.formatValue(splitData['Cumulative Average']), Logistics.formatValue(splitData['Relative Average']), Logistics.formatValue(splitData['Relative Conversion'])],
+                values=[Logistics.formatValue(splitData['Count']), Logistics.formatValue(splitData['Cumulative Average'], isTime=True), Logistics.formatValue(splitData['Relative Average'], isTime=True), Logistics.formatValue(splitData['Relative Conversion'], isTime=True)],
                 line_color='blue',
                 fill_color='green',
                 align='center', font=dict(color='white', size=11)
@@ -713,7 +725,7 @@ class Graphs:
     def graph6(cls):
         values = [['Count', 'Average', 'Average Split', 'Conversion']]
         for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
-            values.append([Logistics.formatValue(currentSession['splits stats'][split]['Count']), Logistics.formatValue(currentSession['splits stats'][split]['Cumulative Average']), Logistics.formatValue(currentSession['splits stats'][split]['Relative Average']), Logistics.formatValue(currentSession['splits stats'][split]['Relative Conversion'])])
+            values.append([Logistics.formatValue(currentSession['splits stats'][split]['Count']), Logistics.formatValue(currentSession['splits stats'][split]['Cumulative Average'], isTime=True), Logistics.formatValue(currentSession['splits stats'][split]['Relative Average'], isTime=True), Logistics.formatValue(currentSession['splits stats'][split]['Relative Conversion'], isPercent=True)])
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=['', 'Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End'],
@@ -732,7 +744,7 @@ class Graphs:
     # table displaying general stats of the current session
     @classmethod
     def graph7(cls):
-        values = [Logistics.formatValue(currentSession['general stats']['rnph']), Logistics.formatValue(currentSession['general stats']['% played']), Logistics.formatValue(currentSession['general stats']['rpe'])]
+        values = [Logistics.formatValue(currentSession['general stats']['rnph']), Logistics.formatValue(currentSession['general stats']['% played'], isPercent=True), Logistics.formatValue(currentSession['general stats']['rpe'])]
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=['rnph', '% played', 'rpe'],
@@ -764,7 +776,7 @@ class Graphs:
         profile_list = []
         for i in range(len(sessions)):
             if sessions['sessions'][i] != 'All' and 'Latest' not in sessions['sessions'][i]['string']:
-                nph_list.append(sessions['stats'][i]['general stats']['nph list'])
+                nph_list.append(sessions['stats'][i]['general stats']['rnph'])
                 avg_enter_list.append(sessions['stats'][i]['splits stats']['Nether']['Cumulative Average'])
                 profile_list.append(sessions['stats'][i]['profile'])
 
@@ -917,6 +929,7 @@ isTracking = False
 isUpdating = False
 isGraphingSplit = False
 isGraphingEntry = False
+isGraphingComparison = False
 updateStatsLoadingProgress = ''
 advChecks = [
     ("minecraft:recipes/misc/charcoal", "has_log"),
@@ -1201,7 +1214,7 @@ class NewRecord(FileSystemEventHandler):
                  Utilities.ms_to_string(self.rta_spent), Utilities.ms_to_string(self.break_time), Utilities.ms_to_string(self.wall_time), self.isFirstRun])
         self.isFirstRun = ''
 
-        with open("stats.csv", "w", newline="") as outfile:
+        with open("stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
             writer.writerow(data)
 
@@ -1279,8 +1292,10 @@ class IntroPage(Page):
         pageDescriptions += 'Current Session: displays basic statistics regarding the session which you are currently playing\n'
         pageDescriptions += 'Splits: analyzes the split of your choice for the session(s) of your choice\n'
         pageDescriptions += 'Entry Breakdown: analyzes your success and distribution of enter types\n'
-        pageDescriptions += 'Spawn Image (currently not implemented): gives you feedback on your wall reset selection\n'
-        pageDescriptions += 'Feedback (currently not implemented): probably going to be removed and dispersed to other pages'
+
+        pageDescriptionsText = Text(self)
+        pageDescriptionsText.insert(tk.END, pageDescriptions)
+        pageDescriptionsText.pack()
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1289,8 +1304,8 @@ class IntroPage(Page):
 
 # gui
 class SettingsPage(Page):
-    varStrings = [['records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload stats', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check']]
+    varStrings = [['records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
+    varTypes = [['entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check']]
     varGroups = ['tracking', 'display', 'playstyle', 'playstyle cont.']
     settingsVars = []
     labels = []
@@ -1565,6 +1580,52 @@ class EntryBreakdownPage(Page):
 
 
 # gui
+class ComparisonPage(Page):
+    panel1 = None
+    label1 = None
+    container1 = None
+
+    def displayInfo_sub(self):
+        global isGraphingComparison
+        if not isGraphingComparison:
+            isGraphingComparison = True
+
+            Graphs.graph9()
+            img1 = Image.open("data/plots/plot9.png")
+            img1 = img1.resize((300, 200))
+            img1 = ImageTk.PhotoImage(img1)
+
+            if self.panel1 is not None:
+                self.panel1.grid_forget()
+            else:
+                self.label1.grid_forget()
+            self.panel1 = Label(self.container1, image=img1)
+            self.panel1.image = img1
+            self.panel1.grid(row=0, column=0, sticky="nsew")
+
+            isGraphingComparison = False
+
+    def displayInfo(self):
+        t1 = threading.Thread(target=self.displayInfo_sub, name="Comparison")
+        t1.daemon = True
+        t1.start()
+
+    def populate(self):
+        self.container1 = tk.Frame(self, width=300, height=200, padx=5, pady=5, bg='green')
+        self.label1 = tk.Label(self.container1, text="Plot", font=('calibri', 40), bg='green')
+        self.label1.place(anchor='center', x=150, y=100)
+        self.container1.grid(row=0, column=1)
+
+        cmd = partial(self.displayInfo)
+        graph_Btn = tk.Button(self, text='Graph', command=cmd)
+        graph_Btn.grid(row=0, column=0, sticky="nsew")
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        ComparisonPage.populate(self)
+
+
+# gui
 class MainView(tk.Frame):
     top = None
     sessionMarkerInput = None
@@ -1601,6 +1662,8 @@ class MainView(tk.Frame):
     def watchUpdating(self):
         prevUpdateStatsLoadingProgress = ''
         while isUpdating:
+            self.loadingLabel = Label(text="Updating... ", foreground='green')
+            self.loadingLabel.place(x=500, y=500)
             if updateStatsLoadingProgress != prevUpdateStatsLoadingProgress:
                 self.loadingLabel = Label(text="Updating... " + updateStatsLoadingProgress, foreground='green')
                 self.loadingLabel.place(x=500, y=500)
@@ -1620,8 +1683,8 @@ class MainView(tk.Frame):
         global pages
         global selectedSession
         tk.Frame.__init__(self, *args, **kwargs)
-        pageTitles = ['About', 'Settings', 'Current Session', 'Splits', 'Entry Breakdown']
-        pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SplitsPage(self), EntryBreakdownPage(self)]
+        pageTitles = ['About', 'Settings', 'Current Session', 'Splits', 'Entry Breakdown', 'Comparison']
+        pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self)]
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)
