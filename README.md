@@ -57,3 +57,19 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
 #### Comparison
 
 ## **Credits**
+
+#### Developers
+
+Original reset tracker was made by TheTalkingMime, and further developed by Specnr. Then I made it better :D
+
+#### Testers
+
+Huge thanks to those who helped me test, incuding Chloe, Lathil, AeroAsteroid, Ravalle, Boyenn, Priffin, Deuce, and Oceanico.
+
+#### Ideas
+
+Thanks to Weakforced for his countless ideas and help with making decisions and brainstorming solutions
+
+## **Suggestions/Help**
+
+If you have any suggestions or need help setting it up, DM me on discord pncakespoon#4895
