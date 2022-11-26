@@ -210,21 +210,25 @@ class Stats:
             if session_col[i] != '':
                 count += 1
                 session_start = i
-                if count == int(settings['display']['latest x sessions']):
-                    sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None})
+                try:
+                    if count == int(settings['display']['latest x sessions']):
+                        sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None, 'version': None})
+                except Exception as e:
+                    main.errorPoppup("Latest x sessions must be integer")
                 start_time = datetime.strptime(time_col[i], '%Y-%m-%d %H:%M:%S.%f') + Logistics.getTimezoneOffset()
                 sessionString = start_time.strftime('%m/%d %H:%M') + " - " + end_time.strftime('%m/%d %H:%M')
-                profile = session_col[i]
-                sessionList.append({'start row': [session_start + 1], 'end row': [session_end], 'string': sessionString, 'profile': profile})
+                profile = (session_col[i].split('$'))[0]
+                version = (session_col[i].split('$'))[1]
+                sessionList.append({'start row': [session_start + 1], 'end row': [session_end], 'string': sessionString, 'profile': profile, 'version': version})
                 if profile in profiles.keys():
                     profiles[profile]['start row'].append(session_start + 1)
                     profiles[profile]['end row'].append(session_end)
                 else:
-                    profiles[profile] = {'start row': [session_start + 1], 'end row': [session_end], 'string': profile, 'profile': profile}
+                    profiles[profile] = {'start row': [session_start + 1], 'end row': [session_end], 'string': profile, 'profile': profile, 'version': version}
                 session_end = i + 1
                 if i != len(session_col) - 1 and time_col[i+1] != '':
                     end_time = datetime.strptime(time_col[i+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
-        sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "All", 'profile': None})
+        sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "All", 'profile': None, 'version': None})
         return sessionList
 
 
@@ -299,8 +303,6 @@ class Stats:
                             rowCells[key][i] = int(rowCells[key][i])
                     else:
                         rowCells[key] = cell
-
-
 
 
                 # resets/time
@@ -465,7 +467,11 @@ class Stats:
             else:
                 enterType = 'other'
             if scoreKeys[enterType]['isValid']:
-                postEnterMax = int(settings['playstyle']['target time']) - enter['time']
+                try:
+                    postEnterMax = int(settings['playstyle']['target time']) - enter['time']
+                except Exception as e:
+                    main.errorPoppup("target time must be an integer number of seconds")
+                    return 0
                 index = int(((postEnterMax) - scoreKeys[enterType]['dist']['start split'])/scoreKeys[enterType]['dist']['split step'])
                 if index >= 0:
                     sum += scoreKeys[enterType]['dist']['probabilities'][index]
@@ -514,7 +520,11 @@ class Stats:
                 config['lbName'] = settings['display']['twitch username']
             configFile = open('data/config.json')
             json.dump(config, configFile)
-        values = [config['lbName'], settings['playstyle']['instance count'], settings['playstyle']['target time']]
+        try:
+            values = [config['lbName'], str(int(settings['playstyle']['instance count'])), str(int(settings['playstyle']['target time']))]
+        except Exception as e:
+            main.errorPoppup("target time and instance count must be integers")
+            return
         for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
         for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion']:
@@ -531,7 +541,9 @@ class Stats:
         global currentSession
         rowCells = {}
         for i in range(len(headerLabels)):
-            if row[i] is not None and ':' in row[i]:
+            if '-' in row[i] and ':' in row[i]:
+                rowCells[headerLabels[i]] = row[i]
+            elif row[i] is not None and ':' in row[i]:
                 rowCells[headerLabels[i]] = Logistics.stringToTimedelta(row[i])/second
             else:
                 rowCells[headerLabels[i]] = row[i]
@@ -615,6 +627,7 @@ class Stats:
 
         Graphs.graph6()
         Graphs.graph7()
+        Stats.updateObsTxts()
 
 
     @classmethod
@@ -625,6 +638,17 @@ class Stats:
             currentSession['splits stats'][split] = {'Count': 0, 'Cumulative Sum': 0, 'Relative Sum': 0, 'Cumulative Average': None, 'Relative Average': None, 'Cumulative Conversion': None, 'Relative Conversion': None}
         currentSession['general stats'] = {'total RTA': 0, 'total wall resets': 0, 'total played': 0, 'total wall time': 0, 'total ow time': 0, 'rnph': None, '% played': None, 'rpe': None}
 
+    @classmethod
+    def updateObsTxts(cls):
+        for item in config['obstxts']:
+            with open('obs/' + item['filename'] + '.txt', 'w') as obsTxtFile:
+                isTime = False
+                isPercent = False
+                stat = None
+                statDict = {'NPH': Logistics.formatValue(currentSession['general stats']['rnph']),
+                            'EnterAvg': Logistics.formatValue(currentSession['splits stats']['Nether']['Cumulative Average'], isTime=True),
+                            'EnterCount': Logistics.formatValue(currentSession['splits stats']['Nether']['Count'])}
+                obsTxtFile.write(statDict[item['stat']])
 
 # class methods for creating graphs
 class Graphs:
@@ -736,7 +760,7 @@ class Graphs:
                 align='center', font=dict(color='black', size=12)
             ),
             cells=dict(
-                values=[Logistics.formatValue(splitData['Count']), Logistics.formatValue(splitData['Cumulative Average'], isTime=True), Logistics.formatValue(splitData['Relative Average'], isTime=True), Logistics.formatValue(splitData['Relative Conversion'], isTime=True)],
+                values=[Logistics.formatValue(splitData['Count']), Logistics.formatValue(splitData['Cumulative Average'], isTime=True), Logistics.formatValue(splitData['Relative Average'], isTime=True), Logistics.formatValue(splitData['Relative Conversion'], isPercent=True)],
                 line_color='blue',
                 fill_color='green',
                 align='center', font=dict(color='white', size=11)
@@ -893,7 +917,11 @@ class Graphs:
 class Feedback:
     @classmethod
     def splits(cls, split, average, formulaDict):
-        targetTime = int(settings['playstyle']['target time'])
+        try:
+            targetTime = int(settings['playstyle']['target time'])
+        except Exception as e:
+            main.errorPoppup("target time must be in seconds as an integer")
+            return None
         return Logistics.getResidual(average, formulaDict[split]['m'], targetTime, formulaDict[split]['b'])
 
     @classmethod
@@ -1002,6 +1030,7 @@ gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
 gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
 sh2 = gc_sheets_database.open_by_url(databaseLink)
 wks2 = sh2[0]
+wks2 = None
 second = timedelta(seconds=1)
 currentSession = {'splits stats': {}, 'general stats': {}}
 currentSessionMarker = 'X'
@@ -1307,7 +1336,7 @@ class NewRecord(FileSystemEventHandler):
         d = Utilities.ms_to_string(int(self.data["date"]), returnTime=True)
         data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run +
                 [Utilities.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Utilities.ms_to_string(self.rta_spent), Utilities.ms_to_string(self.break_time), Utilities.ms_to_string(self.wall_time), self.isFirstRun])
+                 Utilities.ms_to_string(self.rta_spent), Utilities.ms_to_string(self.break_time), Utilities.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
         self.isFirstRun = ''
 
         with open("stats.csv", "a", newline="") as outfile:
@@ -1483,6 +1512,7 @@ class CurrentSessionPage(Page):
         Page.__init__(self, *args, **kwargs)
 
 
+# gui
 class GeneralPage(Page):
     panel1 = None
     panel2 = None
@@ -1496,6 +1526,7 @@ class GeneralPage(Page):
     container2 = None
     container3 = None
     container4 = None
+    sizes = [[800, 100], [800, 100], [400, 300], [400, 300]]
 
     def displayInfo_sub(self):
         global isGraphingGeneral
@@ -1505,24 +1536,26 @@ class GeneralPage(Page):
 
             Graphs.graph11(sessionData['general stats'])
             img1 = Image.open("data/plots/plot11.png")
-            img1 = img1.resize((400, 400))
+            img1 = img1.crop((0, 100, 700, 175))
+            img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
             img1 = ImageTk.PhotoImage(img1)
 
             Graphs.graph12(sessionData['general stats'])
             img2 = Image.open("data/plots/plot12.png")
-            img2 = img2.resize((400, 200))
+            img2 = img2.crop((0, 100, 700, 175))
+            img2 = img2.resize((self.sizes[1][0], self.sizes[1][1]))
             img2 = ImageTk.PhotoImage(img2)
 
             Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'],
                            'Overworld': sessionData['general stats']['total ow time'],
                            'Nether': sessionData['general stats']['total nether time']})
             img3 = Image.open("data/plots/plot8.png")
-            img3 = img3.resize((400, 400))
+            img3 = img3.resize((self.sizes[2][0], self.sizes[2][1]))
             img3 = ImageTk.PhotoImage(img3)
 
             Graphs.graph1(sessionData['general stats']['RTA Distribution'], 0.9)
             img4 = Image.open("data/plots/plot1.png")
-            img4 = img4.resize((400, 400))
+            img4 = img4.resize((self.sizes[3][0], self.sizes[3][1]))
             img4 = ImageTk.PhotoImage(img4)
 
             if self.panel1 is not None:
@@ -1567,25 +1600,25 @@ class GeneralPage(Page):
         t1.start()
 
     def populate(self):
-        self.container1 = tk.Frame(self, width=400, height=400, padx=5, pady=5, bg='green')
+        self.container1 = tk.Frame(self, width=self.sizes[0][0], height=self.sizes[0][1], padx=5, pady=5, bg='green')
         self.label1 = tk.Label(self.container1, text="Table", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=200, y=200)
-        self.container1.grid(row=0, column=1)
+        self.label1.place(anchor='center', x=self.sizes[0][0]/2, y=self.sizes[0][1]/2)
+        self.container1.grid(row=0, column=1, columnspan=2)
 
-        self.container2 = tk.Frame(self, width=400, height=200, padx=5, pady=5, bg='green')
+        self.container2 = tk.Frame(self, width=self.sizes[1][0], height=self.sizes[1][1], padx=5, pady=5, bg='green')
         self.label2 = tk.Label(self.container2, text="Table", font=('calibri', 40), bg='green')
-        self.label2.place(anchor='center', x=200, y=100)
-        self.container2.grid(row=1, column=1)
+        self.label2.place(anchor='center', x=self.sizes[1][0]/2, y=self.sizes[1][1]/2)
+        self.container2.grid(row=1, column=1, columnspan=2)
 
-        self.container3 = tk.Frame(self, width=400, height=400, padx=5, pady=5, bg='green')
+        self.container3 = tk.Frame(self, width=self.sizes[2][0], height=self.sizes[2][1], padx=5, pady=5, bg='green')
         self.label3 = tk.Label(self.container3, text="Pie", font=('calibri', 40), bg='green')
-        self.label3.place(anchor='center', x=200, y=200)
-        self.container3.grid(row=0, column=2)
+        self.label3.place(anchor='center', x=self.sizes[2][0]/2, y=self.sizes[2][1]/2)
+        self.container3.grid(row=2, column=1)
 
-        self.container4 = tk.Frame(self, width=400, height=400, padx=5, pady=5, bg='green')
+        self.container4 = tk.Frame(self, width=self.sizes[3][0], height=self.sizes[3][1], padx=5, pady=5, bg='green')
         self.label4 = tk.Label(self.container4, text="Graph", font=('calibri', 40), bg='green')
-        self.label4.place(anchor='center', x=200, y=200)
-        self.container4.grid(row=1, column=2)
+        self.label4.place(anchor='center', x=self.sizes[3][0]/2, y=self.sizes[3][1]/2)
+        self.container4.grid(row=2, column=2)
 
         splits = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End',
                   'Iron']
@@ -1611,6 +1644,7 @@ class SplitsPage(Page):
     container1 = None
     container2 = None
     selectedSplit = None
+    sizes = [[400, 400], [800, 150]]
 
     def displayInfo_sub(self):
         global isGraphingSplit
@@ -1620,13 +1654,13 @@ class SplitsPage(Page):
 
             Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.9)
             img1 = Image.open("data/plots/plot1.png")
-            img1 = img1.resize((400, 400))
+            img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
             img1 = ImageTk.PhotoImage(img1)
 
             Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
             img2 = Image.open("data/plots/plot5.png")
-            img2 = img2.crop((0, 0, 700, 300))
-            img2 = img2.resize((400, 200))
+            img2 = img2.crop((0, 100, 700, 175))
+            img2 = img2.resize((self.sizes[1][0], self.sizes[1][1]))
             img2 = ImageTk.PhotoImage(img2)
 
             if self.panel1 is not None:
@@ -1654,15 +1688,15 @@ class SplitsPage(Page):
         t1.start()
 
     def populate(self):
-        self.container1 = tk.Frame(self, width=400, height=400, padx=5, pady=5, bg='green')
+        self.container1 = tk.Frame(self, width=self.sizes[0][0], height=self.sizes[0][1], padx=5, pady=5, bg='green')
         self.label1 = tk.Label(self.container1, text="Graph", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=200, y=200)
+        self.label1.place(anchor='center', x=self.sizes[0][0]/2, y=self.sizes[0][1]/2)
         self.container1.grid(row=0, column=1)
 
-        self.container2 = tk.Frame(self, width=400, height=200, padx=5, pady=5, bg='green')
+        self.container2 = tk.Frame(self, width=self.sizes[1][0], height=self.sizes[1][1], padx=5, pady=5, bg='green')
         self.label2 = tk.Label(self.container2, text="Table", font=('calibri', 40), bg='green')
-        self.label2.place(anchor='center', x=200, y=100)
-        self.container2.grid(row=1, column=1)
+        self.label2.place(anchor='center', x=self.sizes[1][0]/2, y=self.sizes[1][1]/2)
+        self.container2.grid(row=1, column=1, columnspan=2)
 
         splits = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End', 'Iron']
         self.selectedSplit = StringVar()
@@ -1692,6 +1726,7 @@ class EntryBreakdownPage(Page):
     container2 = None
     container3 = None
     container4 = None
+    sizes = [[600, 200], [300, 200], [300, 200], [600, 200]]
 
     def displayInfo_sub(self):
         global isGraphingEntry
@@ -1707,22 +1742,23 @@ class EntryBreakdownPage(Page):
             Graphs.graph4(sessionData['general stats']['enters'])
             img1 = Image.open("data/plots/plot4.png")
             img1 = img1.crop((30, 80, 670, 280))
-            img1 = img1.resize((300, 200))
+            img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
             img1 = ImageTk.PhotoImage(img1)
 
             Graphs.graph2(enterTypeList)
             img2 = Image.open("data/plots/plot2.png")
-            img2 = img2.resize((300, 200))
+            img2 = img2.resize((self.sizes[1][0], self.sizes[1][1]))
             img2 = ImageTk.PhotoImage(img2)
 
             Graphs.graph2(enterMethodList)
             img3 = Image.open("data/plots/plot2.png")
-            img3 = img3.resize((300, 200))
+            img3 = img3.resize((self.sizes[2][0], self.sizes[2][1]))
             img3 = ImageTk.PhotoImage(img3)
 
             Graphs.graph10(sessionData['general stats']['Exit Success'])
             img4 = Image.open("data/plots/plot10.png")
-            img4 = img4.resize((300, 200))
+            img4 = img4.crop((50, 50, 650, 250))
+            img4 = img4.resize((self.sizes[3][0], self.sizes[3][1]))
             img4 = ImageTk.PhotoImage(img4)
 
             if self.panel1 is not None:
@@ -1764,25 +1800,25 @@ class EntryBreakdownPage(Page):
         t1.start()
 
     def populate(self):
-        self.container1 = tk.Frame(self, width=300, height=200, padx=5, pady=5, bg='green')
+        self.container1 = tk.Frame(self, width=self.sizes[0][0], height=self.sizes[0][1], padx=5, pady=5, bg='green')
         self.label1 = tk.Label(self.container1, text="Table", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=150, y=100)
-        self.container1.grid(row=0, column=1)
+        self.label1.place(anchor='center', x=self.sizes[0][0]/2, y=self.sizes[0][1]/2)
+        self.container1.grid(row=0, column=1, columnspan=2)
 
-        self.container2 = tk.Frame(self, width=300, height=200, padx=5, pady=5, bg='green')
+        self.container2 = tk.Frame(self, width=self.sizes[1][0], height=self.sizes[1][1], padx=5, pady=5, bg='green')
         self.label2 = tk.Label(self.container2, text="Pie", font=('calibri', 40), bg='green')
-        self.label2.place(anchor='center', x=150, y=100)
-        self.container2.grid(row=1, column=1)
+        self.label2.place(anchor='center', x=self.sizes[1][0]/2, y=self.sizes[1][1]/2)
+        self.container2.grid(row=0, column=3)
 
-        self.container3 = tk.Frame(self, width=300, height=200, padx=5, pady=5, bg='green')
+        self.container3 = tk.Frame(self, width=self.sizes[2][0], height=self.sizes[2][1], padx=5, pady=5, bg='green')
         self.label3 = tk.Label(self.container3, text="Pie", font=('calibri', 40), bg='green')
-        self.label3.place(anchor='center', x=150, y=100)
-        self.container3.grid(row=2, column=1)
+        self.label3.place(anchor='center', x=self.sizes[2][0]/2, y=self.sizes[2][1]/2)
+        self.container3.grid(row=1, column=1)
 
-        self.container4 = tk.Frame(self, width=300, height=200, padx=5, pady=5, bg='green')
+        self.container4 = tk.Frame(self, width=self.sizes[3][0], height=self.sizes[3][1], padx=5, pady=5, bg='green')
         self.label4 = tk.Label(self.container4, text="Table", font=('calibri', 40), bg='green')
-        self.label4.place(anchor='center', x=150, y=100)
-        self.container4.grid(row=0, column=2)
+        self.label4.place(anchor='center', x=self.sizes[3][0]/2, y=self.sizes[3][1]/2)
+        self.container4.grid(row=1, column=2, columnspan=2)
 
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
@@ -1841,39 +1877,82 @@ class ComparisonPage(Page):
 
 # gui
 class MainView(tk.Frame):
-    top = None
+    top1 = None
+    top2 = None
     sessionMarkerInput = None
+    txtFileNameInput = None
+    selectedStat = None
     loadingLabel = None
 
+    def errorPoppup(self, text):
+        top = Toplevel()
+        top.geometry("300x200")
+        top.title("Error")
+        label = Label(top, text=text)
+        label.pack()
+
+    def addTxtFile(self, stat, filename):
+        if not os.path.exists('obs'):
+            os.mkdir('obs')
+        txtFile = open('obs/' + filename + '.txt', 'x')
+        txtFile.close()
+        config['obstxts'].append({'stat': stat, 'filename': filename})
+        with open('data/config.json', 'w') as configFile:
+            json.dump(config, configFile)
+            configFile.close()
+        self.top2.destroy()
+
+    def promptUserforTxtFile(self):
+        self.top2 = Toplevel()
+        self.top2.geometry("180x150")
+        self.top2.title("toplevel")
+
+        label = Label(self.top2, text="Enter a name for the text file\nChoose a stat")
+        label.pack()
+
+        self.txtFileNameInput = tk.StringVar()
+        txtFileNameEntry = Entry(self.top2, textvariable=self.txtFileNameInput)
+        txtFileNameEntry.pack()
+
+        statStrings = ['NPH', 'EnterAvg', 'EnterCount']
+        self.selectedStat = tk.StringVar()
+        self.selectedStat.set(statStrings[0])
+        statChoiceDrop = OptionMenu(self.top2, self.selectedStat, *statStrings)
+        statChoiceDrop.pack()
+
+        cmd = partial(self.addTxtFile, self.selectedStat.get(), self.selectedStat.get())
+        saveButton = Button(self.top2, text="Save Txt File", command=cmd)
+        saveButton.pack()
+
     def stopResetTracker(self):
-        global  isTracking
+        global isTracking
         isTracking = False
 
     def startResetTracker(self):
         global currentSessionMarker
         global isTracking
-        currentSessionMarker = self.sessionMarkerInput.get()
+        currentSessionMarker = self.sessionMarkerInput.get() + '$' + config['version']
         isTracking = True
-        self.top.destroy()
+        self.top1.destroy()
         Stats.resetCurrentSession()
-        t1 = threading.Thread(target=Tracking.trackResets, name="tracker")  # < Note that I did not actually call the function, but instead sent it as a parameter
+        t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
         t1.daemon = True
         t1.start()
 
     def promptUserForTracking(self):
-        self.top = Toplevel()
-        self.top.geometry("180x100")
-        self.top.title("toplevel")
+        self.top1 = Toplevel()
+        self.top1.geometry("180x100")
+        self.top1.title("toplevel")
 
-        label = Label(self.top, text="Enter a Session Marker")
+        label = Label(self.top1, text="Enter a Session Marker")
         label.pack()
 
         self.sessionMarkerInput = tk.StringVar()
         self.sessionMarkerInput.set('X')
-        sessionMarkerEntry = Entry(self.top, textvariable=self.sessionMarkerInput)
+        sessionMarkerEntry = Entry(self.top1, textvariable=self.sessionMarkerInput)
         sessionMarkerEntry.pack()
 
-        startTrackingButton = Button(self.top, text="Start Tracking", command=self.startResetTracker)
+        startTrackingButton = Button(self.top1, text="Start Tracking", command=self.startResetTracker)
         startTrackingButton.pack()
 
     def watchUpdating(self):
@@ -1911,6 +1990,7 @@ class MainView(tk.Frame):
         menubar.add_cascade(label='Stats', menu=statsMenu)
         statsMenu.add_command(label="Update Stats", command=self.updateData)
         statsMenu.add_command(label="Upload Data", command=Stats.uploadData)
+        statsMenu.add_command(label="Add Txt File", command=self.promptUserforTxtFile)
 
         trackingMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Tracking', menu=trackingMenu)
