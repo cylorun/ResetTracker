@@ -228,7 +228,10 @@ class Stats:
                 session_end = i + 1
                 if i != len(session_col) - 1 and time_col[i+1] != '':
                     end_time = datetime.strptime(time_col[i+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
-        sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "All", 'profile': None, 'version': None})
+        try:
+            sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "All", 'profile': None, 'version': None})
+        except:
+            return []
         return sessionList
 
 
@@ -300,7 +303,7 @@ class Stats:
                         else:
                             rowCells[key] = cell.split('$')
                         for i in range(len(rowCells[key])):
-                            rowCells[key][i] = int(rowCells[key][i])
+                            rowCells[key][i] = int(rowCells[key][i])/1000
                     else:
                         rowCells[key] = cell
 
@@ -476,7 +479,7 @@ class Stats:
                 if index >= 0:
                     sum += scoreKeys[enterType]['dist']['probabilities'][index]
         if nph is None:
-            nph = 0
+            return 0
         return Logistics.getQuotient(nph * sum, len(enters))
 
     @classmethod
@@ -492,6 +495,10 @@ class Stats:
         global sessions
         global isUpdating
         sessionList = Stats.get_sessions()
+        if len(sessionList) == 0:
+            main.errorPoppup("no data")
+            isUpdating = False
+            return
         stats = []
         updateStatsLoadingProgress = '0%'
         for i in range(len(sessionList)):
@@ -541,10 +548,15 @@ class Stats:
         global currentSession
         rowCells = {}
         for i in range(len(headerLabels)):
-            if '-' in row[i] and ':' in row[i]:
+            if row[i] is not None and '-' in row[i] and ':' in row[i]:
                 rowCells[headerLabels[i]] = row[i]
             elif row[i] is not None and ':' in row[i]:
                 rowCells[headerLabels[i]] = Logistics.stringToTimedelta(row[i])/second
+            elif type(row[i]) == str:
+                try:
+                    rowCells[headerLabels[i]] = int(row[i])
+                except Exception as e:
+                    rowCells[headerLabels[i]] = row[i]
             else:
                 rowCells[headerLabels[i]] = row[i]
 
@@ -1022,7 +1034,7 @@ global variables
 """
 
 databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods,Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Wall Time Since Prev', 'RTA Distribution']
+headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
 config = Logistics.getConfig()
 settings = Logistics.getSettings()
 sessions = Logistics.getSessions()
@@ -1113,7 +1125,7 @@ class NewRecord(FileSystemEventHandler):
     splitless_count = 0
     break_time = 0
     wall_time = 0
-    isFirstRun = currentSessionMarker
+    isFirstRun = currentSessionMarker + '$' + config['version']
     rtaString = ''
 
     def __init__(self):
@@ -1163,7 +1175,6 @@ class NewRecord(FileSystemEventHandler):
             self.prev_datetime = datetime.now()
 
         if self.data["final_rta"] == 0:
-            self.rtaString += '0$'
             self.wall_resets += 1
             return
         uids = list(self.data["stats"].keys())
@@ -1380,15 +1391,6 @@ class Tracking:
 
         try:
             while live:
-                try:
-                    val = input("")
-                except:
-                    val = ""
-
-                if (val == "help") or (val == "?"):
-                    print("there is literally one other command and it's quit")
-                if (val == "stop") or (val == "quit"):
-                    live = False
                 if not isTracking:
                     live = False
                 time.sleep(1)
@@ -1411,15 +1413,7 @@ class Page(tk.Frame):
 # gui
 class IntroPage(Page):
     def populate(self):
-        pageDescriptions = ''
-        pageDescriptions += 'Settings: configure your settings for tracking, display, and playstyle\n'
-        pageDescriptions += 'Current Session: displays basic statistics regarding the session which you are currently playing\n'
-        pageDescriptions += 'Splits: analyzes the split of your choice for the session(s) of your choice\n'
-        pageDescriptions += 'Entry Breakdown: analyzes your success and distribution of enter types\n'
-
-        pageDescriptionsText = Text(self)
-        pageDescriptionsText.insert(tk.END, pageDescriptions)
-        pageDescriptionsText.pack()
+        pass
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1442,9 +1436,12 @@ class SettingsPage(Page):
         for i1 in range(len(self.varStrings)):
             for i2 in range(len(self.varStrings[i1])):
                 settings[self.varGroups[i1]][self.varStrings[i1][i2]] = self.settingsVars[i1][i2].get()
-        settingsJson = open("data/settings.json", "w")
-        json.dump(settings, settingsJson)
-        settingsJson.close()
+        try:
+            settingsJson = open("data/settings.json", "w")
+            json.dump(settings, settingsJson)
+            settingsJson.close()
+        except Exception as e:
+            main.errorPoppup('did you move your settings file from where it originally was?')
 
     def populate(self):
         loadedSettings = Logistics.getSettings()
@@ -1553,7 +1550,7 @@ class GeneralPage(Page):
             img3 = img3.resize((self.sizes[2][0], self.sizes[2][1]))
             img3 = ImageTk.PhotoImage(img3)
 
-            Graphs.graph1(sessionData['general stats']['RTA Distribution'], 0.9)
+            Graphs.graph1(sessionData['general stats']['RTA Distribution'], 0.8)
             img4 = Image.open("data/plots/plot1.png")
             img4 = img4.resize((self.sizes[3][0], self.sizes[3][1]))
             img4 = ImageTk.PhotoImage(img4)
@@ -1652,7 +1649,7 @@ class SplitsPage(Page):
             isGraphingSplit = True
             sessionData = Logistics.getSessionData(selectedSession.get())
 
-            Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.9)
+            Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.8)
             img1 = Image.open("data/plots/plot1.png")
             img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
             img1 = ImageTk.PhotoImage(img1)
@@ -1883,6 +1880,7 @@ class MainView(tk.Frame):
     txtFileNameInput = None
     selectedStat = None
     loadingLabel = None
+    sessionMarkerEntry = None
 
     def errorPoppup(self, text):
         top = Toplevel()
@@ -1931,7 +1929,7 @@ class MainView(tk.Frame):
     def startResetTracker(self):
         global currentSessionMarker
         global isTracking
-        currentSessionMarker = self.sessionMarkerInput.get() + '$' + config['version']
+        currentSessionMarker = self.sessionMarkerInput.get()
         isTracking = True
         self.top1.destroy()
         Stats.resetCurrentSession()
@@ -1940,20 +1938,22 @@ class MainView(tk.Frame):
         t1.start()
 
     def promptUserForTracking(self):
-        self.top1 = Toplevel()
-        self.top1.geometry("180x100")
-        self.top1.title("toplevel")
+        if not isTracking:
+            self.top1 = Toplevel()
+            self.top1.geometry("180x100")
+            self.top1.title("toplevel")
 
-        label = Label(self.top1, text="Enter a Session Marker")
-        label.pack()
+            label = Label(self.top1, text="Enter a Session Marker")
+            label.pack()
 
-        self.sessionMarkerInput = tk.StringVar()
-        self.sessionMarkerInput.set('X')
-        sessionMarkerEntry = Entry(self.top1, textvariable=self.sessionMarkerInput)
-        sessionMarkerEntry.pack()
+            self.sessionMarkerInput = tk.StringVar()
+            self.sessionMarkerEntry = Entry(self.top1, textvariable=self.sessionMarkerInput)
+            self.sessionMarkerEntry.pack()
 
-        startTrackingButton = Button(self.top1, text="Start Tracking", command=self.startResetTracker)
-        startTrackingButton.pack()
+            startTrackingButton = Button(self.top1, text="Start Tracking", command=self.startResetTracker)
+            startTrackingButton.pack()
+        else:
+            main.errorPoppup('Already Tracking')
 
     def watchUpdating(self):
         prevUpdateStatsLoadingProgress = ''
