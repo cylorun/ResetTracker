@@ -50,11 +50,21 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
 
 ## **Analysis**
 
+#### General
+
+Provides general stats and graphs for the selected session
+
 #### Splits
+
+Provides an analysis of the selected split for the selected session, including it's distribution, conversion rate, averages, and so much more
 
 #### Entry Breakdown
 
+Provides an analysis that shows your stats for each type of enter for the selected session
+
 #### Comparison
+
+Currently only shows one graph, which displays your average enter and nph by session
 
 ## **Credits**
 
@@ -73,3 +83,13 @@ Thanks to Weakforced for his countless ideas and help with making decisions and 
 ## **Suggestions/Help**
 
 If you have any suggestions or need help setting it up, DM me on discord pncakespoon#4895
+
+## Features Coming Soon
+
+ - Displaying progress over time
+ - Displaying the progression of certain stats throughout a session
+ - More Graphs, data, and feedback :)
+ - Spawn Image Analysis
+ 
+
+
