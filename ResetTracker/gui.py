@@ -1,165 +1,78 @@
-import subprocess
-import tkinter as tk
-from tkinter import *
 from functools import partial
 import pygsheets
-import datetime
-from statistics import mean
-import matplotlib.pyplot as plt
-import seaborn as sns
-from PIL import ImageTk, Image
-import plotly.graph_objects as go
-from plotly.colors import n_colors
-import csv
 import glob
 import os
-from datetime import datetime, timedelta, time, timezone
-import threading
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-from typing import Optional
-from ctypes import windll, create_unicode_buffer
-import json
-import time
-from os.path import exists
-import numpy as np
 import math
 from scipy.stats import percentileofscore
-from speedrun_models import BasicSpeedrunModel, SplitDistribution
 import requests
-import urllib.request
+import webbrowser
 import subprocess
 
+from guiUtils import *
 
-# class methods for miscellaneous
-class Logistics:
 
-    @classmethod
-    def getConfig(cls):
-        configJson = open("data/config.json", "r")
-        loadedConfig = json.load(configJson)
-        configJson.close()
-        return loadedConfig
+"""
+global variables
+"""
 
-    @classmethod
-    def getSettings(cls):
-        settingsJson = open("data/settings.json", "r")
-        loadedSettings = json.load(settingsJson)
-        settingsJson.close()
-        return loadedSettings
+if True:
+    databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
+    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
+    config = FileLoader.getConfig()
+    settings = FileLoader.getSettings()
+    sessions = FileLoader.getSessions()
+    thresholds = FileLoader.getThresholds()
+    if settings['tracking']['sheet link'] != '':
+        gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
+        sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+        wks1 = sh1.worksheet_by_title('Raw Data')
+    gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
+    sh2 = gc_sheets_database.open_by_url(databaseLink)
+    wks2 = sh2[0]
+    second = timedelta(seconds=1)
+    currentSession = {'splits stats': {}, 'general stats': {}}
+    currentSessionMarker = 'X'
+    selectedSession = None
+    isTracking = False
+    isUpdating = False
+    isGraphingGeneral = False
+    isGraphingSplit = False
+    isGraphingEntry = False
+    isGraphingComparison = False
+    isGivingFeedback = False
+    updateStatsLoadingProgress = ''
+    advChecks = [
+        ("minecraft:recipes/misc/charcoal", "has_log"),
+        ("minecraft:story/iron_tools", "iron_pickaxe"),
+        ("timelines", "enter_nether"),
+        ("timelines", "enter_bastion"),
+        ("timelines", "enter_fortress"),
+        ("timelines", "nether_travel"),
+        ("timelines", "enter_stronghold"),
+        ("timelines", "enter_end"),
+    ]
 
-    @classmethod
-    def getSessions(cls):
-        sessionsJson = open("data/sessionData.json", "r")
-        loadedSessions = json.load(sessionsJson)
-        sessionsJson.close()
-        return loadedSessions
+    statsChecks = [
+        "nothing lol",
+        ("minecraft:dropped", "minecraft:gold_ingot"),
+        ("minecraft:picked_up", "minecraft:blaze_rod"),
+        ("minecraft:killed", "minecraft:blaze"),
+        ("minecraft:picked_up", "minecraft:flint"),
+        ("minecraft:mined", "minecraft:gravel"),
+        ("minecraft:custom", "minecraft:deaths"),
+        ("minecraft:custom", "minecraft:traded_with_villager"),
+        ("minecraft:killed", "minecraft:enderman"),
+        ("minecraft:picked_up", "minecraft:ender_eye")
+    ]
 
-    @classmethod
-    def getMean(cls, data):
-        mean1 = None
-        if len(data) > 0:
-            mean1 = mean(data)
-        return mean1
+"""
+global variables
+"""
 
-    @classmethod
-    def getQuotient(cls, dividend, divisor):
-        quotient = None
-        try:
-            quotient = dividend/divisor
-        except Exception as e:
-            pass
-        return quotient
 
-    @classmethod
-    def getTimezoneOffset(cls):
-        if settings['display']['use local timezone'] == 1:
-            return timedelta(seconds=-(time.timezone if (time.localtime().tm_isdst == 0) else time.altzone))
-        else:
-            return timedelta(seconds=0)
-
-    @classmethod
-    def stringToDatetime(cls, DTString):
-        components = DTString.split(" ")
-        links = components[0].split("/") + components[1].split(":")
-        return datetime(month=int(links[0]), day=int(links[1]), year=int(links[2]), hour=int(links[3]), minute=int(links[4]), second=int(links[5]))
-
-    @classmethod
-    def stringToTimedelta(cls, TDString):
-        links = TDString.split(":")
-        return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
-
-    @classmethod
-    def formatValue(cls, value, isTime=False, isPercent=False):
-        if value is None:
-            return ""
-        if type(value) == str:
-            return value
-        if type(value) == int:
-            if isTime:
-                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value)
-                return valueDatetime.strftime('%M:%S')
-            else:
-                return str(value)
-        if type(value) == float:
-            if isTime:
-                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value)
-                return valueDatetime.strftime('%M:%S')
-            else:
-                if isPercent:
-                    return str(round(value * 100, 1)) + '%'
-                else:
-                    return str(round(value, 1))
-        if type(value) == timedelta:
-            if isTime:
-                valueDatetime = datetime(year=1970, month=1, day=1) + value
-                return valueDatetime.strftime("%M:%S.") + str(round(int(10 * ((value / second) % 1)), 0))
-            else:
-                return value/second
-
-    @classmethod
-    def getSessionData(cls, sessionString):
-        index = 0
-        for i in range(len(sessions['sessions'])):
-            session = sessions['sessions'][i]
-            if sessionString in session.values():
-                index = i
-                break
-        return sessions['stats'][index]
-
-    @classmethod
-    def floatList(cls, list):
-        for i in range(len(list)):
-            list[i] = float(list[i])
-        return list
-
-    @classmethod
-    def getRegressionLine(cls, x_list, y_list):
-        x = np.array(x_list)
-        y = np.array(y_list)
-
-        n = np.size(x)
-
-        m_x = np.mean(x)
-        m_y = np.mean(y)
-
-        SS_xy = np.sum(y * x) - n * m_y * m_x
-        SS_xx = np.sum(x * x) - n * m_x * m_x
-
-        m = SS_xy / SS_xx
-        b = m_y - m * m_x
-
-        sum = 0
-        for i in range(len(x_list)):
-            sum += (y_list[i] - (m * x_list[i] + b))
-        s = sum/len(x_list)
-
-        return m, b, s
-
-    @classmethod
-    def getResidual(cls, y, m, x, b):
-        return y - m * x - b
-
+class Update:
     @classmethod
     def checkGithub(cls):
         latest = requests.get("https://api.github.com/repos/pncakespoon1/ResetTracker/releases/latest")
@@ -176,348 +89,15 @@ class Logistics:
 
     @classmethod
     def openGithub(cls):
-        webUrl = urllib.request.urlopen('https://github.com/pncakespoon1/ResetTracker')
+        webbrowser.open_new_tab('https://github.com/pncakespoon1/ResetTracker')
 
 
-# class methods for analyzing stats
-class Stats:
-    @classmethod
-    def get_sessions(cls):
-        with open('stats.csv', newline="") as f:
-            reader = csv.reader(f)
-            data = list(reader)
-            f.close()
-
-        data = [data[0]] + data[::-1]
-        data.pop(len(data) - 1)
-
-        sessionList = []
-        profiles = {}
-        headers = data[0]
-
-        time_col = list((np.transpose(data))[headers.index('Date and Time')])
-        time_col.pop(0)
-        session_col = list((np.transpose(data))[headers.index('Session Marker')])
-        session_col.pop(0)
-        rta_col = list((np.transpose(data))[headers.index('RTA')])
-        rta_col.pop(0)
-
-        count = 0
-        session_end = 1
-
-        end_time = datetime.strptime(time_col[0], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[0]) + Logistics.getTimezoneOffset()
-        for i in range(len(session_col)):
-            if session_col[i] != '':
-                count += 1
-                session_start = i
-                try:
-                    if count == int(settings['display']['latest x sessions']):
-                        sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None, 'version': None})
-                except Exception as e:
-                    main.errorPoppup("Latest x sessions must be integer")
-                start_time = datetime.strptime(time_col[i], '%Y-%m-%d %H:%M:%S.%f') + Logistics.getTimezoneOffset()
-                sessionString = start_time.strftime('%m/%d %H:%M') + " - " + end_time.strftime('%m/%d %H:%M')
-                profile = (session_col[i].split('$'))[0]
-                version = (session_col[i].split('$'))[1]
-                sessionList.append({'start row': [session_start + 1], 'end row': [session_end], 'string': sessionString, 'profile': profile, 'version': version})
-                if profile in profiles.keys():
-                    profiles[profile]['start row'].append(session_start + 1)
-                    profiles[profile]['end row'].append(session_end)
-                else:
-                    profiles[profile] = {'start row': [session_start + 1], 'end row': [session_end], 'string': profile, 'profile': profile, 'version': version}
-                session_end = i + 1
-                if i != len(session_col) - 1 and time_col[i+1] != '':
-                    end_time = datetime.strptime(time_col[i+1], '%Y-%m-%d %H:%M:%S.%f') + Logistics.stringToTimedelta(rta_col[i+1]) + Logistics.getTimezoneOffset()
-        try:
-            sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "All", 'profile': None, 'version': None})
-        except:
-            return []
-        return sessionList
-
-
-    @classmethod
-    def get_stats(cls, session, makeScoreKeys):
-        returndict = {'splits stats': {}, 'general stats': {}}
-
-        relativeSplitDists = {'Iron': None, 'Wood': None, 'Iron Pickaxe': None, 'Nether': [], 'Structure 1': [], 'Structure 2': [], 'Nether Exit': [], 'Stronghold': [], 'End': []}
-        cumulativeSplitDists = {'Iron': [], 'Wood': [], 'Iron Pickaxe': [], 'Nether': [], 'Structure 1': [], 'Structure 2': [], 'Nether Exit': [], 'Stronghold': [], 'End': []}
-
-        endgameDistsJson = open('data/endgameDists.json')
-        endgameDists = json.load(endgameDistsJson)
-        endgameDistsJson.close()
-
-        total_RTA = 0
-        total_wallResets = 0
-        total_played = 0
-        total_wallTime = 0
-        total_owTime = 0
-        entry_labels = []
-        enters = []
-        exitSuccess = {}
-        rtaDist = []
-
-        with open('stats.csv', newline="") as f:
-            reader = csv.reader(f)
-            allData = list(reader)
-            f.close()
-        headers = allData[0]
-        allData = allData[::-1]
-        allData.pop(len(allData) - 1)
-        data = [headers]
-
-        for i in range(len(session['start row'])):
-            data += allData[(session['end row'][i]):(session['start row'][i])]
-
-        # setting up score keys
-        if makeScoreKeys:
-            enterTypeOptions = ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']
-            scoreKeys = {}
-            for enterType in enterTypeOptions:
-                if settings['playstyle cont.'][enterType] == 1:
-                    scoreKeys[enterType] = {'data': [], 'isValid': False}
-            scoreKeys['other'] = {'data': [], 'isValid': False}
-            enterTypeOptions = scoreKeys.keys()
-
-        for item in ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']:
-            if settings['playstyle cont.'][item] == 1:
-                exitSuccess[item] = {'Enter Count': 0, 'Exit Count': 0, 'Conversion': None, 'Sum Enter': 0, 'Average Enter': None, 'Sum Split': 0, 'Average Split': None}
-        exitSuccess['other'] = {'Enter Count': 0, 'Exit Count': 0, 'Conversion': None, 'Sum Enter': 0, 'Average Enter': None, 'Sum Split': 0, 'Average Split': None}
-
-        # iterating through rows
-        for row_num in range(len(data) - 1):
-            if data[row_num + 1][0] != '':
-                # formatting
-                rowCells = {}
-                for key in headers:
-                    cell = data[row_num + 1][headers.index(key)]
-                    if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
-                        if len(cell) == 8:
-                            rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:])) / second
-                        else:
-                            rowCells[key] = timedelta(hours=int(cell[0]), minutes=int(cell[2:4]), seconds=int(cell[5:])) / second
-                    elif key == 'RTA Distribution':
-                        if cell == '':
-                            rowCells[key] = []
-                        elif '$' not in cell:
-                            rowCells[key] = [cell]
-                        else:
-                            rowCells[key] = cell.split('$')
-                        for i in range(len(rowCells[key])):
-                            rowCells[key][i] = int(rowCells[key][i])/1000
-                    else:
-                        rowCells[key] = cell
-
-
-                # resets/time
-                total_RTA += rowCells['RTA'] + rowCells['RTA Since Prev']
-                total_wallResets += int(rowCells['Wall Resets Since Prev'])
-                total_played += int(rowCells['Played Since Prev']) + 1
-                total_wallTime += int(rowCells['Wall Time Since Prev'])
-                rtaDist += rowCells['RTA Distribution']
-
-                # overworld
-                for split in ['Wood', 'Iron Pickaxe', 'Iron']:
-                    if rowCells[split] != '':
-                        cumulativeSplitDists[split].append(rowCells[split])
-
-                # nether
-                if rowCells['Nether'] != '':
-                    cumulativeSplitDists['Nether'].append(rowCells['Nether'])
-                    total_owTime += rowCells['Nether']
-                    entry_labels.append(rowCells['Iron Source'])
-                    enters.append({'time': rowCells['Nether'], 'method': rowCells['Enter Type'], 'type': rowCells['Iron Source']})
-                    if rowCells['Iron Source'] in exitSuccess.keys():
-                        exitSuccess[rowCells['Iron Source']]['Enter Count'] += 1
-                        exitSuccess[rowCells['Iron Source']]['Sum Enter'] += rowCells['Nether']
-                    else:
-                        exitSuccess['other']['Enter Count'] += 1
-                        exitSuccess['other']['Sum Enter'] += rowCells['Nether']
-
-                    if makeScoreKeys:
-                        if rowCells['Stronghold'] != '':
-
-                            if rowCells['Iron Source'] in enterTypeOptions:
-                                scoreKeys[rowCells['Iron Source']]['data'].append((rowCells['Stronghold'] - rowCells['Nether']))
-                                scoreKeys[rowCells['Iron Source']]['isValid'] = True
-                            else:
-                                scoreKeys['other']['data'].append((rowCells['Stronghold'] - rowCells['Nether']))
-                                scoreKeys['other']['isValid'] = True
-                        else:
-                            if rowCells['Iron Source'] in enterTypeOptions:
-                                scoreKeys[rowCells['Iron Source']]['data'].append('run kill')
-                            else:
-                                scoreKeys['other']['data'].append('run kill')
-
-                    bast = (rowCells['Bastion'] != '')
-                    fort = (rowCells['Fortress'] != '')
-
-                    if fort and bast:
-                        fortFirst = (rowCells['Bastion'] > rowCells['Fortress'])
-                        st1 = 'Bastion'
-                        st2 = 'Fortress'
-                        if fortFirst:
-                            st1 = 'Fortress'
-                            st2 = 'Bastion'
-                        cumulativeSplitDists['Structure 1'].append(rowCells[st1])
-                        cumulativeSplitDists['Structure 2'].append(rowCells[st2])
-                        relativeSplitDists['Structure 1'].append(rowCells[st1] - rowCells['Nether'])
-                        relativeSplitDists['Structure 2'].append(rowCells[st2] - rowCells[st1])
-
-                        if rowCells['Nether Exit'] != '':
-                            cumulativeSplitDists['Nether Exit'].append(rowCells['Nether Exit'])
-                            relativeSplitDists['Nether Exit'].append(rowCells['Nether Exit'] - rowCells[st2])
-                            if rowCells['Iron Source'] in exitSuccess.keys():
-                                exitSuccess[rowCells['Iron Source']]['Exit Count'] += 1
-                                exitSuccess[rowCells['Iron Source']]['Sum Split'] += rowCells['Nether Exit'] - rowCells['Nether']
-                            else:
-                                exitSuccess['other']['Exit Count'] += 1
-                                exitSuccess['other']['Sum Split'] += rowCells['Nether Exit'] - rowCells['Nether']
-                            if rowCells['Stronghold'] != '':
-                                cumulativeSplitDists['Stronghold'].append(rowCells['Stronghold'])
-                                relativeSplitDists['Stronghold'].append(rowCells['Stronghold'] - rowCells['Nether Exit'])
-                                if rowCells['End'] != '':
-                                    cumulativeSplitDists['End'].append(rowCells['End'])
-                                    relativeSplitDists['End'].append(rowCells['End'] - rowCells['Stronghold'])
-                    elif bast:
-                        cumulativeSplitDists['Structure 1'].append(rowCells['Bastion'])
-                        relativeSplitDists['Structure 1'].append(rowCells['Bastion'] - rowCells['Nether'])
-                    elif fort:
-                        cumulativeSplitDists['Structure 1'].append(rowCells['Fortress'])
-                        relativeSplitDists['Structure 1'].append(rowCells['Fortress'] - rowCells['Nether'])
-                else:
-                    total_owTime += rowCells['RTA']
-
-        # making/updating scoreKeys
-        if makeScoreKeys:
-            for key in scoreKeys.keys():
-                if scoreKeys[key]['isValid']:
-                    splitDist = SplitDistribution.from_data(scoreKeys[key]['data'], 1)
-                    splitDist.convolve(SplitDistribution.from_data(endgameDists['Stronghold'], 1))
-                    splitDist.convolve(SplitDistribution.from_data(endgameDists['End'], 1))
-                    scoreKeys[key]['dist'] = splitDist.to_data()
-                else:
-                    scoreKeys[key]['dist'] = None
-            scoreKeysFile = open('data/scoreKeys.json', 'w')
-            json.dump(scoreKeys, scoreKeysFile)
-            scoreKeysFile.close()
-
-        # updating exitSuccess
-        for key in exitSuccess.keys():
-            exitSuccess[key]['Conversion'] = Logistics.getQuotient(exitSuccess[key]['Exit Count'], exitSuccess[key]['Enter Count'])
-            exitSuccess[key]['Average Enter'] = Logistics.getQuotient(exitSuccess[key]['Sum Enter'], exitSuccess[key]['Enter Count'])
-            exitSuccess[key]['Average Split'] = Logistics.getQuotient(exitSuccess[key]['Sum Split'], exitSuccess[key]['Exit Count'])
-
-        # preparing returndict
-        prevKey = None
-        for key in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
-            if prevKey is not None:
-                returndict['splits stats'][key] = {'Relative Distribution': relativeSplitDists[key],
-                                                   'Cumulative Distribution': cumulativeSplitDists[key],
-                                                   'Relative Conversion': Logistics.getQuotient(len(cumulativeSplitDists[key]), len(cumulativeSplitDists[prevKey])),
-                                                   'Cumulative Conversion': Logistics.getQuotient(len(cumulativeSplitDists[key]), (total_wallResets + total_played)),
-                                                   'Relative Average': Logistics.getMean(relativeSplitDists[key]),
-                                                   'Cumulative Average': Logistics.getMean(cumulativeSplitDists[key]),
-                                                   'Count': len(cumulativeSplitDists[key])
-                                                   }
-            else:
-                returndict['splits stats'][key] = {'Relative Distribution': cumulativeSplitDists[key],
-                                                   'Cumulative Distribution': cumulativeSplitDists[key],
-                                                   'Relative Conversion': Logistics.getQuotient(len(cumulativeSplitDists[key]), (total_wallResets + total_played)),
-                                                   'Cumulative Conversion': Logistics.getQuotient(len(cumulativeSplitDists[key]), (total_wallResets + total_played)),
-                                                   'Relative Average': Logistics.getMean(cumulativeSplitDists[key]),
-                                                   'Cumulative Average': Logistics.getMean(cumulativeSplitDists[key]),
-                                                   'Count': len(cumulativeSplitDists[key])
-                                                   }
-            if key in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether']:
-                returndict['splits stats'][key]['xph'] = Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats'][key]['Count'], (total_owTime + total_wallTime)), 1/3600)
-            else:
-                returndict['splits stats'][key]['xph'] = Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats'][key]['Count'], (total_RTA + total_wallTime)), 1/3600)
-            if key in ['Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End']:
-                prevKey = key
-
-        returndict['general stats'] = {'rnph': Logistics.getQuotient(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)), 1/3600),
-                                       'total time': total_RTA,
-                                       'total Walltime': total_wallTime,
-                                       'total ow time': total_owTime,
-                                       'total nether time': total_RTA - total_owTime,
-                                       'total resets': total_played + total_wallResets,
-                                       'rpe': Logistics.getQuotient((total_wallResets + total_played), returndict['splits stats']['Nether']['Count']),
-                                       'percent played': Logistics.getQuotient(total_played, total_played + total_wallResets),
-                                       'average enter': returndict['splits stats']['Nether']['Cumulative Average'],
-                                       'efficiency score': Stats.get_efficiencyScore(Logistics.getQuotient(returndict['splits stats']['Nether']['Count'], (total_owTime + total_wallTime)), enters),
-                                       'enters': enters,
-                                       'Exit Success': exitSuccess,
-                                       'RTA Distribution': rtaDist
-                                       }
-        returndict['profile'] = session['profile']
-
-        return returndict
-
-    @classmethod
-    def get_efficiencyScore(cls, nph, enters):
-        sum = 0
-        validEnterTypes = ['other']
-        enterTypes = ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']
-        scoreKeysFile = open('data/scoreKeys.json', 'r')
-        scoreKeys = json.load(scoreKeysFile)
-        scoreKeysFile.close()
-        for enterType in enterTypes:
-            if settings['playstyle cont.'][enterType] == 1:
-                validEnterTypes.insert(0, enterType)
-        for enter in enters:
-            if enter['type'] in validEnterTypes:
-                enterType = enter['type']
-            else:
-                enterType = 'other'
-            if scoreKeys[enterType]['isValid']:
-                try:
-                    postEnterMax = int(settings['playstyle']['target time']) - enter['time']
-                except Exception as e:
-                    main.errorPoppup("target time must be an integer number of seconds")
-                    return 0
-                index = int(((postEnterMax) - scoreKeys[enterType]['dist']['start split'])/scoreKeys[enterType]['dist']['split step'])
-                if index >= 0:
-                    sum += scoreKeys[enterType]['dist']['probabilities'][index]
-        if nph is None:
-            return 0
-        return Logistics.getQuotient(nph * sum, len(enters))
-
-    @classmethod
-    def saveSessionData(cls):
-        t = threading.Thread(target=Stats.appendStats, name="sessions")
-        t.daemon = True
-        t.start()
-
-    # used for saveSessionData
-    @classmethod
-    def appendStats(cls):
-        global updateStatsLoadingProgress
-        global sessions
-        global isUpdating
-        sessionList = Stats.get_sessions()
-        if len(sessionList) == 0:
-            main.errorPoppup("no data")
-            isUpdating = False
-            return
-        stats = []
-        updateStatsLoadingProgress = '0%'
-        for i in range(len(sessionList)):
-            if sessionList[i]['string'] == "All":
-                stats.append(Stats.get_stats(sessionList[i], True))
-                updateStatsLoadingProgress = '40%'
-            else:
-                stats.append(Stats.get_stats(sessionList[i], False))
-                updateStatsLoadingProgress = str(40 + round((60*i/(len(sessionList) - 1)), 0)) + '%'
-        sessions = {'sessions': sessionList, 'stats': stats}
-        with open("data/sessionData.json", "w") as sessionDataJson:
-            json.dump(sessions, sessionDataJson)
-        sessionDataJson.close()
-        isUpdating = False
+class Database:
 
     @classmethod
     def uploadData(cls):
         global config
-        careerData = Logistics.getSessionData("All")
+        careerData = Stats.getSessionData("All", sessions)
         nameList = (wks2.get_col(col=1, returnas='matrix', include_tailing_empty=False))
         userCount = len(nameList)
         if config['lbName'] == '':
@@ -527,10 +107,11 @@ class Stats:
                 config['lbName'] = settings['display']['twitch username']
             configFile = open('data/config.json')
             json.dump(config, configFile)
+            configFile.close()
         try:
             values = [config['lbName'], str(int(settings['playstyle']['instance count'])), str(int(settings['playstyle']['target time']))]
         except Exception as e:
-            main.errorPoppup("target time and instance count must be integers")
+            main1.errorPoppup("target time and instance count must be integers")
             return
         for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
@@ -543,6 +124,8 @@ class Stats:
         else:
             wks2.insert_rows(row=userCount, number=1, values=values, inherit=False)
 
+
+class CurrentSession:
     @classmethod
     def updateCurrentSession(cls, row):
         global currentSession
@@ -555,7 +138,7 @@ class Stats:
             elif type(row[i]) == str:
                 try:
                     rowCells[headerLabels[i]] = int(row[i])
-                except Exception as e:
+                except Exception as e2:
                     rowCells[headerLabels[i]] = row[i]
             else:
                 rowCells[headerLabels[i]] = row[i]
@@ -619,7 +202,7 @@ class Stats:
                 currentSession['splits stats']['Structure 1']['Count'] += 1
         else:
             currentSession['general stats']['total ow time'] += rowCells['RTA'] + rowCells['RTA Since Prev']
-                
+
         # calculate and update other statistics
         prevSplit = None
         for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
@@ -637,292 +220,42 @@ class Stats:
         currentSession['general stats']['% played'] = Logistics.getQuotient(currentSession['general stats']['total played'], currentSession['general stats']['total played'] + currentSession['general stats']['total wall resets'])
         currentSession['general stats']['rpe'] = Logistics.getQuotient(currentSession['general stats']['total wall resets'] + currentSession['general stats']['total played'], currentSession['splits stats']['Nether']['Count'])
 
-        Graphs.graph6()
-        Graphs.graph7()
-        Stats.updateObsTxts()
+        try:
+            currentSession['figs'][0] = Graphs.graph6(currentSession)
+        except Exception as e:
+            pass
+        try:
+            currentSession['figs'][1] = Graphs.graph7(currentSession)
+        except Exception as e:
+            pass
+
+        main1.updateCSGraphs()
+        CurrentSession.updateObsTxts()
 
 
     @classmethod
     def resetCurrentSession(cls):
         global currentSession
-        currentSession = {'splits stats': {}, 'general stats': {}}
+        currentSession = {'splits stats': {}, 'general stats': {}, 'figs': [None, None]}
         for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
             currentSession['splits stats'][split] = {'Count': 0, 'Cumulative Sum': 0, 'Relative Sum': 0, 'Cumulative Average': None, 'Relative Average': None, 'Cumulative Conversion': None, 'Relative Conversion': None}
         currentSession['general stats'] = {'total RTA': 0, 'total wall resets': 0, 'total played': 0, 'total wall time': 0, 'total ow time': 0, 'rnph': None, '% played': None, 'rpe': None}
 
     @classmethod
     def updateObsTxts(cls):
-        for item in config['obstxts']:
-            with open('obs/' + item['filename'] + '.txt', 'w') as obsTxtFile:
-                isTime = False
-                isPercent = False
-                stat = None
-                statDict = {'NPH': Logistics.formatValue(currentSession['general stats']['rnph']),
-                            'EnterAvg': Logistics.formatValue(currentSession['splits stats']['Nether']['Cumulative Average'], isTime=True),
-                            'EnterCount': Logistics.formatValue(currentSession['splits stats']['Nether']['Count'])}
-                obsTxtFile.write(statDict[item['stat']])
-
-# class methods for creating graphs
-class Graphs:
-    # makes a kde histogram of a distribution of datapoints
-    @classmethod
-    def graph1(cls, dist, smoothness):
-        data = {'dist': dist}
-        sns.kdeplot(data=data, x='dist', legend=False, bw_adjust=smoothness)
-        plt.savefig('data/plots/plot1.png', dpi=1000)
-        plt.close()
-
-    # makes a pie chart given a list of strings
-    @classmethod
-    def graph2(cls, items):
-        itemsUnique = []
-        itemsCount = []
-        for item in items:
-            if item not in itemsUnique:
-                itemsUnique.append(item)
-                itemsCount.append(1)
-            else:
-                itemsCount[itemsUnique.index(item)] += 1
-        fig = plt.figure(figsize=(10, 7))
-        plt.pie(itemsCount, labels=itemsUnique, textprops={'size': 24})
-        plt.savefig('data/plots/plot2.png', dpi=1000)
-        plt.close()
-
-    # makes a table for relevant information of a split
-    @classmethod
-    def graph3(cls, splitStats):
-        fig = go.Figure(data=[go.Table(header=dict(values=['Count', 'Avg.', 'Avg. Split', 'Rate']),
-                                       cells=dict(values=[[Logistics.formatValue(splitStats['Count'])], [Logistics.formatValue(splitStats['Cumulative Average'], isTime=True), [Logistics.formatValue(splitStats['Relative Average'], isTime=True)], [Logistics.formatValue(splitStats['Relative Conversion'], isPercent=True)]]]))
-                              ])
-        fig.write_image('data/plots/plot3.png')
-
-    # makes a 2-way table showing the frequency of each combination of iron source and entry method
-    @classmethod
-    def graph4(cls, enters):
-        ironSourceList = []
-        entryMethodList = []
-        validSourceList = []
-        for source in ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']:
-            if settings['playstyle cont.'][source] == 1:
-                validSourceList.append(source)
-        for enter in enters:
-            if enter['type'] in validSourceList:
-                ironSourceList.append(enter['type'])
-            else:
-                ironSourceList.append('Other')
-            entryMethodList.append(enter['method'])
-        ironSourceOptionsAll = ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village', 'Other']
-        ironSourceOptionsValid = []
-        for i in range(len(ironSourceOptionsAll) - 1):
-            if settings['playstyle cont.'][ironSourceOptionsAll[i]] == 1:
-                ironSourceOptionsValid.append(ironSourceOptionsAll[i])
-        ironSourceOptionsValid.append('other')
-        entryTypeOptions = ['Magma Ravine', 'Lava Pool', 'Obsidian', 'Bucketless']
-        colors = n_colors(lowcolor='rgb(255, 200, 200)', highcolor='rgb(200, 0, 0)', n_colors=len(ironSourceList) + 1, colortype='rgb')
-        data = []
-        fill_color = []
-
-        for i1 in range(len(ironSourceOptionsValid)):
-            data.append([])
-            fill_color.append([])
-            for i2 in range(len(entryTypeOptions)):
-                data[i1].append(0)
-                fill_color[i1].append(0)
-        for i in range(len(ironSourceList)):
-            ironSource = ironSourceList[i]
-            entryMethod = entryMethodList[i]
-            index1 = len(ironSourceOptionsValid) - 1
-            if ironSource in ironSourceOptionsValid:
-                index1 = ironSourceOptionsValid.index(ironSource)
-            index2 = entryTypeOptions.index(entryMethod)
-            data[index1][index2] += round(1/len(ironSourceList), 3)
-
-        for i1 in range(len(fill_color)):
-            for i2 in range(len(fill_color[i1])):
-                fill_color[i1][i2] = colors[round(data[i1][i2] * len(ironSourceList))]
-
-        for i1 in range(len(data)):
-            for i2 in range(len(data[i1])):
-                data[i1][i2] = Logistics.formatValue(data[i1][i2], isPercent=True)
-
-        data.insert(0, entryTypeOptions)
-        fill_color.insert(0, n_colors(lowcolor='rgb(0, 200, 0)', highcolor='rgb(0, 200, 0)', n_colors=len(entryTypeOptions), colortype='rgb'))
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=[''] + ironSourceOptionsValid,
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=data,
-                line_color=fill_color,
-                fill_color=fill_color,
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot4.png')
-
-    # table displaying info about a specific split
-    @classmethod
-    def graph5(cls, splitData):
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=['Count', 'Avg.', 'Avg. Split', 'Rate'],
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=[Logistics.formatValue(splitData['Count']), Logistics.formatValue(splitData['Cumulative Average'], isTime=True), Logistics.formatValue(splitData['Relative Average'], isTime=True), Logistics.formatValue(splitData['Relative Conversion'], isPercent=True)],
-                line_color='blue',
-                fill_color='green',
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot5.png')
-
-    # table display split stats of current session
-    @classmethod
-    def graph6(cls):
-        values = [['Count', 'Average', 'Average Split', 'Conversion']]
-        for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
-            values.append([Logistics.formatValue(currentSession['splits stats'][split]['Count']), Logistics.formatValue(currentSession['splits stats'][split]['Cumulative Average'], isTime=True), Logistics.formatValue(currentSession['splits stats'][split]['Relative Average'], isTime=True), Logistics.formatValue(currentSession['splits stats'][split]['Relative Conversion'], isPercent=True)])
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=['', 'Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End'],
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=values,
-                line_color='blue',
-                fill_color='green',
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot6.png')
-
-    # table displaying general stats of the current session
-    @classmethod
-    def graph7(cls):
-        values = [Logistics.formatValue(currentSession['general stats']['rnph']), Logistics.formatValue(currentSession['general stats']['% played'], isPercent=True), Logistics.formatValue(currentSession['general stats']['rpe'])]
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=['rnph', '% played', 'rpe'],
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=values,
-                line_color='blue',
-                fill_color='green',
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot7.png')
-
-    # pie chart from dict of numerical data
-    @classmethod
-    def graph8(cls, data):
-        fig = plt.figure(figsize=(10, 7))
-        plt.pie(data.values(), labels=data.keys(), textprops={'size': 24})
-        plt.savefig('data/plots/plot8.png', dpi=1000)
-        plt.close()
-
-    # scatterplot displaying nph and average enter, with a canvas based on efficiency score
-    @classmethod
-    def graph9(cls):
-        nph_list = []
-        avg_enter_list = []
-        profile_list = []
-        for i in range(len(sessions)):
-            if sessions['sessions'][i] != 'All' and 'Latest' not in sessions['sessions'][i]['string']:
-                nph_list.append(sessions['stats'][i]['general stats']['rnph'])
-                avg_enter_list.append(sessions['stats'][i]['splits stats']['Nether']['Cumulative Average'])
-                profile_list.append(sessions['stats'][i]['profile'])
-
-        canvas = []
-        for x in range(60, 140):
-            canvas.append([])
-            for y in range(80, 140):
-                effscore = None
-                (canvas[x - 60]).append(effscore)
-
-        dict1 = {'nph': nph_list, 'avg_enter': avg_enter_list, 'profile': profile_list}
-
-        x1 = np.linspace(6, 14.0, 60)
-        x2 = np.linspace(90, 150, 80)
-        x, y = np.meshgrid(x1, x2)
-        cm = plt.cm.get_cmap('cividis')
-        fig1, ax1 = plt.subplots(figsize=(6, 4))
-        p1 = plt.contourf(x, y, canvas, levels=1000)
-        p2 = sns.scatterplot(x='nph', y='avg_enter', hue='profile', data=dict1, legend=False)
-        plt.savefig('data/plots/plot9.png', dpi=1000)
-        plt.close()
-
-    # table displaying some nether stats for each enter type
-    @classmethod
-    def graph10(cls, exitSuccess):
-        values = []
-        for key in exitSuccess.keys():
-            values.append([exitSuccess[key]['Conversion'], exitSuccess[key]['Average Enter'], exitSuccess[key]['Average Split']])
-        values.insert(0, ['Conversion', 'Avg. Enter', 'Avg. Nether Split'])
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=[''] + list(exitSuccess.keys()),
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=values,
-                line_color='blue',
-                fill_color='green',
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot10.png')
-
-    # table displaying general stats of a session
-    @classmethod
-    def graph11(cls, generalData):
-        values = [Logistics.formatValue(generalData['rnph']),
-                  Logistics.formatValue(generalData['average enter'], isTime=True),
-                  Logistics.formatValue(generalData['efficiency score'])]
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=['rnph', 'avg. enter', 'score'],
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=values,
-                line_color='blue',
-                fill_color='green',
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot11.png')
-
-    # table displaying general stats of a session
-    @classmethod
-    def graph12(cls, generalData):
-        values = [Logistics.formatValue(generalData['total resets']),
-                  Logistics.formatValue(generalData['total time'] + generalData['total Walltime'], isTime=True),
-                  Logistics.formatValue(generalData['percent played'], isPercent=True),
-                  Logistics.formatValue(generalData['rpe'])]
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=['Resets', 'Playtime', '% played', 'rpe'],
-                line_color='white', fill_color='white',
-                align='center', font=dict(color='black', size=12)
-            ),
-            cells=dict(
-                values=values,
-                line_color='blue',
-                fill_color='green',
-                align='center', font=dict(color='white', size=11)
-            ))
-        ])
-        fig.write_image('data/plots/plot12.png')
+        statDict = {'NPH': Logistics.formatValue(currentSession['general stats']['rnph']),
+                    'EnterAvg': Logistics.formatValue(currentSession['splits stats']['Nether']['Cumulative Average'],
+                                                      isTime=True),
+                    'EnterCount': Logistics.formatValue(currentSession['splits stats']['Nether']['Count'])}
+        if not os.path.exists('obs'):
+            os.mkdir('obs')
+            for stat in statDict.keys():
+                txtFile = open('obs/' + stat+ '.txt', 'x')
+                txtFile.close()
+        for stat in statDict.keys():
+            with open('obs/' + stat + '.txt', 'w') as obsTxtFile:
+                obsTxtFile.write(statDict[stat])
+                obsTxtFile.close()
 
 
 # class methods for giving feedback
@@ -932,16 +265,13 @@ class Feedback:
         try:
             targetTime = int(settings['playstyle']['target time'])
         except Exception as e:
-            main.errorPoppup("target time must be in seconds as an integer")
+            main1.errorPoppup("target time must be in seconds as an integer")
             return None
         return Logistics.getResidual(average, formulaDict[split]['m'], targetTime, formulaDict[split]['b'])
 
     @classmethod
     def splitsA(cls, split, average):
-        formulaDict = {'Nether': {'m': 0.2, 'b': -20},
-                       'Structure 1': {'m': 0.3, 'b': -30},
-                       'Structure 2': {'m': 0.45, 'b': 30},
-                       'Nether Exit': {'m': 0.5, 'b': 90}}
+        formulaDict = thresholds['splitFormulas']
         return Feedback.splits(split, average, formulaDict)
 
 
@@ -1024,92 +354,95 @@ class Feedback:
             text = 'When comparing your stats to the stats of other people who are near your skill level, we have determined that...\n' + 'There is nothing unusual in your gameplay and resetting'
         return text
 
+    @classmethod
+    def overworld(cls, data):
+        text = ''
+        recomendedSeedsPlayed = None
+
+        # wall seeds played
+        for item in thresholds['recomendedSeedsPlayed']:
+            if item['instMin'] <= int(settings['playstyle']['instance count']) <= item['instMax']:
+                recomendedSeedsPlayed = {'a': item['lowerBound'], 'b': item['upperBound']}
+
+        if recomendedSeedsPlayed is not None:
+            if (data['general stats']['percent played'] < recomendedSeedsPlayed['a']):
+                text += 'click into more seeds; be less picky with the previews you want to play\n'
+            elif (data['general stats']['percent played'] > recomendedSeedsPlayed['b']):
+                text += 'click into less seeds; be more selective with the previews you want to play\n'
+
+        # overall reset hardness
+        fast = data['general stats']['average enter'] > thresholds['splitFormulas']['Nether']['m'] * int(settings['playstyle']['target time']) + thresholds['splitFormulas']['Nether']['b']
+        if data['general stats']['rnph'] < thresholds['nph']['low'] and fast:
+            text += 'consider resetting your overworlds less aggressively; reset softer\n'
+        if data['general stats']['rnph'] > thresholds['nph']['high'] and not fast:
+            text += 'consider resetting your overworlds more agressively; reset harder\n'
+
+        # conversions
+        eSuccess = data['general stats']['Exit Success']
+        bt2WoodConversion = (eSuccess['Buried Treasure w/ tnt']['Wood Conversion'] * eSuccess['Buried Treasure w/ tnt']['Iron Count'] + eSuccess['Buried Treasure']['Wood Conversion'] * eSuccess['Buried Treasure']['Iron Count']) / (eSuccess['Buried Treasure w/ tnt']['Iron Count'] + eSuccess['Buried Treasure']['Iron Count'])
+        if bt2WoodConversion > thresholds['owConversions']['bt-wood']['high']:
+            text += 'you might be playing out too many buried treasures; remember to judge ocean quality and pace while running to trees, and reset if they are not favourable\n'
+        elif bt2WoodConversion < thresholds['owConversions']['bt-wood']['low']:
+            text += 'if you play out islands that do not have trees, stop doing that; consider doing more thorough assessment of ocean quality while looking for the bt\n'
+
+        return text
+
+    @classmethod
+    def nether(cls):
+        return Feedback.percentilesToText(Feedback.splitDataPercentiles(), float(settings['display']['comparison threshold']))
+
 
 class CompareProfiles:
     pass
 
 
-"""
-global variables
-"""
-
-databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
-config = Logistics.getConfig()
-settings = Logistics.getSettings()
-sessions = Logistics.getSessions()
-gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
-gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
-sh2 = gc_sheets_database.open_by_url(databaseLink)
-wks2 = sh2[0]
-wks2 = None
-second = timedelta(seconds=1)
-currentSession = {'splits stats': {}, 'general stats': {}}
-currentSessionMarker = 'X'
-pages = []
-selectedSession = None
-isTracking = False
-isUpdating = False
-isGraphingGeneral = False
-isGraphingSplit = False
-isGraphingEntry = False
-isGraphingComparison = False
-updateStatsLoadingProgress = ''
-advChecks = [
-    ("minecraft:recipes/misc/charcoal", "has_log"),
-    ("minecraft:story/iron_tools", "iron_pickaxe"),
-    ("timelines", "enter_nether"),
-    ("timelines", "enter_bastion"),
-    ("timelines", "enter_fortress"),
-    ("timelines", "nether_travel"),
-    ("timelines", "enter_stronghold"),
-    ("timelines", "enter_end"),
-]
-
-statsChecks = [
-    "nothing lol",
-    ("minecraft:dropped", "minecraft:gold_ingot"),
-    ("minecraft:picked_up", "minecraft:blaze_rod"),
-    ("minecraft:killed", "minecraft:blaze"),
-    ("minecraft:picked_up", "minecraft:flint"),
-    ("minecraft:mined", "minecraft:gravel"),
-    ("minecraft:custom", "minecraft:deaths"),
-    ("minecraft:custom", "minecraft:traded_with_villager"),
-    ("minecraft:killed", "minecraft:enderman"),
-    ("minecraft:picked_up", "minecraft:ender_eye")
-]
-
-"""
-global variables
-"""
-
-
 # tracking
-class Utilities:
+class Sheets:
     @classmethod
-    def getForegroundWindowTitle(cls) -> Optional[str]:
-        hWnd = windll.user32.GetForegroundWindow()
-        length = windll.user32.GetWindowTextLengthW(hWnd)
-        buf = create_unicode_buffer(length + 1)
-        windll.user32.GetWindowTextW(hWnd, buf, length + 1)
-
-        # 1-liner alternative: return buf.value if buf.value else None
-        if buf.value:
-            return buf.value
-        else:
-            return ''
+    def setup(cls):
+        wks1.update_row(index=1, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution'], col_offset=0)
 
     @classmethod
-    def ms_to_string(cls, ms, returnTime=False):
-        if ms is None:
-            return None
+    def sheets(cls):
+        try:
+            # Setting up constants and verifying
+            color = (15.0, 15.0, 15.0)
+            global pushedLines
+            pushedLines = 1
+            statsCsv = "temp.csv"
+            def push_data():
+                global pushedLines
+                with open(statsCsv, newline="") as f:
+                    reader = csv.reader(f)
+                    data = list(reader)
+                    f.close()
+                try:
+                    if len(data) == 0:
+                        return
+                    wks1.insert_rows(values=data, row=2, number=1, inherit=False)
+                    wks1.insert_rows(values=data, row=1, number=1, inherit=False)
+                    if pushedLines == 1:
+                        endColumn = ord("A") + len(data)
+                        endColumn1 = ord("A") + (endColumn // ord("A")) - 1
+                        endColumn2 = ord("A") + ((endColumn - ord("A")) % 26)
+                        endColumn = chr(endColumn1) + chr(endColumn2)
+                        # dataSheet.format("A2:" + endColumn + str(1 + len(data)),{"backgroundColor": {"red": color[0], "green": color[1], "blue": color[2]}})
+                    pushedLines += len(data)
+                    f = open(statsCsv, "w+")
+                    f.close()
 
-        ms = int(ms)
 
-        t = datetime(1970, 1, 1) + timedelta(milliseconds=ms)
-        if returnTime:
-            return t
-        return t.strftime("%H:%M:%S")
+
+                except Exception as e2:
+                    print(e2)
+
+            live = True
+            while live:
+                push_data()
+                time.sleep(5)
+        except Exception as e:
+            print(e)
+            input("")
 
 
 # tracking
@@ -1125,12 +458,14 @@ class NewRecord(FileSystemEventHandler):
     splitless_count = 0
     break_time = 0
     wall_time = 0
-    isFirstRun = currentSessionMarker + '$' + config['version']
     rtaString = ''
+    isFirstRun = None
 
     def __init__(self):
         self.path = None
         self.data = None
+        with main1.currentSessionMarkerLock:
+            self.isFirstRun = currentSessionMarker + '$' + config['version']
 
     def ensure_run(self):
         if self.path is None:
@@ -1148,7 +483,6 @@ class NewRecord(FileSystemEventHandler):
             try:
                 self.data = json.load(record_file)
             except Exception as e:
-                print(e)
                 return
         if self.data is None:
             print("Record file couldnt be read")
@@ -1164,7 +498,7 @@ class NewRecord(FileSystemEventHandler):
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            if 'Projector' in Utilities.getForegroundWindowTitle() or settings['playstyle']["instance count"] == "1":
+            if 'Projector' in Logistics.getForegroundWindowTitle() or settings['playstyle']["instance count"] == "1":
                 if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
@@ -1179,6 +513,7 @@ class NewRecord(FileSystemEventHandler):
             return
         uids = list(self.data["stats"].keys())
         if len(uids) == 0:
+            print('no stats')
             return
         stats = self.data["stats"][uids[0]]["stats"]
         adv = self.data["advancements"]
@@ -1190,20 +525,20 @@ class NewRecord(FileSystemEventHandler):
 
         # Advancements
         has_done_something = False
-        self.this_run[0] = Utilities.ms_to_string(self.data["final_rta"])
+        self.this_run[0] = Logistics.ms_to_string(self.data["final_rta"])
         for idx in range(len(advChecks)):
             # Prefer to read from timelines
             if advChecks[idx][0] == "timelines" and self.this_run[idx + 1] is None:
                 for tl in self.data["timelines"]:
                     if tl["name"] == advChecks[idx][1]:
                         if lan > int(tl["rta"]):
-                            self.this_run[idx + 1] = Utilities.ms_to_string(tl["igt"])
+                            self.this_run[idx + 1] = Logistics.ms_to_string(tl["igt"])
                             has_done_something = True
             # Read other stuff from advancements
             elif (advChecks[idx][0] in adv and adv[advChecks[idx][0]]["complete"] and self.this_run[idx + 1] is None):
                 if lan > int(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["rta"]):
                     self.this_run[idx +
-                                  1] = Utilities.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
+                                  1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
                     has_done_something = True
 
         if "minecraft:story/smelt_iron" in adv:
@@ -1215,15 +550,15 @@ class NewRecord(FileSystemEventHandler):
             self.splitless_count += 1
             # Only account for splitless RTA
             self.rta_spent += self.data["final_rta"]
-            self.rtaString += str(math.trunc(self.data["final_rta"])) + '$'
+            self.rtaString += str(math.trunc(self.data["final_rta"]/1000)) + '$'
             return
 
-        self.rtaString += str(math.trunc(self.data["final_rta"]))
+        self.rtaString += str(math.trunc(self.data["final_rta"]/1000))
 
         # Stats
-        self.this_run[len(advChecks) + 1] = Utilities.ms_to_string(
+        self.this_run[len(advChecks) + 1] = Logistics.ms_to_string(
             self.data["final_igt"])
-        self.this_run[len(advChecks) + 2] = Utilities.ms_to_string(
+        self.this_run[len(advChecks) + 2] = Logistics.ms_to_string(
             self.data["retimed_igt"])
         for idx in range(1, len(statsChecks)):
             if (
@@ -1235,9 +570,47 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
+        enter_type, gold_source, spawn_biome, iron_source = Tracking.getMiscData(stats, adv)
+
+        iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
+
+        # Push to csv
+        d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
+        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run +
+                [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
+        self.isFirstRun = ''
+
+        with open("stats.csv", "a", newline="") as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(data)
+
+        if settings['tracking']['use sheets'] == 1:
+            with open("temp.csv", "r") as infile:
+                reader = list(csv.reader(infile))
+                reader.insert(0, data)
+            with open("temp.csv", "w", newline="") as outfile:
+                writer = csv.writer(outfile)
+                for line in reader:
+                    writer.writerow(line)
+
+        # updates displayed stats
+        CurrentSession.updateCurrentSession(data)
 
 
+        # Reset all counters/sums
+        self.wall_resets = 0
+        self.rta_spent = 0
+        self.splitless_count = 0
+        self.wall_time = 0
+        self.break_time = 0
+        self.rtaString = ''
 
+
+# tracking
+class Tracking:
+    @classmethod
+    def getMiscData(cls, stats, adv):
         enter_type = "None"
         if "minecraft:story/enter_the_nether" in adv:
             enter_type = "Obsidian"
@@ -1251,8 +624,9 @@ class NewRecord(FileSystemEventHandler):
 
         gold_source = "None"
         if ("minecraft:dropped" in stats and "minecraft:gold_ingot" in stats["minecraft:dropped"]) or (
-            "minecraft:picked_up" in stats and (
-                "minecraft:gold_ingot" in stats["minecraft:picked_up"] or "minecraft:gold_block" in stats["minecraft:picked_up"])):
+                "minecraft:picked_up" in stats and (
+                "minecraft:gold_ingot" in stats["minecraft:picked_up"] or "minecraft:gold_block" in stats[
+                "minecraft:picked_up"])):
             gold_source = "Classic"
             if "minecraft:mined" in stats and "minecraft:dark_prismarine" in stats["minecraft:mined"]:
                 gold_source = "Monument"
@@ -1281,9 +655,9 @@ class NewRecord(FileSystemEventHandler):
             # if haybale mined or iron golem killed or iron pickaxe obtained from chest
             elif ("minecraft:mined" in stats and "minecraft:hay_block" in stats["minecraft:mined"]) or (
                     "minecraft:killed" in stats and "minecraft:iron_golem" in stats["minecraft:killed"]) or (
-                    not("minecraft:crafted" in stats and ("minecraft:iron_pickaxe" in stats[
-                    "minecraft:crafted"] or "minecraft:diamond_pickaxe" in stats["minecraft:crafted"])) and (
-                    "minecraft:story/iron_tools" in adv)):
+                    not ("minecraft:crafted" in stats and ("minecraft:iron_pickaxe" in stats[
+                        "minecraft:crafted"] or "minecraft:diamond_pickaxe" in stats["minecraft:crafted"])) and (
+                            "minecraft:story/iron_tools" in adv)):
                 iron_source = "Village"
             # if more than 7 tnt mined
             elif ("minecraft:mined" in stats and "minecraft:tnt" in stats["minecraft:mined"] and stats[
@@ -1310,66 +684,55 @@ class NewRecord(FileSystemEventHandler):
                         elif "minecraft:used" in stats and ("minecraft:cooked_salmon" in stats[
                                 "minecraft:used"] or "minecraft:cooked_cod" in stats["minecraft:used"]):
                             iron_source = "Buried Treasure"
-                        #if sand/gravel mined before iron acquired
+                        # if sand/gravel mined before iron acquired
                         elif "minecraft:recipes/building_blocks/magenta_concrete_powder" in adv and (
                                 adv["minecraft:recipes/building_blocks/magenta_concrete_powder"]["criteria"][
-                                "has_the_recipe"]["igt"] < adv["minecraft:story/smelt_iron"]["igt"]):
+                                    "has_the_recipe"]["igt"] < adv["minecraft:story/smelt_iron"]["igt"]):
                             iron_source = "Buried Treasure"
                         # if wood mined before iron obtained
                         elif (("minecraft:story/smelt_iron" in adv and "minecraft:recipes/misc/charcoal" in adv) and (
                                 int(adv["minecraft:story/smelt_iron"]["igt"]) > int(
                                 adv["minecraft:recipes/misc/charcoal"][
-                                "igt"]))) or ("minecraft:recipes/misc/charcoal" in adv and not(
+                                "igt"]))) or ("minecraft:recipes/misc/charcoal" in adv and not (
                                 "minecraft:story/iron_tools" in adv)):
                             if ("minecraft:custom" in stats and ("minecraft:open_chest" in stats[
-                                    "minecraft:custom"] and stats["minecraft:custom"][
-                                    "minecraft:open_chest"] == 1)) or ("minecraft:nether/find_bastion" in adv):
+                                "minecraft:custom"] and stats["minecraft:custom"][
+                                                                     "minecraft:open_chest"] == 1)) or (
+                                    "minecraft:nether/find_bastion" in adv):
                                 iron_source = "Half Shipwreck"
                             else:
                                 iron_source = "Full Shipwreck"
-                        elif ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) or (
-                                "minecraft:crafted" in stats and "minecraft:diamond_sword" in stats["minecraft:crafted"]):
+                        elif ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats[
+                            "minecraft:crafted"]) or (
+                                "minecraft:crafted" in stats and "minecraft:diamond_sword" in stats[
+                                "minecraft:crafted"]):
                             iron_source = "Buried Treasure"
-                        elif "minecraft:mined" in stats and ((
-                                "minecraft:oak_log" in stats["minecraft:mined"] and stats["minecraft:mined"]["minecraft:oak_log"] <= 4) or (
-                                "minecraft:dark_oak_log" in stats["minecraft:mined"] and stats["minecraft:mined"]["minecraft:dark_oak_log"] <= 4) or (
-                                "minecraft:birch_log" in stats["minecraft:mined"] and stats["minecraft:mined"]["minecraft:birch_log"] <= 4) or (
-                                "minecraft:jungle_log" in stats["minecraft:mined"] and stats["minecraft:mined"]["minecraft:jungle_log"] <= 4) or (
-                                "minecraft:spruce_log" in stats["minecraft:mined"] and stats["minecraft:mined"]["minecraft:spruce_log"] <= 4) or (
-                                "minecraft:acacia_log" in stats["minecraft:mined"] and stats["minecraft:mined"]["minecraft:acacia_log"] <= 4)):
+                        elif "minecraft:mined" in stats and (("minecraft:oak_log" in stats["minecraft:mined"] and stats[
+                                "minecraft:mined"]["minecraft:oak_log"] <= 4) or ("minecraft:dark_oak_log" in stats[
+                                "minecraft:mined"] and stats["minecraft:mined"]["minecraft:dark_oak_log"] <= 4) or (
+                                "minecraft:birch_log" in stats["minecraft:mined"] and stats["minecraft:mined"][
+                                "minecraft:birch_log"] <= 4) or ("minecraft:jungle_log" in stats[
+                                "minecraft:mined"] and stats["minecraft:mined"]["minecraft:jungle_log"] <= 4) or (
+                                "minecraft:spruce_log" in stats["minecraft:mined"] and stats["minecraft:mined"][
+                                "minecraft:spruce_log"] <= 4) or ("minecraft:acacia_log" in stats[
+                                "minecraft:mined"] and stats["minecraft:mined"]["minecraft:acacia_log"] <= 4)):
                             iron_source = "Half Shipwreck"
                         else:
                             iron_source = "Buried Treasure"
+        return enter_type, gold_source, spawn_biome, iron_source
 
-        iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
+    @classmethod
+    def trackOldRecords(cls):
+        pass
 
-        # Push to csv
-        d = Utilities.ms_to_string(int(self.data["date"]), returnTime=True)
-        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run +
-                [Utilities.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Utilities.ms_to_string(self.rta_spent), Utilities.ms_to_string(self.break_time), Utilities.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
-        self.isFirstRun = ''
-
-        with open("stats.csv", "a", newline="") as outfile:
-            writer = csv.writer(outfile)
-            writer.writerow(data)
-
-        # updates displayed stats
-        Stats.updateCurrentSession(data)
-        pages[2].updateTables()
-
-        # Reset all counters/sums
-        self.wall_resets = 0
-        self.rta_spent = 0
-        self.splitless_count = 0
-        self.wall_time = 0
-        self.break_time = 0
-
-
-# tracking
-class Tracking:
     @classmethod
     def trackResets(cls):
+        if settings['tracking']['use sheets'] == 1:
+            Sheets.setup()
+            try:
+                open("temp.csv", "x")
+            except Exception as e:
+                pass
         while True:
             try:
                 newRecordObserver = Observer()
@@ -1385,6 +748,11 @@ class Tracking:
             files = glob.glob(f'{settings["tracking"]["records path"]}\\*.json')
             for f in files:
                 os.remove(f)
+
+        if settings['tracking']['use sheets'] == 1:
+            t = threading.Thread(target=Sheets.sheets, name="sheets")
+            t.daemon = True
+            t.start()
 
         print("Tracking...")
         live = True
@@ -1402,15 +770,6 @@ class Tracking:
 
 
 # gui
-class Page(tk.Frame):
-    def __init__(self, *args, **kwargs):
-        tk.Frame.__init__(self, *args, **kwargs)
-
-    def show(self):
-        self.lift()
-
-
-# gui
 class IntroPage(Page):
     def populate(self):
         pass
@@ -1422,8 +781,13 @@ class IntroPage(Page):
 
 # gui
 class SettingsPage(Page):
-    varStrings = [['records path', 'break threshold', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity'], ['instance count', 'target time'], ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry'], ['check', 'check', 'check', 'check', 'check']]
+    explanationText = 'This is the page where you adjust your settings. Your settings are saved in the data folder. Remember to press save to save and apply the adjustments!'
+    varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity'], ['instance count', 'target time', 'rd', 'ed'], ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
+    varTypes = [['entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry'], ['check', 'check', 'check', 'check', 'check']]
+    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time you stop tracking'],
+                   ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet'],
+                   ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
+                   ['', '', '', '', '']]
     varGroups = ['tracking', 'display', 'playstyle', 'playstyle cont.']
     settingsVars = []
     labels = []
@@ -1433,6 +797,12 @@ class SettingsPage(Page):
 
     def saveSettings(self):
         global settings
+        global sh1
+        global wks1
+        if settings['tracking']['sheet link'] != '':
+            gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
+            sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+            wks1 = sh1.worksheet_by_title('Raw Data')
         for i1 in range(len(self.varStrings)):
             for i2 in range(len(self.varStrings[i1])):
                 settings[self.varGroups[i1]][self.varStrings[i1][i2]] = self.settingsVars[i1][i2].get()
@@ -1441,10 +811,12 @@ class SettingsPage(Page):
             json.dump(settings, settingsJson)
             settingsJson.close()
         except Exception as e:
-            main.errorPoppup('did you move your settings file from where it originally was?')
+            main1.errorPoppup('did you move your settings file from where it originally was?')
 
     def populate(self):
-        loadedSettings = Logistics.getSettings()
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=3, padx=50)
+        loadedSettings = FileLoader.getSettings()
         for i1 in range(len(self.varStrings)):
             self.containers.append(tk.Frame(self, borderwidth=10))
             self.settingsVars.append([])
@@ -1465,15 +837,16 @@ class SettingsPage(Page):
                 elif self.varTypes[i1][i2] == 'check':
                     self.widgets[i1].append(tk.Checkbutton(self.subcontainers[i1][i2], text='', variable=self.settingsVars[i1][i2], onvalue=1, offvalue=0))
                 self.widgets[i1][i2].pack(side="left")
+                Tooltip.createToolTip(self.labels[i1][i2], self.varTooltips[i1][i2])
                 self.subcontainers[i1][i2].pack(side="top")
-        self.containers[0].grid(row=0, column=0, sticky="nsew")
-        self.containers[1].grid(row=1, column=0, sticky="nsew")
-        self.containers[2].grid(row=0, column=2, sticky="nsew")
-        self.containers[3].grid(row=1, column=2, sticky="nsew")
+        self.containers[0].grid(row=1, column=0, sticky="nsew")
+        self.containers[1].grid(row=2, column=0, sticky="nsew")
+        self.containers[2].grid(row=1, column=2, sticky="nsew")
+        self.containers[3].grid(row=2, column=2, sticky="nsew")
 
         cmd = partial(self.saveSettings)
         save_Btn = tk.Button(self, text='Save', command=cmd)
-        save_Btn.grid(row=2, column=1, sticky="nsew")
+        save_Btn.grid(row=3, column=1, sticky="nsew")
 
 
     def __init__(self, *args, **kwargs):
@@ -1483,149 +856,92 @@ class SettingsPage(Page):
 
 # gui
 class CurrentSessionPage(Page):
+    explanationText = 'Tables will appear here while you are tracking. They will provide data for the current session'
     panel1 = None
     panel2 = None
+    container = None
 
     def updateTables(self):
         if self.panel1 is not None:
             self.panel1.grid_forget()
-        img1 = Image.open("data/plots/plot6.png")
-        img1 = img1.resize((600, 300))
-        img1 = ImageTk.PhotoImage(img1)
-        self.panel1 = Label(self, image=img1)
-        self.panel1.image = img1
+        self.panel1 = PlotFrame(self.container, currentSession['figs'][0])
         self.panel1.grid(row=0, column=0, sticky="nsew")
 
         if self.panel2 is not None:
             self.panel2.grid_forget()
-        img2 = Image.open("data/plots/plot7.png")
-        img2 = img2.resize((600, 300))
-        img2 = ImageTk.PhotoImage(img2)
-        self.panel2 = Label(self, image=img2)
-        self.panel2.image = img2
+        self.panel2 = PlotFrame(self.container, currentSession['figs'][1])
         self.panel2.grid(row=1, column=0, sticky="nsew")
+
+    def populate(self):
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, padx=50)
+        self.container = tk.Frame(self)
+        self.container.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
+        self.populate()
 
 
 # gui
 class GeneralPage(Page):
+    explanationText = 'General stats, graphs, and tables will appear on this page. The most important statistics will appear on this page'
     panel1 = None
     panel2 = None
     panel3 = None
     panel4 = None
-    label1 = None
-    label2 = None
-    label3 = None
-    label4 = None
-    container1 = None
-    container2 = None
-    container3 = None
-    container4 = None
-    sizes = [[800, 100], [800, 100], [400, 300], [400, 300]]
+    container = None
 
-    def displayInfo_sub(self):
+    def displayInfo(self):
         global isGraphingGeneral
         if not isGraphingGeneral:
             isGraphingGeneral = True
-            sessionData = Logistics.getSessionData(selectedSession.get())
-
-            Graphs.graph11(sessionData['general stats'])
-            img1 = Image.open("data/plots/plot11.png")
-            img1 = img1.crop((0, 100, 700, 175))
-            img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
-            img1 = ImageTk.PhotoImage(img1)
-
-            Graphs.graph12(sessionData['general stats'])
-            img2 = Image.open("data/plots/plot12.png")
-            img2 = img2.crop((0, 100, 700, 175))
-            img2 = img2.resize((self.sizes[1][0], self.sizes[1][1]))
-            img2 = ImageTk.PhotoImage(img2)
-
-            Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'],
-                           'Overworld': sessionData['general stats']['total ow time'],
-                           'Nether': sessionData['general stats']['total nether time']})
-            img3 = Image.open("data/plots/plot8.png")
-            img3 = img3.resize((self.sizes[2][0], self.sizes[2][1]))
-            img3 = ImageTk.PhotoImage(img3)
-
-            Graphs.graph1(sessionData['general stats']['RTA Distribution'], 0.8)
-            img4 = Image.open("data/plots/plot1.png")
-            img4 = img4.resize((self.sizes[3][0], self.sizes[3][1]))
-            img4 = ImageTk.PhotoImage(img4)
+            sessionData = Stats.getSessionData(selectedSession.get(), sessions)
 
             if self.panel1 is not None:
                 self.panel1.grid_forget()
-            else:
-                self.label1.grid_forget()
-            self.panel1 = Label(self.container1, image=img1)
-            self.panel1.image = img1
+            try:
+                self.panel1 = PlotFrame(self.container, Graphs.graph11(sessionData['general stats']))
+            except Exception as e:
+                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
             self.panel1.grid(row=0, column=0, sticky="nsew")
 
             if self.panel2 is not None:
                 self.panel2.grid_forget()
-            else:
-                self.label2.grid_forget()
-            self.panel2 = Label(self.container2, image=img2)
-            self.panel2.image = img2
-            self.panel2.grid(row=0, column=0, sticky="nsew")
+            try:
+                self.panel2 = PlotFrame(self.container, Graphs.graph12(sessionData['general stats']))
+            except Exception as e:
+                self.panel2 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel2.grid(row=0, column=1, sticky="nsew")
 
             if self.panel3 is not None:
                 self.panel3.grid_forget()
-            else:
-                self.label3.grid_forget()
-            self.panel3 = Label(self.container3, image=img3)
-            self.panel3.image = img3
-            self.panel3.grid(row=0, column=0, sticky="nsew")
+            try:
+                self.panel3 = PlotFrame(self.container, Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}))
+            except Exception as e:
+                self.panel3 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel3.grid(row=1, column=0, sticky="nsew")
 
             if self.panel4 is not None:
                 self.panel4.grid_forget()
-            else:
-                self.label4.grid_forget()
-            self.panel4 = Label(self.container4, image=img4)
-            self.panel4.image = img4
-            self.panel4.grid(row=0, column=0, sticky="nsew")
-
-            isGraphingGeneral = False
-
-    def displayInfo(self):
-        t1 = threading.Thread(
-            target=self.displayInfo_sub, name="generalstats"
-        )
-        t1.daemon = True
-        t1.start()
+            try:
+                self.panel4 = PlotFrame(self.container, Graphs.graph1(sessionData['general stats']['RTA Distribution'], 0.8))
+            except Exception as e:
+                self.panel4 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel4.grid(row=1, column=1, sticky="nsew")
 
     def populate(self):
-        self.container1 = tk.Frame(self, width=self.sizes[0][0], height=self.sizes[0][1], padx=5, pady=5, bg='green')
-        self.label1 = tk.Label(self.container1, text="Table", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=self.sizes[0][0]/2, y=self.sizes[0][1]/2)
-        self.container1.grid(row=0, column=1, columnspan=2)
-
-        self.container2 = tk.Frame(self, width=self.sizes[1][0], height=self.sizes[1][1], padx=5, pady=5, bg='green')
-        self.label2 = tk.Label(self.container2, text="Table", font=('calibri', 40), bg='green')
-        self.label2.place(anchor='center', x=self.sizes[1][0]/2, y=self.sizes[1][1]/2)
-        self.container2.grid(row=1, column=1, columnspan=2)
-
-        self.container3 = tk.Frame(self, width=self.sizes[2][0], height=self.sizes[2][1], padx=5, pady=5, bg='green')
-        self.label3 = tk.Label(self.container3, text="Pie", font=('calibri', 40), bg='green')
-        self.label3.place(anchor='center', x=self.sizes[2][0]/2, y=self.sizes[2][1]/2)
-        self.container3.grid(row=2, column=1)
-
-        self.container4 = tk.Frame(self, width=self.sizes[3][0], height=self.sizes[3][1], padx=5, pady=5, bg='green')
-        self.label4 = tk.Label(self.container4, text="Graph", font=('calibri', 40), bg='green')
-        self.label4.place(anchor='center', x=self.sizes[3][0]/2, y=self.sizes[3][1]/2)
-        self.container4.grid(row=2, column=2)
-
-        splits = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End',
-                  'Iron']
-        self.selectedSplit = StringVar()
-        self.selectedSplit.set("Nether")
-        drop1 = OptionMenu(self, self.selectedSplit, *splits)
-        drop1.grid(row=0, column=0)
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
+        self.container = tk.Frame(self)
+        self.container.grid(row=1, column=1)
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=1, column=0)
+        graph_Btn.grid(row=2, column=0)
+        self.panel1 = PlotFrame(self.container)
+        self.panel2 = PlotFrame(self.container)
+        self.panel3 = PlotFrame(self.container)
+        self.panel4 = PlotFrame(self.container)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1634,75 +950,82 @@ class GeneralPage(Page):
 
 # gui
 class SplitsPage(Page):
+    explanationText = 'Select any split from the dropdown to set it to the active split. the graphs and tables will provide data and analysis on the active split.'
     panel1 = None
     panel2 = None
-    label1 = None
-    label2 = None
-    container1 = None
-    container2 = None
+    panel3 = None
+    panel4 = None
+    container = None
     selectedSplit = None
-    sizes = [[400, 400], [800, 150]]
+    selectedAdjustment = None
 
-    def displayInfo_sub(self):
+    def displayInfo(self):
         global isGraphingSplit
         if not isGraphingSplit:
             isGraphingSplit = True
-            sessionData = Logistics.getSessionData(selectedSession.get())
+            sessionData = Stats.getSessionData(selectedSession.get(), sessions)
 
-            Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.8)
-            img1 = Image.open("data/plots/plot1.png")
-            img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
-            img1 = ImageTk.PhotoImage(img1)
-
-            Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()])
-            img2 = Image.open("data/plots/plot5.png")
-            img2 = img2.crop((0, 100, 700, 175))
-            img2 = img2.resize((self.sizes[1][0], self.sizes[1][1]))
-            img2 = ImageTk.PhotoImage(img2)
+            text = f"If you reset your slowest {self.selectedAdjustment.get() * 100}% of {self.selectedSplit.get()}s, your {self.selectedSplit.get()}s per hour would decrease by no more than {self.selectedAdjustment.get() * 100}%, while your avg would decrease from {np.mean(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution']):.1f} to {np.mean(Logistics.remove_top_X_percent(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedAdjustment.get())):.1f}"
 
             if self.panel1 is not None:
                 self.panel1.grid_forget()
-            else:
-                self.label1.grid_forget()
-            self.panel1 = Label(self.container1, image=img1)
-            self.panel1.image = img1
+            try:
+                self.panel1 = PlotFrame(self.container, Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.8))
+            except Exception as e:
+                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
             self.panel1.grid(row=0, column=0, sticky="nsew")
 
             if self.panel2 is not None:
                 self.panel2.grid_forget()
-            else:
-                self.label2.grid_forget()
-            self.panel2 = Label(self.container2, image=img2)
-            self.panel2.image = img2
-            self.panel2.grid(row=0, column=0, sticky="nsew")
+            try:
+                self.panel2 = PlotFrame(self.container, Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()]))
+            except Exception as e:
+                self.panel2 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel2.grid(row=1, column=0, sticky="nsew")
+
+            if self.panel3 is not None:
+                self.panel3.grid_forget()
+            try:
+                self.panel3 = PlotFrame(self.container, Graphs.graph1(Logistics.remove_top_X_percent(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedAdjustment.get()), 0.8))
+            except Exception as e:
+                self.panel3 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel3.grid(row=0, column=1, sticky="nsew")
+
+            if self.panel4 is not None:
+                self.panel4.grid_forget()
+            try:
+                self.panel4 = Label(self.container, text=text, wraplength=300, font=("Arial", 12))
+            except Exception as e:
+                self.panel4 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+
+            self.panel4.grid(row=1, column=1, sticky="nsew")
             isGraphingSplit = False
 
-    def displayInfo(self):
-        t1 = threading.Thread(
-            target=self.displayInfo_sub, name="graph5"
-        )
-        t1.daemon = True
-        t1.start()
 
     def populate(self):
-        self.container1 = tk.Frame(self, width=self.sizes[0][0], height=self.sizes[0][1], padx=5, pady=5, bg='green')
-        self.label1 = tk.Label(self.container1, text="Graph", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=self.sizes[0][0]/2, y=self.sizes[0][1]/2)
-        self.container1.grid(row=0, column=1)
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
-        self.container2 = tk.Frame(self, width=self.sizes[1][0], height=self.sizes[1][1], padx=5, pady=5, bg='green')
-        self.label2 = tk.Label(self.container2, text="Table", font=('calibri', 40), bg='green')
-        self.label2.place(anchor='center', x=self.sizes[1][0]/2, y=self.sizes[1][1]/2)
-        self.container2.grid(row=1, column=1, columnspan=2)
+        self.container = tk.Frame(self)
+        self.container.grid(row=1, column=1)
 
         splits = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End', 'Iron']
         self.selectedSplit = StringVar()
         self.selectedSplit.set("Nether")
         drop1 = OptionMenu(self, self.selectedSplit, *splits)
-        drop1.grid(row=0, column=0)
+        drop1.grid(row=1, column=0)
+
+        self.selectedAdjustment = DoubleVar()
+        self.selectedAdjustment.set(0.1)
+        scale1 = Scale(self, variable=self.selectedAdjustment, from_=0.0, to=0.5, orient=tk.HORIZONTAL, resolution=0.01)
+        scale1.grid(row=2, column=0)
+
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=1, column=0)
+        graph_Btn.grid(row=3, column=0)
+        self.panel1 = PlotFrame(self.container)
+        self.panel2 = PlotFrame(self.container)
+        self.panel3 = PlotFrame(self.container)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1711,115 +1034,74 @@ class SplitsPage(Page):
 
 # gui
 class EntryBreakdownPage(Page):
+    explanationText = 'This page focusses on the overworld. It does analysis based on the different iron sources and enter types that were used to enter the nether.'
     panel1 = None
     panel2 = None
     panel3 = None
     panel4 = None
-    label1 = None
-    label2 = None
-    label3 = None
-    label4 = None
-    container1 = None
-    container2 = None
-    container3 = None
-    container4 = None
-    sizes = [[600, 200], [300, 200], [300, 200], [600, 200]]
+    container = None
 
-    def displayInfo_sub(self):
+    def displayInfo(self):
         global isGraphingEntry
         if not isGraphingEntry:
             isGraphingEntry = True
-            sessionData = Logistics.getSessionData(selectedSession.get())
+            sessionData = Stats.getSessionData(selectedSession.get(), sessions)
             enterTypeList = []
             enterMethodList = []
             for enter in sessionData['general stats']['enters']:
                 enterTypeList.append(enter['type'])
                 enterMethodList.append(enter['method'])
 
-            Graphs.graph4(sessionData['general stats']['enters'])
-            img1 = Image.open("data/plots/plot4.png")
-            img1 = img1.crop((30, 80, 670, 280))
-            img1 = img1.resize((self.sizes[0][0], self.sizes[0][1]))
-            img1 = ImageTk.PhotoImage(img1)
-
-            Graphs.graph2(enterTypeList)
-            img2 = Image.open("data/plots/plot2.png")
-            img2 = img2.resize((self.sizes[1][0], self.sizes[1][1]))
-            img2 = ImageTk.PhotoImage(img2)
-
-            Graphs.graph2(enterMethodList)
-            img3 = Image.open("data/plots/plot2.png")
-            img3 = img3.resize((self.sizes[2][0], self.sizes[2][1]))
-            img3 = ImageTk.PhotoImage(img3)
-
-            Graphs.graph10(sessionData['general stats']['Exit Success'])
-            img4 = Image.open("data/plots/plot10.png")
-            img4 = img4.crop((50, 50, 650, 250))
-            img4 = img4.resize((self.sizes[3][0], self.sizes[3][1]))
-            img4 = ImageTk.PhotoImage(img4)
-
             if self.panel1 is not None:
                 self.panel1.grid_forget()
-            else:
-                self.label1.grid_forget()
-            self.panel1 = Label(self.container1, image=img1)
-            self.panel1.image = img1
+            try:
+                self.panel1 = PlotFrame(self.container, Graphs.graph4(sessionData['general stats']['enters'], settings))
+            except Exception as e:
+                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
             self.panel1.grid(row=0, column=0, sticky="nsew")
 
             if self.panel2 is not None:
                 self.panel2.grid_forget()
-            else:
-                self.label2.grid_forget()
-            self.panel2 = Label(self.container2, image=img2)
-            self.panel2.image = img2
-            self.panel2.grid(row=0, column=0, sticky="nsew")
+            try:
+                self.panel2 = PlotFrame(self.container, Graphs.graph2(enterTypeList))
+            except Exception as e:
+                self.panel2 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel2.grid(row=0, column=1, sticky="nsew")
 
             if self.panel3 is not None:
                 self.panel3.grid_forget()
-            else:
-                self.label3.grid_forget()
-            self.panel3 = Label(self.container3, image=img3)
-            self.panel3.image = img3
-            self.panel3.grid(row=0, column=0, sticky="nsew")
+            try:
+                self.panel3 = PlotFrame(self.container, Graphs.graph2(enterMethodList))
+            except Exception as e:
+                self.panel3 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel3.grid(row=1, column=0, sticky="nsew")
 
             if self.panel4 is not None:
                 self.panel4.grid_forget()
-            else:
-                self.label4.grid_forget()
-            self.panel4 = Label(self.container4, image=img4)
-            self.panel4.image = img4
-            self.panel4.grid(row=0, column=0, sticky="nsew")
+            try:
+                self.panel4 = PlotFrame(self.container, Graphs.graph10(sessionData['general stats']['Exit Success']))
+            except Exception as e:
+                self.panel4 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            self.panel4.grid(row=1, column=1, sticky="nsew")
+
             isGraphingEntry = False
 
-    def displayInfo(self):
-        t1 = threading.Thread(target=self.displayInfo_sub, name="graph4")
-        t1.daemon = True
-        t1.start()
 
     def populate(self):
-        self.container1 = tk.Frame(self, width=self.sizes[0][0], height=self.sizes[0][1], padx=5, pady=5, bg='green')
-        self.label1 = tk.Label(self.container1, text="Table", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=self.sizes[0][0]/2, y=self.sizes[0][1]/2)
-        self.container1.grid(row=0, column=1, columnspan=2)
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
-        self.container2 = tk.Frame(self, width=self.sizes[1][0], height=self.sizes[1][1], padx=5, pady=5, bg='green')
-        self.label2 = tk.Label(self.container2, text="Pie", font=('calibri', 40), bg='green')
-        self.label2.place(anchor='center', x=self.sizes[1][0]/2, y=self.sizes[1][1]/2)
-        self.container2.grid(row=0, column=3)
-
-        self.container3 = tk.Frame(self, width=self.sizes[2][0], height=self.sizes[2][1], padx=5, pady=5, bg='green')
-        self.label3 = tk.Label(self.container3, text="Pie", font=('calibri', 40), bg='green')
-        self.label3.place(anchor='center', x=self.sizes[2][0]/2, y=self.sizes[2][1]/2)
-        self.container3.grid(row=1, column=1)
-
-        self.container4 = tk.Frame(self, width=self.sizes[3][0], height=self.sizes[3][1], padx=5, pady=5, bg='green')
-        self.label4 = tk.Label(self.container4, text="Table", font=('calibri', 40), bg='green')
-        self.label4.place(anchor='center', x=self.sizes[3][0]/2, y=self.sizes[3][1]/2)
-        self.container4.grid(row=1, column=2, columnspan=2)
+        self.container = tk.Frame(self)
+        self.container.grid(row=1, column=1)
 
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=0, column=0, sticky="nsew")
+        graph_Btn.grid(row=1, column=0)
+
+        self.panel1 = PlotFrame(self.container)
+        self.panel2 = PlotFrame(self.container)
+        self.panel3 = PlotFrame(self.container)
+        self.panel4 = PlotFrame(self.container)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1829,43 +1111,30 @@ class EntryBreakdownPage(Page):
 # gui
 class ComparisonPage(Page):
     panel1 = None
-    label1 = None
-    container1 = None
+    container = None
 
-    def displayInfo_sub(self):
+    def displayInfo(self):
         global isGraphingComparison
         if not isGraphingComparison:
             isGraphingComparison = True
 
-            Graphs.graph9()
-            img1 = Image.open("data/plots/plot9.png")
-            img1 = img1.resize((300, 200))
-            img1 = ImageTk.PhotoImage(img1)
-
             if self.panel1 is not None:
                 self.panel1.grid_forget()
-            else:
-                self.label1.grid_forget()
-            self.panel1 = Label(self.container1, image=img1)
-            self.panel1.image = img1
+            try:
+                self.panel1 = PlotFrame(self.container, Graphs.graph9(sessions))
+            except Exception as e:
+                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
             self.panel1.grid(row=0, column=0, sticky="nsew")
 
             isGraphingComparison = False
 
-    def displayInfo(self):
-        t1 = threading.Thread(target=self.displayInfo_sub, name="Comparison")
-        t1.daemon = True
-        t1.start()
-
     def populate(self):
-        self.container1 = tk.Frame(self, width=300, height=200, padx=5, pady=5, bg='green')
-        self.label1 = tk.Label(self.container1, text="Plot", font=('calibri', 40), bg='green')
-        self.label1.place(anchor='center', x=150, y=100)
-        self.container1.grid(row=0, column=1)
+        self.container = tk.Frame(self)
+        self.container.grid(row=0, column=1)
 
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=0, column=0, sticky="nsew")
+        graph_Btn.grid(row=0, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1873,14 +1142,71 @@ class ComparisonPage(Page):
 
 
 # gui
+class FeedbackPage(Page):
+    explanationText = 'Generates Textual Feedback'
+    panel1 = None
+    panel2 = None
+    panel3 = None
+    panel4 = None
+    container = None
+
+    def displayInfo(self):
+        global isGivingFeedback
+        if not isGivingFeedback:
+            isGivingFeedback = True
+            sessionData = Stats.getSessionData(selectedSession.get(), sessions)
+
+            try:
+                self.panel1.set_text(Feedback.overworld(sessionData))
+            except Exception as e:
+                self.panel1.set_text('An error occured')
+
+            try:
+                self.panel2.set_text(Feedback.nether())
+            except Exception as e:
+                self.panel1.set_text('An error occured')
+
+            isGivingFeedback = False
+
+
+    def populate(self):
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
+
+        self.container = tk.Frame(self)
+        self.container.grid(row=1, column=1)
+
+        self.panel1 = ScrollableTextFrame(self.container)
+        self.panel1.set_header('Overworld')
+        self.panel1.grid(row=0, column=0, sticky="nsew")
+
+        self.panel2 = ScrollableTextFrame(self.container)
+        self.panel2.set_header('Nether')
+        self.panel2.grid(row=1, column=0, sticky="nsew")
+
+        cmd = partial(self.displayInfo)
+        graph_Btn = tk.Button(self, text='Generate Feedback', command=cmd)
+        graph_Btn.grid(row=1, column=0)
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.populate()
+
+
+# gui
 class MainView(tk.Frame):
-    top1 = None
     top2 = None
     sessionMarkerInput = None
     txtFileNameInput = None
     selectedStat = None
-    loadingLabel = None
     sessionMarkerEntry = None
+    currentSessionMarkerLock = threading.Lock()
+    pages = None
+    trackingLabel = None
+    updatingStatsLabel = None
+
+    def updateCSGraphs(self):
+        self.pages[2].updateTables()
 
     def errorPoppup(self, text):
         top = Toplevel()
@@ -1889,125 +1215,88 @@ class MainView(tk.Frame):
         label = Label(top, text=text)
         label.pack()
 
-    def addTxtFile(self, stat, filename):
-        if not os.path.exists('obs'):
-            os.mkdir('obs')
-        txtFile = open('obs/' + filename + '.txt', 'x')
-        txtFile.close()
-        config['obstxts'].append({'stat': stat, 'filename': filename})
-        with open('data/config.json', 'w') as configFile:
-            json.dump(config, configFile)
-            configFile.close()
-        self.top2.destroy()
-
-    def promptUserforTxtFile(self):
-        self.top2 = Toplevel()
-        self.top2.geometry("180x150")
-        self.top2.title("toplevel")
-
-        label = Label(self.top2, text="Enter a name for the text file\nChoose a stat")
-        label.pack()
-
-        self.txtFileNameInput = tk.StringVar()
-        txtFileNameEntry = Entry(self.top2, textvariable=self.txtFileNameInput)
-        txtFileNameEntry.pack()
-
-        statStrings = ['NPH', 'EnterAvg', 'EnterCount']
-        self.selectedStat = tk.StringVar()
-        self.selectedStat.set(statStrings[0])
-        statChoiceDrop = OptionMenu(self.top2, self.selectedStat, *statStrings)
-        statChoiceDrop.pack()
-
-        cmd = partial(self.addTxtFile, self.selectedStat.get(), self.selectedStat.get())
-        saveButton = Button(self.top2, text="Save Txt File", command=cmd)
-        saveButton.pack()
-
     def stopResetTracker(self):
         global isTracking
         isTracking = False
+        self.trackingLabel.config(text='Tracking: False', foreground='red', background='black')
 
     def startResetTracker(self):
-        global currentSessionMarker
         global isTracking
-        currentSessionMarker = self.sessionMarkerInput.get()
         isTracking = True
-        self.top1.destroy()
-        Stats.resetCurrentSession()
+        CurrentSession.resetCurrentSession()
+        self.trackingLabel.config(text='Tracking: True', foreground='green', background='black')
         t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
         t1.daemon = True
         t1.start()
 
     def promptUserForTracking(self):
+        global currentSessionMarker
         if not isTracking:
-            self.top1 = Toplevel()
-            self.top1.geometry("180x100")
-            self.top1.title("toplevel")
+            top1 = Toplevel()
+            top1.geometry("180x100")
+            top1.title("Start Tracking")
 
-            label = Label(self.top1, text="Enter a Session Marker")
+            label = Label(top1, text="Enter a Session Marker")
             label.pack()
 
-            self.sessionMarkerInput = tk.StringVar()
-            self.sessionMarkerEntry = Entry(self.top1, textvariable=self.sessionMarkerInput)
-            self.sessionMarkerEntry.pack()
+            entry = Entry(top1)
+            entry.pack()
 
-            startTrackingButton = Button(self.top1, text="Start Tracking", command=self.startResetTracker)
+            def get_value():
+                global currentSessionMarker
+                with self.currentSessionMarkerLock:
+                    value = entry.get()
+                    currentSessionMarker = value.replace('$', '')
+                top1.destroy()
+                self.startResetTracker()
+                return value
+
+            startTrackingButton = Button(top1, text="Start Tracking", command=get_value)
             startTrackingButton.pack()
         else:
-            main.errorPoppup('Already Tracking')
-
-    def watchUpdating(self):
-        prevUpdateStatsLoadingProgress = ''
-        while isUpdating:
-            self.loadingLabel = Label(text="Updating... ", foreground='green')
-            self.loadingLabel.place(x=500, y=500)
-            if updateStatsLoadingProgress != prevUpdateStatsLoadingProgress:
-                self.loadingLabel = Label(text="Updating... " + updateStatsLoadingProgress, foreground='green')
-                self.loadingLabel.place(x=500, y=500)
-            prevUpdateStatsLoadingProgress = updateStatsLoadingProgress
-            time.sleep(1)
-        self.loadingLabel.place_forget()
+            main1.errorPoppup('Already Tracking')
 
     def updateData(self):
         global isUpdating
+        self.updatingStatsLabel.config(text='Updating Stats: True', foreground='green', background='black')
         isUpdating = True
         Stats.saveSessionData()
-        t = threading.Thread(target=self.watchUpdating, name="updateData")
-        t.daemon = True
-        t.start()
+        self.updatingStatsLabel.config(text='Updating Stats: False', foreground='red', background='black')
+        isUpdating = False
 
     def __init__(self, *args, **kwargs):
-        global pages
         global selectedSession
         tk.Frame.__init__(self, *args, **kwargs)
-        pageTitles = ['About', 'Settings', 'Current Session', 'General', 'Splits', 'Entry Breakdown', 'Comparison']
-        pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self)]
+        pageTitles = ['About', 'Settings', 'Current Session', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback']
+        self.pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self)]
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)
+        buttonframe2 = tk.Frame(buttonframeMain)
         container = tk.Frame(self)
 
         statsMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Stats', menu=statsMenu)
         statsMenu.add_command(label="Update Stats", command=self.updateData)
-        statsMenu.add_command(label="Upload Data", command=Stats.uploadData)
-        statsMenu.add_command(label="Add Txt File", command=self.promptUserforTxtFile)
+        statsMenu.add_command(label="Upload Data", command=Database.uploadData)
 
         trackingMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Tracking', menu=trackingMenu)
         trackingMenu.add_command(label="Start Tracking", command=self.promptUserForTracking)
         trackingMenu.add_command(label="Stop Tracking", command=self.stopResetTracker)
+        trackingMenu.add_command(label="track old records", command=Tracking.trackOldRecords)
 
         updateMenu = Menu(menubar, tearoff=0)
-        if Logistics.checkGithub():
+        if Update.checkGithub():
             menubar.add_cascade(label='Update', menu=updateMenu)
-            updateMenu.add_command(label="Update", command=Logistics.update)
+            updateMenu.add_command(label="Update", command=Update.update)
         else:
             menubar.add_cascade(label='Update', menu=updateMenu)
-        updateMenu.add_command(label="Open Github", command=Logistics.openGithub)
+        updateMenu.add_command(label="Open Github", command=Update.openGithub)
 
-        for i in range(len(pages)):
-            pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
-            button = tk.Button(buttonframe1, text=pageTitles[i], command=pages[i].show)
+        for i in range(len(self.pages)):
+            self.pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
+            button = tk.Button(buttonframe1, text=pageTitles[i], command=self.pages[i].show, foreground='#ddddff', background='#880b00')
             button.grid(row=0, column=i, sticky="nsew")
 
         selectedSession = tk.StringVar()
@@ -2016,20 +1305,27 @@ class MainView(tk.Frame):
             sessionStrings.append(session['string'])
         selectedSession.set(sessionStrings[0])
         drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
+        drop.configure(background='black', foreground='white')
+        self.trackingLabel = Label(buttonframeMain, text='Tracking: False', foreground="red", background='black', font=("Arial", 10), pady=3, padx=10)
+        self.updatingStatsLabel = Label(buttonframeMain, text='Updating Stats: False', foreground="red", background='black', font=("Arial", 10), pady=3, padx=10)
 
-        drop.pack(side="right", padx=100)
+        self.trackingLabel.pack(side="right", expand=True)
+        self.updatingStatsLabel.pack(side="right", expand=True)
+        drop.pack(side="right")
         buttonframe1.pack(side="left", fill="x", expand=False)
         buttonframeMain.pack(side="top")
         container.pack(side="top", fill="both", expand=True)
 
-        pages[0].show()
+        self.pages[0].show()
 
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.title('Reset Tracker')
     menubar = Menu(root)
-    main = MainView(root)
+    main1 = MainView(root)
     root.config(menu=menubar)
-    main.pack(side="top", fill="both", expand=True)
-    root.wm_geometry("1200x700")
+    main1.pack(side="top", fill="both", expand=True)
+    root.wm_geometry("1000x700")
+
     root.mainloop()
