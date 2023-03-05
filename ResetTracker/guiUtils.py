@@ -122,3 +122,54 @@ class ScrollableTextFrame(tk.Frame):
         self.text.delete('1.0', tk.END)
         self.text.insert(tk.END, text)
         self.text.config(state='disabled')
+
+
+class ScrollableContainer(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        # Create a Frame widget with a canvas inside it
+        self.canvas = tk.Canvas(self, width=850, height=550)
+        self.container = tk.Frame(self.canvas)
+
+        # Create a scrollbar and bind it to the canvas
+        self.xscrollbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview)
+        self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=self.xscrollbar.set, yscrollcommand=self.yscrollbar.set)
+
+        # Pack the widgets into the window
+        self.canvas.grid(row=0, column=0)
+        self.xscrollbar.grid(row=1, column=0, sticky='ew')
+        self.yscrollbar.grid(row=0, column=1, sticky='ns')
+        self.container.grid(row=0, column=0)
+
+        # Set up the scrolling region
+        self.container.bind('<Configure>', self.on_container_configure)
+        self.canvas.create_window((0, 0), window=self.container, anchor='nw')
+
+    def on_container_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+
+    def add_plot_frame(self, graph, row, column):
+        try:
+            panel = PlotFrame(self.container, graph)
+        except Exception as e:
+            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+        panel.grid(row=row, column=column, sticky="nsew")
+
+    def add_label(self, text, row, column):
+        try:
+            panel = tk.Label(self.container, text=text, wraplength=300, font=("Arial", 12))
+        except Exception as e:
+            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+
+        panel.grid(row=row, column=column, sticky="nsew")
+
+    def clear_widgets(self):
+        # Loop over all child widgets in the container frame
+        for child in self.container.winfo_children():
+            # Check if the widget is a PlotFrame or Label
+            if isinstance(child, PlotFrame) or isinstance(child, Label):
+                # Ungrid the widget to remove it from the container frame
+                child.grid_forget()
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))

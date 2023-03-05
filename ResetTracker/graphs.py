@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
 from plotly.colors import n_colors
+import math
+import matplotlib.patches as mpatches
 
 from stats import *
 
@@ -10,8 +12,14 @@ from stats import *
 class Graphs:
     # makes a kde histogram of a distribution of datapoints
     @classmethod
-    def graph1(cls, dist, smoothness):
+    def graph1(cls, dist, title, smoothness=0.4, removeX=0, kde=True):
         mean = np.mean(dist)
+        new_dist = dist
+        if removeX != 0:
+            new_dist = Logistics.remove_top_X_percent(dist, removeX)
+        new_mean = np.mean(new_dist)
+        max1 = max(new_dist)
+        min1 = min(new_dist)
 
         # Set seaborn style
         sns.set_style("whitegrid")
@@ -20,18 +28,25 @@ class Graphs:
         fig, ax = plt.subplots(figsize=(4, 4))
 
         # Plot the KDE distribution
-        sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness)
+        sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness, color='#FF1493')
 
-        plt.axvline(mean, color='red', linestyle='--')
-        ax.text(mean, ax.get_ylim()[1]*0.1, f'Mean: {mean:.2f}', ha='center', va='center')
+        plt.axvline(mean, color='orange', linestyle='--', ymin=0.15)
+        plt.axvline(mean, color='orange', linestyle='--', ymax=0.07)
+        ax.text(mean, ax.get_ylim()[1]*0.1, f'μ: {mean:.2f}', ha='left', va='center', color='#FFC68C')
+        if removeX != 0:
+            plt.axvline(new_mean, color='green', linestyle='--', ymin=0.25)
+            plt.axvline(new_mean, color='green', linestyle='--', ymax=0.17)
+            ax.text(new_mean, ax.get_ylim()[1] * 0.2, f'μ`: {new_mean:.2f}', ha='right', va='center', color='#90EE90')
+            plt.axvline(max1, color='blue', linestyle='--', ymin=0.35)
+            plt.axvline(max1, color='blue', linestyle='--', ymax=0.27)
+            ax.text(max1, ax.get_ylim()[1] * 0.3, f'{(1 - removeX) * 100}th pctl: {max1:.2f}', ha='center', va='center', color='#ADD8E6')
 
         # Add labels and title
-        ax.set_xlabel('Distance')
-        ax.set_ylabel('Density')
-        ax.set_title('Distribution of Distances')
+        ax.set_xlabel(title)
+        ax.set_title('Distribution of ' + title)
 
         # Set x-axis limits
-        rangeX = [min(dist), max(dist)]
+        rangeX = [min1 * 0.95, max1 * 1.05]
         ax.set_xlim(rangeX)
 
         # Remove top and right spines
@@ -446,6 +461,85 @@ class Graphs:
             width=400
         )
         return fig
+
+    # makes a histogram distribution of rta colour coded based on the current split during reset
+    @classmethod
+    def graph13(cls, igtDist, latestSplits):
+        mappings = {'None': '#D3D3D3', 'Iron': '#000000', 'Wood': '#FF0000', 'Iron Pickaxe': '#00FF00',
+                    'Nether': '#0000FF', 'Structure 1': '#FFFF00', 'Structure 2': '#FF00FF', 'Nether Exit': '#00FFFF',
+                    'Stronghold': '#C0C0C0', 'End': '#808080'}
+        values = list(mappings.values())
+        keys = list(mappings.keys())
+
+        data = [[], [], [], [], [], [], [], [], [], []]
+
+        for i in range(len(igtDist)):
+            data[keys.index(latestSplits[i])].append(igtDist[i])
+
+        fig, ax = plt.subplots(figsize=(4, 4))
+
+        plt.hist(data, color=values, stacked=True,
+                 bins=np.linspace(0, round(math.sqrt(max(igtDist))) + 1, round(math.sqrt(max(igtDist))) + 2) ** 2)
+
+        # Add labels and title
+        plt.xlabel("Value")
+        plt.ylabel("Frequency")
+        plt.title("Stacked Histogram")
+        plt.yscale('log', base=10, subs=range(100))
+
+        # Add legend
+        patches = [mpatches.Patch(color=color, label=label) for label, color in mappings.items()]
+        plt.legend(handles=patches, loc='upper right')
+
+        return fig
+
+    @classmethod
+    def graph14(cls, data, split):
+        splits = ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold',
+                  'End']
+        splitDist = data['splits stats'][Logistics.get_previous_item(splits, split)]['Cumulative Distribution']
+        index = -1
+        x = []
+        y = []
+        for i in range(len(data['general stats']['RTA Distribution'])):
+            if data['general stats']['latest split list'][i] in splits[splits.index(split):]:
+                index += 1
+                if data['general stats']['latest split list'][i] == split:
+                    split1 = splitDist[index]
+                    x.append(split1)
+                    y.append(data['general stats']['RTA Distribution'][i] - split1)
+
+        fig, ax = plt.subplots(figsize=(4, 4))
+
+        bins = np.histogram2d(x, y, bins=5)[0]
+        sns.heatmap(bins, cmap='Blues')
+        plt.xlabel('List 2')
+        plt.ylabel('List 1')
+        plt.show()
+
+        return fig
+
+
+    @classmethod
+    def graph15(cls, data, split, smoothness=0.5, kde=True):
+        splits = ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold',
+                  'End']
+        prevSplit = Logistics.get_previous_item(splits, split)
+        splitDist = data['splits stats'][prevSplit]['Cumulative Distribution']
+        index = -1
+        dist = []
+        for i in range(len(data['general stats']['IGT Distribution'])):
+            if data['general stats']['latest split list'][i] in splits[splits.index(prevSplit):]:
+                index += 1
+                if data['general stats']['latest split list'][i] == prevSplit:
+                    split1 = splitDist[index]
+                    dist.append(data['general stats']['IGT Distribution'][i] - split1)
+
+        fig, ax = plt.subplots(figsize=(4, 4))
+        sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness)
+
+        return fig
+
 
     @classmethod
     def testGraphs(cls):

@@ -42,6 +42,14 @@ class FileLoader:
 
 class Logistics:
     @classmethod
+    def get_previous_item(cls, lst, item):
+        index = lst.index(item)
+        if index > 0:
+            return lst[index - 1]
+        else:
+            return None
+
+    @classmethod
     def getForegroundWindowTitle(cls) -> Optional[str]:
         hWnd = windll.user32.GetForegroundWindow()
         length = windll.user32.GetWindowTextLengthW(hWnd)
@@ -145,24 +153,18 @@ class Logistics:
 
     @classmethod
     def getRegressionLine(cls, x_list, y_list):
+        # Convert x and y to numpy arrays
         x = np.array(x_list)
         y = np.array(y_list)
 
-        n = np.size(x)
+        # Calculate the slope and y-intercept of the regression line
+        m, b = np.polyfit(x, y, 1)
 
-        m_x = np.mean(x)
-        m_y = np.mean(y)
+        # Calculate the residuals
+        residuals = y - (m * x + b)
 
-        SS_xy = np.sum(y * x) - n * m_y * m_x
-        SS_xx = np.sum(x * x) - n * m_x * m_x
-
-        m = SS_xy / SS_xx
-        b = m_y - m * m_x
-
-        sum = 0
-        for i in range(len(x_list)):
-            sum += (y_list[i] - (m * x_list[i] + b))
-        s = sum/len(x_list)
+        # Calculate the residual standard deviation (s)
+        s = np.std(residuals, ddof=1)
 
         return m, b, s
 

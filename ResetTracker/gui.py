@@ -1,10 +1,8 @@
-from functools import partial
 import pygsheets
 import glob
 import os
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-import math
 from scipy.stats import percentileofscore
 import requests
 import webbrowser
@@ -857,26 +855,18 @@ class SettingsPage(Page):
 # gui
 class CurrentSessionPage(Page):
     explanationText = 'Tables will appear here while you are tracking. They will provide data for the current session'
-    panel1 = None
-    panel2 = None
-    container = None
+    frame = None
 
     def updateTables(self):
-        if self.panel1 is not None:
-            self.panel1.grid_forget()
-        self.panel1 = PlotFrame(self.container, currentSession['figs'][0])
-        self.panel1.grid(row=0, column=0, sticky="nsew")
-
-        if self.panel2 is not None:
-            self.panel2.grid_forget()
-        self.panel2 = PlotFrame(self.container, currentSession['figs'][1])
-        self.panel2.grid(row=1, column=0, sticky="nsew")
+        self.frame.clear_widgets()
+        self.frame.add_plot_frame(currentSession['figs'][0], 0, 0)
+        self.frame.add_plot_frame(currentSession['figs'][1], 1, 0)
 
     def populate(self):
         explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
         explanation.grid(row=0, column=0, padx=50)
-        self.container = tk.Frame(self)
-        self.container.grid(row=1, column=0)
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -886,62 +876,33 @@ class CurrentSessionPage(Page):
 # gui
 class GeneralPage(Page):
     explanationText = 'General stats, graphs, and tables will appear on this page. The most important statistics will appear on this page'
-    panel1 = None
-    panel2 = None
-    panel3 = None
-    panel4 = None
-    container = None
+    frame = None
 
     def displayInfo(self):
         global isGraphingGeneral
         if not isGraphingGeneral:
             isGraphingGeneral = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
+            Graphs.graph13(sessionData['general stats']['RTA Distribution'], sessionData['general stats']['latest split list'])
 
-            if self.panel1 is not None:
-                self.panel1.grid_forget()
-            try:
-                self.panel1 = PlotFrame(self.container, Graphs.graph11(sessionData['general stats']))
-            except Exception as e:
-                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel1.grid(row=0, column=0, sticky="nsew")
+            self.frame.clear_widgets()
+            self.frame.add_plot_frame(Graphs.graph11(sessionData['general stats']), 1, 0)
+            self.frame.add_plot_frame(Graphs.graph12(sessionData['general stats']), 1, 1)
+            self.frame.add_plot_frame(Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}), 0, 2)
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['general stats']['RTA Distribution'], 'RTA'), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph13(sessionData['general stats']['IGT Distribution'], sessionData['general stats']['latest split list']), 0, 1)
 
-            if self.panel2 is not None:
-                self.panel2.grid_forget()
-            try:
-                self.panel2 = PlotFrame(self.container, Graphs.graph12(sessionData['general stats']))
-            except Exception as e:
-                self.panel2 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel2.grid(row=0, column=1, sticky="nsew")
-
-            if self.panel3 is not None:
-                self.panel3.grid_forget()
-            try:
-                self.panel3 = PlotFrame(self.container, Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}))
-            except Exception as e:
-                self.panel3 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel3.grid(row=1, column=0, sticky="nsew")
-
-            if self.panel4 is not None:
-                self.panel4.grid_forget()
-            try:
-                self.panel4 = PlotFrame(self.container, Graphs.graph1(sessionData['general stats']['RTA Distribution'], 0.8))
-            except Exception as e:
-                self.panel4 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel4.grid(row=1, column=1, sticky="nsew")
 
     def populate(self):
         explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
-        self.container = tk.Frame(self)
-        self.container.grid(row=1, column=1)
+
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=1, column=1)
+
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=2, column=0)
-        self.panel1 = PlotFrame(self.container)
-        self.panel2 = PlotFrame(self.container)
-        self.panel3 = PlotFrame(self.container)
-        self.panel4 = PlotFrame(self.container)
+        graph_Btn.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -951,13 +912,10 @@ class GeneralPage(Page):
 # gui
 class SplitsPage(Page):
     explanationText = 'Select any split from the dropdown to set it to the active split. the graphs and tables will provide data and analysis on the active split.'
-    panel1 = None
-    panel2 = None
-    panel3 = None
-    panel4 = None
-    container = None
+    frame = None
     selectedSplit = None
     selectedAdjustment = None
+    splits = ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']
 
     def displayInfo(self):
         global isGraphingSplit
@@ -967,52 +925,25 @@ class SplitsPage(Page):
 
             text = f"If you reset your slowest {self.selectedAdjustment.get() * 100}% of {self.selectedSplit.get()}s, your {self.selectedSplit.get()}s per hour would decrease by no more than {self.selectedAdjustment.get() * 100}%, while your avg would decrease from {np.mean(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution']):.1f} to {np.mean(Logistics.remove_top_X_percent(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedAdjustment.get())):.1f}"
 
-            if self.panel1 is not None:
-                self.panel1.grid_forget()
-            try:
-                self.panel1 = PlotFrame(self.container, Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], 0.8))
-            except Exception as e:
-                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel1.grid(row=0, column=0, sticky="nsew")
+            self.frame.clear_widgets()
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedSplit.get(), removeX=self.selectedAdjustment.get(), smoothness=0.5), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()]), 1, 1)
+            self.frame.add_plot_frame(Graphs.graph15(sessionData, self.selectedSplit.get()), 0, 1)
+            self.frame.add_label(text, 1, 0)
 
-            if self.panel2 is not None:
-                self.panel2.grid_forget()
-            try:
-                self.panel2 = PlotFrame(self.container, Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()]))
-            except Exception as e:
-                self.panel2 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel2.grid(row=1, column=0, sticky="nsew")
 
-            if self.panel3 is not None:
-                self.panel3.grid_forget()
-            try:
-                self.panel3 = PlotFrame(self.container, Graphs.graph1(Logistics.remove_top_X_percent(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedAdjustment.get()), 0.8))
-            except Exception as e:
-                self.panel3 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel3.grid(row=0, column=1, sticky="nsew")
-
-            if self.panel4 is not None:
-                self.panel4.grid_forget()
-            try:
-                self.panel4 = Label(self.container, text=text, wraplength=300, font=("Arial", 12))
-            except Exception as e:
-                self.panel4 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-
-            self.panel4.grid(row=1, column=1, sticky="nsew")
             isGraphingSplit = False
-
 
     def populate(self):
         explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
-        explanation.grid(row=0, column=0, columnspan=2, padx=50)
+        explanation.grid(row=0, column=0, columnspan=3, padx=50)
 
-        self.container = tk.Frame(self)
-        self.container.grid(row=1, column=1)
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=1, column=1, rowspan=4)
 
-        splits = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End', 'Iron']
         self.selectedSplit = StringVar()
         self.selectedSplit.set("Nether")
-        drop1 = OptionMenu(self, self.selectedSplit, *splits)
+        drop1 = OptionMenu(self, self.selectedSplit, *self.splits)
         drop1.grid(row=1, column=0)
 
         self.selectedAdjustment = DoubleVar()
@@ -1023,9 +954,6 @@ class SplitsPage(Page):
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
         graph_Btn.grid(row=3, column=0)
-        self.panel1 = PlotFrame(self.container)
-        self.panel2 = PlotFrame(self.container)
-        self.panel3 = PlotFrame(self.container)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1035,11 +963,7 @@ class SplitsPage(Page):
 # gui
 class EntryBreakdownPage(Page):
     explanationText = 'This page focusses on the overworld. It does analysis based on the different iron sources and enter types that were used to enter the nether.'
-    panel1 = None
-    panel2 = None
-    panel3 = None
-    panel4 = None
-    container = None
+    frame = None
 
     def displayInfo(self):
         global isGraphingEntry
@@ -1052,37 +976,11 @@ class EntryBreakdownPage(Page):
                 enterTypeList.append(enter['type'])
                 enterMethodList.append(enter['method'])
 
-            if self.panel1 is not None:
-                self.panel1.grid_forget()
-            try:
-                self.panel1 = PlotFrame(self.container, Graphs.graph4(sessionData['general stats']['enters'], settings))
-            except Exception as e:
-                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel1.grid(row=0, column=0, sticky="nsew")
-
-            if self.panel2 is not None:
-                self.panel2.grid_forget()
-            try:
-                self.panel2 = PlotFrame(self.container, Graphs.graph2(enterTypeList))
-            except Exception as e:
-                self.panel2 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel2.grid(row=0, column=1, sticky="nsew")
-
-            if self.panel3 is not None:
-                self.panel3.grid_forget()
-            try:
-                self.panel3 = PlotFrame(self.container, Graphs.graph2(enterMethodList))
-            except Exception as e:
-                self.panel3 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel3.grid(row=1, column=0, sticky="nsew")
-
-            if self.panel4 is not None:
-                self.panel4.grid_forget()
-            try:
-                self.panel4 = PlotFrame(self.container, Graphs.graph10(sessionData['general stats']['Exit Success']))
-            except Exception as e:
-                self.panel4 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel4.grid(row=1, column=1, sticky="nsew")
+            self.frame.clear_widgets()
+            self.frame.add_plot_frame(Graphs.graph4(sessionData['general stats']['enters'], settings), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph2(enterTypeList), 0, 1)
+            self.frame.add_plot_frame(Graphs.graph2(enterMethodList), 1, 0)
+            self.frame.add_plot_frame(Graphs.graph10(sessionData['general stats']['Exit Success']), 1, 1)
 
             isGraphingEntry = False
 
@@ -1091,17 +989,12 @@ class EntryBreakdownPage(Page):
         explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
-        self.container = tk.Frame(self)
-        self.container.grid(row=1, column=1)
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=1, column=1)
 
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
         graph_Btn.grid(row=1, column=0)
-
-        self.panel1 = PlotFrame(self.container)
-        self.panel2 = PlotFrame(self.container)
-        self.panel3 = PlotFrame(self.container)
-        self.panel4 = PlotFrame(self.container)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1110,27 +1003,20 @@ class EntryBreakdownPage(Page):
 
 # gui
 class ComparisonPage(Page):
-    panel1 = None
-    container = None
+    frame = None
 
     def displayInfo(self):
         global isGraphingComparison
         if not isGraphingComparison:
             isGraphingComparison = True
 
-            if self.panel1 is not None:
-                self.panel1.grid_forget()
-            try:
-                self.panel1 = PlotFrame(self.container, Graphs.graph9(sessions))
-            except Exception as e:
-                self.panel1 = Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-            self.panel1.grid(row=0, column=0, sticky="nsew")
+            self.frame.add_plot_frame(Graphs.graph9(sessions), 0, 0)
 
             isGraphingComparison = False
 
     def populate(self):
-        self.container = tk.Frame(self)
-        self.container.grid(row=0, column=1)
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=0, column=1)
 
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self, text='Graph', command=cmd)
@@ -1146,8 +1032,6 @@ class FeedbackPage(Page):
     explanationText = 'Generates Textual Feedback'
     panel1 = None
     panel2 = None
-    panel3 = None
-    panel4 = None
     container = None
 
     def displayInfo(self):
@@ -1260,7 +1144,7 @@ class MainView(tk.Frame):
         global isUpdating
         self.updatingStatsLabel.config(text='Updating Stats: True', foreground='green', background='black')
         isUpdating = True
-        Stats.saveSessionData()
+        Stats.saveSessionData(settings)
         self.updatingStatsLabel.config(text='Updating Stats: False', foreground='red', background='black')
         isUpdating = False
 
