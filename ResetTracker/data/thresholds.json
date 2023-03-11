@@ -1,4 +1,4 @@
 {"splitFormulas":  {"Nether": {"m": 0.2, "b": -20}, "Structure 1": {"m": 0.3, "b": -30}, "Structure 2": {"m": 0.45, "b": 30}, "Nether Exit": {"m": 0.5, "b": 90}},
 "recomendedSeedsPlayed":  [{"instMin": 1, "instMax": 4, "lowerBound": 0.1, "upperBound": 0.2}, {"instMin": 5, "instMax": 8, "lowerBound": 0.1, "upperBound": 0.2}, {"instMin": 9, "instMax": 40, "lowerBound": 0.1, "upperBound": 0.2}],
 "nph": {"low": 6, "high": 14},
-"owConversions":  {"bt-wood": {"low":  0.75, "high":  0.95}}}
+"owConversions":  {"bt-wood": {"low":  0.75, "high":  0.95}, "played-bt":  {"low":  0.045, "high":  0.065}}}

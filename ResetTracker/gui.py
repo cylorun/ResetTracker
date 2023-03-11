@@ -3,10 +3,10 @@ import glob
 import os
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-from scipy.stats import percentileofscore
 import requests
 import webbrowser
 import subprocess
+import sys
 
 from guiUtils import *
 
@@ -22,11 +22,12 @@ if True:
     settings = FileLoader.getSettings()
     sessions = FileLoader.getSessions()
     thresholds = FileLoader.getThresholds()
-    if settings['tracking']['sheet link'] != '':
-        gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
-        sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-        wks1 = sh1.worksheet_by_title('Raw Data')
-    gc_sheets_database = pygsheets.authorize(service_file="credentials/databaseCredentials.json")
+    wks1 = -1
+    if getattr(sys, 'frozen', False):  # if running in a PyInstaller bundle
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    gc_sheets_database = pygsheets.authorize(service_file=os.path.join(base_path, 'databaseCredentials.json'))
     sh2 = gc_sheets_database.open_by_url(databaseLink)
     wks2 = sh2[0]
     second = timedelta(seconds=1)
@@ -106,14 +107,10 @@ class Database:
             configFile = open('data/config.json')
             json.dump(config, configFile)
             configFile.close()
-        try:
-            values = [config['lbName'], str(int(settings['playstyle']['instance count'])), str(int(settings['playstyle']['target time']))]
-        except Exception as e:
-            main1.errorPoppup("target time and instance count must be integers")
-            return
+        values = [config['lbName'], str(int(settings['playstyle']['instance count'])), str(int(settings['playstyle']['target time']))]
         for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
-        for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion']:
+        for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion', 'xph']:
             for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
                 values.append(careerData['splits stats'][split][statistic])
         if config['lbName'] in nameList:
@@ -275,10 +272,6 @@ class Feedback:
 
     @classmethod
     def readDatabase(cls):
-        nameList = (wks2.get_col(col=1, returnas='matrix', include_tailing_empty=False))
-        nameFile = open('data/name.txt', 'r')
-        name = nameFile.readline()
-        myData = wks2.get_row(row=nameList.index(name) + 1, returnas='matrix', include_tailing_empty=True)
         targetTimeCol = wks2.get_col(col=3, returnas='matrix', include_tailing_empty=False)
         targetTimeCol.pop(0)
         similarUserList = []
@@ -288,24 +281,32 @@ class Feedback:
                     settings['display']['comparison threshold']):
                 row = wks2.get_row(row=i, returnas='matrix', include_tailing_empty=True)
                 similarUserList.append(row)
-        return myData, similarUserList
+        return similarUserList
 
     @classmethod
-    def splitDataPercentiles(cls):
-        myData, similarUserList = Feedback.readDatabase()
-        myData = myData[7:]
+    def splitDataPercentiles(cls, data):
         splits = ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']
+        similarUserList = Feedback.readDatabase()
+        myData = [[], [], []]
+        for i in range(9):
+            myData[0].append(data['splits stats'][splits[i]]['Cumulative Average'])
+            myData[1].append(data['splits stats'][splits[i]]['Relative Average'])
+            myData[2].append(data['splits stats'][splits[i]]['Relative Conversion'])
+        myData = myData[0] + myData[1] + myData[2]
+
         splitLists = np.transpose(np.array(similarUserList))
         splitLists = splitLists[7:]
         percentiles = {}
         for i in range(len(splitLists)):
             if i < 9:
                 percentiles[splits[i % 9]] = {}
-                percentiles[splits[i % 9]]["cAverage"] = percentileofscore(Logistics.floatList(splitLists[i]), myData[i])
+                percentiles[splits[i % 9]]["cAverage"] = Logistics.get_percentile(Logistics.floatList(splitLists[i]), myData[i])
             elif i < 18:
-                percentiles[splits[i % 9]]["rAverage"] = percentileofscore(Logistics.floatList(splitLists[i]), myData[i])
+                percentiles[splits[i % 9]]["rAverage"] = Logistics.get_percentile(Logistics.floatList(splitLists[i]), myData[i])
             elif i < 27:
-                percentiles[splits[i % 9]]["Conversion"] = percentileofscore(Logistics.floatList(splitLists[i]), myData[i])
+                percentiles[splits[i % 9]]["Conversion"] = Logistics.get_percentile(Logistics.floatList(splitLists[i]), myData[i])
+            elif i < 36:
+                percentiles[splits[i % 9]]["xph"] = Logistics.get_percentile(Logistics.floatList(splitLists[i]), myData[i])
         return percentiles
 
     @classmethod
@@ -383,11 +384,18 @@ class Feedback:
         elif bt2WoodConversion < thresholds['owConversions']['bt-wood']['low']:
             text += 'if you play out islands that do not have trees, stop doing that; consider doing more thorough assessment of ocean quality while looking for the bt\n'
 
+        played2btConversion = data['splits stats']['Iron']['Count']/data['general stats']['percent played']/data['general stats']['total resets']
+        if played2btConversion < thresholds['owConversions']['played-bt']['low']:
+            text += 'If you are resetting for mapless buried treasure, you might want to work on your mapless; you may be to selective with the spikes you play out for mapless'
+
         return text
 
     @classmethod
-    def nether(cls):
-        return Feedback.percentilesToText(Feedback.splitDataPercentiles(), float(settings['display']['comparison threshold']))
+    def nether(cls, data):
+        try:
+            return Feedback.percentilesToText(Feedback.splitDataPercentiles(data), float(settings['display']['comparison threshold']))
+        except Exception as e:
+            return ''
 
 
 class CompareProfiles:
@@ -396,6 +404,17 @@ class CompareProfiles:
 
 # tracking
 class Sheets:
+    @classmethod
+    def authenticate(cls):
+        try:
+            gc_sheets = pygsheets.authorize(service_file="credentials.json")
+            sh = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+            wks = sh.worksheet_by_title('Raw Data')
+        except Exception as e:
+            print(e)
+            return -1
+        return wks
+
     @classmethod
     def setup(cls):
         wks1.update_row(index=1, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution'], col_offset=0)
@@ -537,6 +556,11 @@ class NewRecord(FileSystemEventHandler):
                 if lan > int(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["rta"]):
                     self.this_run[idx +
                                   1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
+                    has_done_something = True
+            # diamond pick
+            elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and self.this_run[idx + 1] is None:
+                if lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
+                    self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
                     has_done_something = True
 
         if "minecraft:story/smelt_iron" in adv:
@@ -780,10 +804,16 @@ class IntroPage(Page):
 # gui
 class SettingsPage(Page):
     explanationText = 'This is the page where you adjust your settings. Your settings are saved in the data folder. Remember to press save to save and apply the adjustments!'
-    varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats'], ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity'], ['instance count', 'target time', 'rd', 'ed'], ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'entry', 'check', 'check', 'check'], ['entry', 'entry', 'entry', 'entry', 'check', 'check'], ['entry', 'entry', 'entry', 'entry'], ['check', 'check', 'check', 'check', 'check']]
+    varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats'],
+                  ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity', 'use KDE'],
+                  ['instance count', 'target time', 'rd', 'ed'],
+                  ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
+    varTypes = [['entry', 'entry', 'entry', 'check', 'check', 'check'],
+                ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'],
+                ['entry', 'entry', 'entry', 'entry'],
+                ['check', 'check', 'check', 'check', 'check']]
     varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time you stop tracking'],
-                   ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet'],
+                   ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet', 'if checked, histograms will display as kdeplots'],
                    ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
                    ['', '', '', '', '']]
     varGroups = ['tracking', 'display', 'playstyle', 'playstyle cont.']
@@ -795,15 +825,45 @@ class SettingsPage(Page):
 
     def saveSettings(self):
         global settings
-        global sh1
         global wks1
-        if settings['tracking']['sheet link'] != '':
-            gc_sheets = pygsheets.authorize(service_file="credentials/credentials.json")
-            sh1 = gc_sheets.open_by_url(settings['tracking']['sheet link'])
-            wks1 = sh1.worksheet_by_title('Raw Data')
+
+        for i1 in range(len(self.varStrings)):
+            for i2 in range(len(self.varStrings[i1])):
+                if self.varStrings[i1][i2] in ["instance count", "target time", "latest x sessions", "comparison threshold", "break threshold", "rd", "ed"]:
+                    if self.varStrings[i1][i2] == "ed":
+                        try:
+                            temp = float(self.settingsVars[i1][i2].get())
+                            if not 0.5 <= temp <= 5.0:
+                                raise Exception("NotInRange")
+                        except Exception as e:
+                            main1.errorPoppup(f'{self.varStrings[i1][i2]} must be a valid float between 0.5 and 5.0')
+                            return
+                    elif self.varStrings[i1][i2] == "rd":
+                        try:
+                            temp = int(self.settingsVars[i1][i2].get())
+                            if not 2 <= temp <= 32:
+                                raise Exception("NotInRange")
+                        except Exception as e:
+                            main1.errorPoppup(f'{self.varStrings[i1][i2]} must be a valid int between 2 and 32')
+                            return
+                    elif self.varStrings[i1][i2] == "target time":
+                        try:
+                            temp = int(self.settingsVars[i1][i2].get())
+                            if not 240 <= temp:
+                                raise Exception("NotInRange")
+                        except Exception as e:
+                            main1.errorPoppup(f'{self.varStrings[i1][i2]} must be a valid integer. it should be your target time IN SECONDS')
+                            return
+                    else:
+                        try:
+                            temp = int(self.settingsVars[i1][i2].get())
+                        except Exception as e:
+                            main1.errorPoppup(f'{self.varStrings[i1][i2]} must be a valid integer')
+                            return
         for i1 in range(len(self.varStrings)):
             for i2 in range(len(self.varStrings[i1])):
                 settings[self.varGroups[i1]][self.varStrings[i1][i2]] = self.settingsVars[i1][i2].get()
+
         try:
             settingsJson = open("data/settings.json", "w")
             json.dump(settings, settingsJson)
@@ -883,13 +943,12 @@ class GeneralPage(Page):
         if not isGraphingGeneral:
             isGraphingGeneral = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
-            Graphs.graph13(sessionData['general stats']['RTA Distribution'], sessionData['general stats']['latest split list'])
 
             self.frame.clear_widgets()
             self.frame.add_plot_frame(Graphs.graph11(sessionData['general stats']), 1, 0)
             self.frame.add_plot_frame(Graphs.graph12(sessionData['general stats']), 1, 1)
             self.frame.add_plot_frame(Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}), 0, 2)
-            self.frame.add_plot_frame(Graphs.graph1(sessionData['general stats']['RTA Distribution'], 'RTA'), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['general stats']['RTA Distribution'], 'RTA', kde=(settings['display']['use KDE'] == 1)), 0, 0)
             self.frame.add_plot_frame(Graphs.graph13(sessionData['general stats']['IGT Distribution'], sessionData['general stats']['latest split list']), 0, 1)
 
 
@@ -926,9 +985,9 @@ class SplitsPage(Page):
             text = f"If you reset your slowest {self.selectedAdjustment.get() * 100}% of {self.selectedSplit.get()}s, your {self.selectedSplit.get()}s per hour would decrease by no more than {self.selectedAdjustment.get() * 100}%, while your avg would decrease from {np.mean(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution']):.1f} to {np.mean(Logistics.remove_top_X_percent(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedAdjustment.get())):.1f}"
 
             self.frame.clear_widgets()
-            self.frame.add_plot_frame(Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedSplit.get(), removeX=self.selectedAdjustment.get(), smoothness=0.5), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedSplit.get(), kde=(settings['display']['use KDE'] == 1), removeX=self.selectedAdjustment.get(), smoothness=0.5), 0, 0)
             self.frame.add_plot_frame(Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()]), 1, 1)
-            self.frame.add_plot_frame(Graphs.graph15(sessionData, self.selectedSplit.get()), 0, 1)
+            self.frame.add_plot_frame(Graphs.graph15(sessionData, self.selectedSplit.get(), kde=(settings['display']['use KDE'] == 1)), 0, 1)
             self.frame.add_label(text, 1, 0)
 
 
@@ -1041,14 +1100,16 @@ class FeedbackPage(Page):
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
 
             try:
-                self.panel1.set_text(Feedback.overworld(sessionData))
+                self.panel1.set_text("Feedback:\n" + Feedback.overworld(sessionData))
             except Exception as e:
                 self.panel1.set_text('An error occured')
+                print(e)
 
             try:
-                self.panel2.set_text(Feedback.nether())
+                self.panel2.set_text("Feedback:\n" + Feedback.nether(sessionData))
             except Exception as e:
-                self.panel1.set_text('An error occured')
+                self.panel2.set_text('An error occured')
+                print(e)
 
             isGivingFeedback = False
 
@@ -1089,6 +1150,15 @@ class MainView(tk.Frame):
     trackingLabel = None
     updatingStatsLabel = None
 
+    def authenticateSheets(self):
+        if settings['tracking']['use sheets'] == 1:
+            wks = Sheets.authenticate()
+            if isinstance(wks, int):
+                self.errorPoppup('sheet link might not be correct, also make sure credentials.json is in the same folder as exe')
+            return wks
+        else:
+            return None
+
     def updateCSGraphs(self):
         self.pages[2].updateTables()
 
@@ -1096,7 +1166,7 @@ class MainView(tk.Frame):
         top = Toplevel()
         top.geometry("300x200")
         top.title("Error")
-        label = Label(top, text=text)
+        label = Label(top, text=text, wraplength=280)
         label.pack()
 
     def stopResetTracker(self):
@@ -1106,12 +1176,15 @@ class MainView(tk.Frame):
 
     def startResetTracker(self):
         global isTracking
-        isTracking = True
-        CurrentSession.resetCurrentSession()
-        self.trackingLabel.config(text='Tracking: True', foreground='green', background='black')
-        t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
-        t1.daemon = True
-        t1.start()
+        global wks1
+        wks1 = self.authenticateSheets()
+        if not isinstance(wks1, int):
+            isTracking = True
+            CurrentSession.resetCurrentSession()
+            self.trackingLabel.config(text='Tracking: True', foreground='green', background='black')
+            t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
+            t1.daemon = True
+            t1.start()
 
     def promptUserForTracking(self):
         global currentSessionMarker
@@ -1138,7 +1211,7 @@ class MainView(tk.Frame):
             startTrackingButton = Button(top1, text="Start Tracking", command=get_value)
             startTrackingButton.pack()
         else:
-            main1.errorPoppup('Already Tracking')
+            self.errorPoppup('Already Tracking')
 
     def updateData(self):
         global isUpdating
@@ -1177,6 +1250,9 @@ class MainView(tk.Frame):
         else:
             menubar.add_cascade(label='Update', menu=updateMenu)
         updateMenu.add_command(label="Open Github", command=Update.openGithub)
+
+        resourcesMenu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label='Resources', menu=resourcesMenu)
 
         for i in range(len(self.pages)):
             self.pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)

@@ -28,7 +28,11 @@ class Graphs:
         fig, ax = plt.subplots(figsize=(4, 4))
 
         # Plot the KDE distribution
-        sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness, color='#FF1493')
+        if kde:
+            sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness, color='#FF1493')
+        else:
+            sns.histplot(data=dist, ax=ax)
+            sns.despine()
 
         plt.axvline(mean, color='orange', linestyle='--', ymin=0.15)
         plt.axvline(mean, color='orange', linestyle='--', ymax=0.07)
@@ -48,9 +52,6 @@ class Graphs:
         # Set x-axis limits
         rangeX = [min1 * 0.95, max1 * 1.05]
         ax.set_xlim(rangeX)
-
-        # Remove top and right spines
-        sns.despine()
 
         return fig
 
@@ -336,10 +337,11 @@ class Graphs:
     # scatterplot displaying nph and average enter, with a canvas based on efficiency score
     @classmethod
     def graph9(cls, sessions):
+        print(sessions)
         nph_list = []
         avg_enter_list = []
         profile_list = []
-        for i in range(len(sessions)):
+        for i in range(len(sessions['sessions'])):
             if sessions['sessions'][i] != 'All' and 'Latest' not in sessions['sessions'][i]['string']:
                 nph_list.append(sessions['stats'][i]['general stats']['rnph'])
                 avg_enter_list.append(sessions['stats'][i]['splits stats']['Nether']['Cumulative Average'])
@@ -347,18 +349,13 @@ class Graphs:
 
         dict1 = {'nph': nph_list, 'avg_enter': avg_enter_list, 'profile': profile_list}
 
-        x1 = np.linspace(6, 14.0, 60)
-        x2 = np.linspace(90, 150, 80)
-        x, y = np.meshgrid(x1, x2)
-        cm = plt.cm.get_cmap('cividis')
-        fig, ax = plt.subplots(figsize=(4, 4))
-        p1 = ax.contourf(x, y, np.zeros_like(x), levels=1000, cmap=cm)
+        fig, ax = plt.subplots(figsize=(6, 4))
         p2 = sns.scatterplot(x='nph', y='avg_enter', hue='profile', data=dict1, s=60, alpha=0.8, palette='Set1',
                              edgecolor='none')
-        ax.set_xlabel('Nether Portals per Hour', fontsize=16)
-        ax.set_ylabel('Nether Entry Time (s)', fontsize=16)
+        ax.set_xlabel('NPH', fontsize=16)
+        ax.set_ylabel('Average Enter', fontsize=16)
         ax.tick_params(axis='both', labelsize=14)
-        ax.legend(loc='best', title='Profile', fontsize=14, title_fontsize=14)
+        ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1), title='Profile', fontsize=14, title_fontsize=14)
         plt.tight_layout()
         return fig
 
@@ -536,7 +533,11 @@ class Graphs:
                     dist.append(data['general stats']['IGT Distribution'][i] - split1)
 
         fig, ax = plt.subplots(figsize=(4, 4))
-        sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness)
+
+        if kde:
+            sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness)
+        else:
+            sns.histplot(data=dist, ax=ax)
 
         return fig
 

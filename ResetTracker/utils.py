@@ -213,3 +213,26 @@ class Logistics:
         max_count = max(bin_counts)
         return bin_counts.index(max_count)
 
+    @classmethod
+    def get_percentile(cls, data, score):
+        """
+        Calculate the percentile rank of a score within a dataset.
+
+        Parameters:
+        - data (array-like): The dataset of scores.
+        - score (float): The score to evaluate.
+
+        Returns:
+        - float: The percentile rank of the score within the dataset, as a percentage (0-100).
+        """
+
+        # Convert data to a sorted numpy array
+        sorted_data = np.sort(data)
+
+        # Find the index of the score in the sorted array
+        index = np.searchsorted(sorted_data, score)
+
+        # Calculate the percentile rank as a percentage
+        percentile_rank = (index / len(sorted_data)) * 100
+
+        return percentile_rank
