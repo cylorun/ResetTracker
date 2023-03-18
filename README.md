@@ -9,7 +9,7 @@
 
 #### Settings
 
-Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do.
+After running gui.exe, go to the settings tab. Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do.
 
 #### Updating
 
@@ -24,7 +24,7 @@ Using sheets is NOT necessary, however if you wish to use google sheets in addit
 
 #### Start Tracking
 
- - to start tracking, click the actions menu-button to reveal a dropdown
+ - to start tracking, click the tracking menu-button to reveal a dropdown
  - it will prompt you to put a session marker; these session markers are used in analysis, so you can associate certain certain strategies with different session markers to distinguish them in analysis and comparison
 
 #### How It Works
@@ -48,7 +48,7 @@ Check out each of the pages on the gui; they all do different things. They all h
 
 #### Developers
 
-Original reset tracker was made by TheTalkingMime, and further developed by Specnr. Then I made it better :D
+Original reset tracker was made by TheTalkingMime, and further developed by Specnr. Then I made it better :D. Also huge thanks to chatGPT for helping me code this!
 
 #### Testers
 
