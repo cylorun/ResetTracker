@@ -20,6 +20,8 @@ if True:
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
+    if settings['tracking']['autoupdate stats'] == 1:
+        Stats.appendStats(settings)
     sessions = FileLoader.getSessions()
     thresholds = FileLoader.getThresholds()
     wks1 = -1
@@ -104,7 +106,7 @@ class Database:
                 config['lbName'] = "Anonymous" + str(userCount).zfill(5)
             else:
                 config['lbName'] = settings['display']['twitch username']
-            configFile = open('data/config.json')
+            configFile = open('data/config.json', 'w')
             json.dump(config, configFile)
             configFile.close()
         values = [config['lbName'], str(int(settings['playstyle']['instance count'])), str(int(settings['playstyle']['target time']))]
@@ -224,7 +226,7 @@ class CurrentSession:
         except Exception as e:
             pass
 
-        main1.updateCSGraphs()
+        main1.updateCSGraphs(row)
         CurrentSession.updateObsTxts()
 
 
@@ -257,11 +259,7 @@ class CurrentSession:
 class Feedback:
     @classmethod
     def splits(cls, split, average, formulaDict):
-        try:
-            targetTime = int(settings['playstyle']['target time'])
-        except Exception as e:
-            main1.errorPoppup("target time must be in seconds as an integer")
-            return None
+        targetTime = int(settings['playstyle']['target time'])
         return Logistics.getResidual(average, formulaDict[split]['m'], targetTime, formulaDict[split]['b'])
 
     @classmethod
@@ -426,17 +424,16 @@ class Sheets:
             color = (15.0, 15.0, 15.0)
             global pushedLines
             pushedLines = 1
-            statsCsv = "temp.csv"
+
             def push_data():
                 global pushedLines
-                with open(statsCsv, newline="") as f:
+                with open("temp.csv", newline="") as f:
                     reader = csv.reader(f)
                     data = list(reader)
                     f.close()
                 try:
                     if len(data) == 0:
                         return
-                    wks1.insert_rows(values=data, row=2, number=1, inherit=False)
                     wks1.insert_rows(values=data, row=1, number=1, inherit=False)
                     if pushedLines == 1:
                         endColumn = ord("A") + len(data)
@@ -445,7 +442,7 @@ class Sheets:
                         endColumn = chr(endColumn1) + chr(endColumn2)
                         # dataSheet.format("A2:" + endColumn + str(1 + len(data)),{"backgroundColor": {"red": color[0], "green": color[1], "blue": color[2]}})
                     pushedLines += len(data)
-                    f = open(statsCsv, "w+")
+                    f = open("temp.csv", "w+")
                     f.close()
 
 
@@ -559,7 +556,9 @@ class NewRecord(FileSystemEventHandler):
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and self.this_run[idx + 1] is None:
+                print('a')
                 if lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
+                    print('b')
                     self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
                     has_done_something = True
 
@@ -794,11 +793,21 @@ class Tracking:
 # gui
 class IntroPage(Page):
     def populate(self):
-        pass
+        # Load the image using PIL
+        img = Image.open(os.path.join(base_path, "cover.png"))
+
+        # Resize the image
+        resized_img = img.resize((900, 600))  # Replace (200, 200) with your desired size
+
+        # Create a PhotoImage object to display the resized image in the tkinter window
+        photo = ImageTk.PhotoImage(resized_img)
+        label = Label(self, image=photo)
+        label.image = photo
+        label.pack()
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        IntroPage.populate(self)
+        self.populate()
 
 
 # gui
@@ -916,17 +925,73 @@ class SettingsPage(Page):
 class CurrentSessionPage(Page):
     explanationText = 'Tables will appear here while you are tracking. They will provide data for the current session'
     frame = None
+    control_panel = None
+    run_panel = None
+    scrollableContainer_sub = None
+    layer = 0
+    split = "Wood"
+    splitList1 = ['Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End']
+    splitList2 = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']
+    splitVars = []
 
-    def updateTables(self):
+
+    def updateTables(self, run):
         self.frame.clear_widgets()
-        self.frame.add_plot_frame(currentSession['figs'][0], 0, 0)
-        self.frame.add_plot_frame(currentSession['figs'][1], 1, 0)
+        self.frame.add_plot_frame(currentSession['figs'][0], 0, 0, title='Splits')
+        self.frame.add_plot_frame(currentSession['figs'][1], 1, 0, title='General')
+
+        text = ''
+        bastion = None
+        fortress = None
+        for i in range(len(self.splitList1)):
+            split1 = headerLabels.index(self.splitList1[i])
+            time = run[split1]
+            if split1 == 'Bastion':
+                try:
+                    bastion = datetime.strptime(time, '%H:%M:%S')
+                except Exception as e:
+                    pass
+            elif split1 == 'Fortress':
+                try:
+                    fortress = datetime.strptime(time, '%H:%M:%S')
+                except Exception as e:
+                    pass
+                if bastion is not None and fortress is not None:
+                    if self.splitVars[3].get() == 1:
+                        text += (min(bastion, fortress)).strftime('%H:%M:%S') + ' Structure 1    '
+                    if self.splitVars[4].get() == 1:
+                        text += (max(bastion, fortress)).strftime('%H:%M:%S') + ' Structure 2    '
+                elif bastion is not None and self.splitVars[3].get() == 1:
+                    text += bastion.strftime('%H:%M:%S') + ' Structure 1    '
+                elif fortress is not None and self.splitVars[3].get() == 1:
+                    text += fortress.strftime('%H:%M:%S') + ' Structure 1    '
+            elif time is not None and time != '' and self.splitVars[i].get() == 1:
+                text += str(time) + ' ' + self.splitList1[i] + '    '
+        if text != '':
+            self.run_panel.add_label(text, self.layer, 0)
+            self.layer += 1
 
     def populate(self):
         explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
-        explanation.grid(row=0, column=0, padx=50)
+        explanation.grid(row=0, column=0, padx=50, columnspan=2)
         self.frame = ScrollableContainer(self)
-        self.frame.grid(row=1, column=0)
+        self.control_panel = Frame(self)
+
+        for i in range(len(self.splitList2)):
+            self.splitVars.append(tk.IntVar())
+            subFrame = Frame(self.control_panel)
+            label = Label(subFrame, text=self.splitList2[i])
+            check = Checkbutton(subFrame, variable=self.splitVars[i])
+
+            label.grid(row=0, column=0)
+            check.grid(row=0, column=1)
+            subFrame.grid(row=i, column=0)
+
+        self.run_panel = self.frame.add_scrollableContainer(0, 1, rowspan=2, height=400, width=400, xScroll=False, sticky="e")
+        self.run_panel.add_title("Session Runs")
+
+        self.frame.grid(row=1, column=1)
+        self.control_panel.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -937,19 +1002,32 @@ class CurrentSessionPage(Page):
 class GeneralPage(Page):
     explanationText = 'General stats, graphs, and tables will appear on this page. The most important statistics will appear on this page'
     frame = None
+    control_panel = None
+    rta_min = None
+    rta_max = None
 
     def displayInfo(self):
         global isGraphingGeneral
         if not isGraphingGeneral:
             isGraphingGeneral = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
+            try:
+                min1 = int(self.rta_min.get())
+                max1 = int(self.rta_max.get())
+                if 0 < max1 < min1:
+                    raise ValueError
+            except Exception as e:
+                main1.errorPoppup('Make sure min and max are integers (they are in seconds)')
+                return
 
             self.frame.clear_widgets()
-            self.frame.add_plot_frame(Graphs.graph11(sessionData['general stats']), 1, 0)
-            self.frame.add_plot_frame(Graphs.graph12(sessionData['general stats']), 1, 1)
-            self.frame.add_plot_frame(Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}), 0, 2)
-            self.frame.add_plot_frame(Graphs.graph1(sessionData['general stats']['RTA Distribution'], 'RTA', kde=(settings['display']['use KDE'] == 1)), 0, 0)
-            self.frame.add_plot_frame(Graphs.graph13(sessionData['general stats']['IGT Distribution'], sessionData['general stats']['latest split list']), 0, 1)
+            self.frame.add_plot_frame(Graphs.graph11(sessionData['general stats']), 1, 0, title='Very Important')
+            self.frame.add_plot_frame(Graphs.graph12(sessionData['general stats']), 1, 1, title='Important')
+            self.frame.add_plot_frame(Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}), 0, 2, title='Wall-OW-Nether breakdown')
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['general stats']['RTA Distribution'], 'RTA', kde=(settings['display']['use KDE'] == 1), min2=min1, max2=max1), 0, 0, title='RTA Distribution', explanation='based on RTA min and max')
+            self.frame.add_plot_frame(Graphs.graph13(sessionData['general stats']['IGT Distribution'], sessionData['general stats']['latest split list']), 0, 1, title='Detailed RTA Distribution', explanation='Colors indicate the split after which the runner reset')
+
+            isGraphingGeneral = False
 
 
     def populate(self):
@@ -959,9 +1037,28 @@ class GeneralPage(Page):
         self.frame = ScrollableContainer(self)
         self.frame.grid(row=1, column=1)
 
+        self.control_panel = Frame(self)
+        self.control_panel.grid(row=1, column=0)
+
+        self.rta_min = tk.StringVar()
+        self.rta_max = tk.StringVar()
+        self.rta_min.set('-1')
+        self.rta_max.set('-1')
+        label1 = Label(self.control_panel, text='rta minimum')
+        label2 = Label(self.control_panel, text='rta maximum')
+        Tooltip.createToolTip(label1, 'left side cutoff for RTA Distribution')
+        Tooltip.createToolTip(label2, 'right side cutoff for RTA Distribution')
+        entry1 = Entry(self.control_panel, textvariable=self.rta_min, width=6)
+        entry2 = Entry(self.control_panel, textvariable=self.rta_max, width=6)
+        label1.grid(row=1, column=0)
+        label2.grid(row=2, column=0)
+        entry1.grid(row=1, column=1)
+        entry2.grid(row=2, column=1)
+
+
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=1, column=0)
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd)
+        graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -972,6 +1069,7 @@ class GeneralPage(Page):
 class SplitsPage(Page):
     explanationText = 'Select any split from the dropdown to set it to the active split. the graphs and tables will provide data and analysis on the active split.'
     frame = None
+    control_panel = None
     selectedSplit = None
     selectedAdjustment = None
     splits = ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']
@@ -985,9 +1083,9 @@ class SplitsPage(Page):
             text = f"If you reset your slowest {self.selectedAdjustment.get() * 100}% of {self.selectedSplit.get()}s, your {self.selectedSplit.get()}s per hour would decrease by no more than {self.selectedAdjustment.get() * 100}%, while your avg would decrease from {np.mean(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution']):.1f} to {np.mean(Logistics.remove_top_X_percent(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedAdjustment.get())):.1f}"
 
             self.frame.clear_widgets()
-            self.frame.add_plot_frame(Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedSplit.get(), kde=(settings['display']['use KDE'] == 1), removeX=self.selectedAdjustment.get(), smoothness=0.5), 0, 0)
-            self.frame.add_plot_frame(Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()]), 1, 1)
-            self.frame.add_plot_frame(Graphs.graph15(sessionData, self.selectedSplit.get(), kde=(settings['display']['use KDE'] == 1)), 0, 1)
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['Cumulative Distribution'], self.selectedSplit.get(), kde=(settings['display']['use KDE'] == 1), removeX=self.selectedAdjustment.get(), smoothness=0.5), 0, 0, title="Cumulative Split Distribution")
+            self.frame.add_plot_frame(Graphs.graph5(sessionData['splits stats'][self.selectedSplit.get()]), 1, 1, title='Summary')
+            self.frame.add_plot_frame(Graphs.graph1(sessionData['splits stats'][self.selectedSplit.get()]['ToReset Distribution'], "Relative Reset Distribution", kde=(settings['display']['use KDE'] == 1), removeX=0, smoothness=0.5), 0, 1, title="Relative Reset Distribution", explanation="shows the distribution of time until reset with respect to the previous split")
             self.frame.add_label(text, 1, 0)
 
 
@@ -1000,19 +1098,22 @@ class SplitsPage(Page):
         self.frame = ScrollableContainer(self)
         self.frame.grid(row=1, column=1, rowspan=4)
 
+        self.control_panel = Frame(self)
+        self.control_panel.grid(row=1, column=0)
+
         self.selectedSplit = StringVar()
         self.selectedSplit.set("Nether")
-        drop1 = OptionMenu(self, self.selectedSplit, *self.splits)
-        drop1.grid(row=1, column=0)
+        drop1 = OptionMenu(self.control_panel, self.selectedSplit, *self.splits)
+        drop1.grid(row=0, column=0)
 
         self.selectedAdjustment = DoubleVar()
         self.selectedAdjustment.set(0.1)
-        scale1 = Scale(self, variable=self.selectedAdjustment, from_=0.0, to=0.5, orient=tk.HORIZONTAL, resolution=0.01)
-        scale1.grid(row=2, column=0)
+        scale1 = Scale(self.control_panel, variable=self.selectedAdjustment, from_=0.0, to=0.5, orient=tk.HORIZONTAL, resolution=0.01)
+        scale1.grid(row=1, column=0)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self, text='Graph', command=cmd)
-        graph_Btn.grid(row=3, column=0)
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd)
+        graph_Btn.grid(row=2, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1023,6 +1124,7 @@ class SplitsPage(Page):
 class EntryBreakdownPage(Page):
     explanationText = 'This page focusses on the overworld. It does analysis based on the different iron sources and enter types that were used to enter the nether.'
     frame = None
+    control_panel = None
 
     def displayInfo(self):
         global isGraphingEntry
@@ -1036,10 +1138,10 @@ class EntryBreakdownPage(Page):
                 enterMethodList.append(enter['method'])
 
             self.frame.clear_widgets()
-            self.frame.add_plot_frame(Graphs.graph4(sessionData['general stats']['enters'], settings), 0, 0)
-            self.frame.add_plot_frame(Graphs.graph2(enterTypeList), 0, 1)
-            self.frame.add_plot_frame(Graphs.graph2(enterMethodList), 1, 0)
-            self.frame.add_plot_frame(Graphs.graph10(sessionData['general stats']['Exit Success']), 1, 1)
+            self.frame.add_plot_frame(Graphs.graph4(sessionData['general stats']['enters'], settings), 0, 0, title='Heatmap')
+            self.frame.add_plot_frame(Graphs.graph2(enterTypeList), 0, 1, title="Iron Source Breakdown")
+            self.frame.add_plot_frame(Graphs.graph2(enterMethodList), 1, 0, title="Portal Type Breakdown")
+            self.frame.add_plot_frame(Graphs.graph10(sessionData['general stats']['Exit Success']), 1, 1, title='Nether Success Breakdown')
 
             isGraphingEntry = False
 
@@ -1051,34 +1153,46 @@ class EntryBreakdownPage(Page):
         self.frame = ScrollableContainer(self)
         self.frame.grid(row=1, column=1)
 
+        self.control_panel = Frame(self)
+        self.control_panel.grid(row=1, column=0)
+
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self, text='Graph', command=cmd)
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd)
         graph_Btn.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        EntryBreakdownPage.populate(self)
+        self.populate()
 
 
 # gui
 class ComparisonPage(Page):
+    explanationText = 'This page compares different sessions and session groups'
     frame = None
+    control_panel = None
+
 
     def displayInfo(self):
         global isGraphingComparison
         if not isGraphingComparison:
             isGraphingComparison = True
 
-            self.frame.add_plot_frame(Graphs.graph9(sessions), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph9(sessions), 0, 0, title='NPH-AVG Scatterplot')
 
             isGraphingComparison = False
 
     def populate(self):
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground='#1f0060', font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
+
         self.frame = ScrollableContainer(self)
-        self.frame.grid(row=0, column=1)
+        self.frame.grid(row=1, column=1)
+
+        self.control_panel = Frame(self)
+        self.control_panel.grid(row=1, column=0)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self, text='Graph', command=cmd)
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd)
         graph_Btn.grid(row=0, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1159,8 +1273,8 @@ class MainView(tk.Frame):
         else:
             return None
 
-    def updateCSGraphs(self):
-        self.pages[2].updateTables()
+    def updateCSGraphs(self, run):
+        self.pages[2].updateTables(run)
 
     def errorPoppup(self, text):
         top = Toplevel()
@@ -1215,9 +1329,12 @@ class MainView(tk.Frame):
 
     def updateData(self):
         global isUpdating
+        global sessions
         self.updatingStatsLabel.config(text='Updating Stats: True', foreground='green', background='black')
         isUpdating = True
-        Stats.saveSessionData(settings)
+        Stats.appendStats(settings)
+        sessions = FileLoader.getSessions()
+
         self.updatingStatsLabel.config(text='Updating Stats: False', foreground='red', background='black')
         isUpdating = False
 
@@ -1229,7 +1346,6 @@ class MainView(tk.Frame):
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)
-        buttonframe2 = tk.Frame(buttonframeMain)
         container = tk.Frame(self)
 
         statsMenu = Menu(menubar, tearoff=0)

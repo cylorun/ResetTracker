@@ -30,12 +30,12 @@ class PlotFrame(tk.Frame):
     def create_plot_widget(self):
         if isinstance(self.fig, plt.Figure):
             self.canvas = FigureCanvasTkAgg(self.fig, master=self)
-            self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+            self.canvas.get_tk_widget().grid(row=1, column=0)
             self.canvas.draw()
 
         elif isinstance(self.fig, sns.matrix.ClusterGrid):
             self.canvas = FigureCanvasTkAgg(self.fig.fig, master=self)
-            self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+            self.canvas.get_tk_widget().grid(row=1, column=0)
             self.canvas.draw()
 
         elif isinstance(self.fig, go.Figure):
@@ -44,10 +44,16 @@ class PlotFrame(tk.Frame):
             img_tk = ImageTk.PhotoImage(img)
             self.plot_widget = tk.Label(self, image=img_tk)
             self.plot_widget.image = img_tk
-            self.plot_widget.grid(column=0, row=0)
+            self.plot_widget.grid(row=1, column=0)
 
         else:
             raise ValueError('Unsupported figure type')
+
+    def add_title(self, text):
+        label = Label(self, text=text, font=("Arial", 14))
+        label.grid(row=0, column=0)
+        return label
+
 
 
 # gui
@@ -69,7 +75,7 @@ class TooltipObject:
         label = tk.Label(tw, text=self.text, justify='left',
                          background="#ffffe0", relief='solid', borderwidth=1,
                          font=("tahoma", "8", "normal"))
-        label.pack(ipadx=1)
+        label.grid(row=0, column=0)
 
     def hide_tip(self):
         tw = self.tip_window
@@ -125,22 +131,27 @@ class ScrollableTextFrame(tk.Frame):
 
 
 class ScrollableContainer(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, yScroll=True, xScroll=True, width=850, height=550):
         super().__init__(parent)
 
         # Create a Frame widget with a canvas inside it
-        self.canvas = tk.Canvas(self, width=850, height=550)
+        self.canvas = tk.Canvas(self, width=width, height=height)
         self.container = tk.Frame(self.canvas)
 
         # Create a scrollbar and bind it to the canvas
-        self.xscrollbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview)
-        self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
-        self.canvas.configure(xscrollcommand=self.xscrollbar.set, yscrollcommand=self.yscrollbar.set)
+        if xScroll:
+            self.xscrollbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview)
+            self.canvas.configure(xscrollcommand=self.xscrollbar.set)
+        if yScroll:
+            self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+            self.canvas.configure(yscrollcommand=self.yscrollbar.set)
 
         # Pack the widgets into the window
-        self.canvas.grid(row=0, column=0)
-        self.xscrollbar.grid(row=1, column=0, sticky='ew')
-        self.yscrollbar.grid(row=0, column=1, sticky='ns')
+        self.canvas.grid(row=1, column=0)
+        if xScroll:
+            self.xscrollbar.grid(row=2, column=0, sticky='ew')
+        if yScroll:
+            self.yscrollbar.grid(row=1, column=1, sticky='ns')
         self.container.grid(row=0, column=0)
 
         # Set up the scrolling region
@@ -150,26 +161,43 @@ class ScrollableContainer(tk.Frame):
     def on_container_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox('all'))
 
-    def add_plot_frame(self, graph, row, column):
+    def add_title(self, text):
+        label = Label(self, text=text, font=("Arial", 14))
+        label.grid(row=0, column=0)
+
+
+    def add_plot_frame(self, graph, row, column, rowspan=1, columnspan=1, title='', explanation=''):
         try:
             panel = PlotFrame(self.container, graph)
         except Exception as e:
+            print(e)
             panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-        panel.grid(row=row, column=column, sticky="nsew")
+        if title != '':
+            label = panel.add_title(title)
+            if explanation != '':
+                Tooltip.createToolTip(label, explanation)
+        panel.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky="nsew", pady=6, padx=2)
+        return panel
 
-    def add_label(self, text, row, column):
+    def add_label(self, text, row, column, rowspan=1, columnspan=1):
         try:
             panel = tk.Label(self.container, text=text, wraplength=300, font=("Arial", 12))
         except Exception as e:
             panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables')
 
-        panel.grid(row=row, column=column, sticky="nsew")
+        panel.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky="nsew", pady=6, padx=2)
+        return panel
+
+    def add_scrollableContainer(self, row, column, rowspan=1, columnspan=1, yScroll=True, xScroll=True, width=750, height=550, sticky=""):
+        scrollableContainer = ScrollableContainer(self.container, yScroll=yScroll, xScroll=xScroll, width=width, height=height)
+        scrollableContainer.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky=sticky, pady=6, padx=2)
+        return scrollableContainer
 
     def clear_widgets(self):
         # Loop over all child widgets in the container frame
         for child in self.container.winfo_children():
             # Check if the widget is a PlotFrame or Label
-            if isinstance(child, PlotFrame) or isinstance(child, Label):
+            if isinstance(child, PlotFrame) or isinstance(child, Label) or isinstance(child, ScrollableContainer):
                 # Ungrid the widget to remove it from the container frame
                 child.grid_forget()
         self.canvas.configure(scrollregion=self.canvas.bbox('all'))

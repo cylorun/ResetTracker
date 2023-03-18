@@ -7,6 +7,7 @@ from datetime import time
 from typing import Optional
 from ctypes import windll, create_unicode_buffer
 import time
+import math
 
 
 
@@ -125,14 +126,14 @@ class Logistics:
             return value
         if type(value) == int:
             if isTime:
-                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value)
-                return valueDatetime.strftime('%M:%S')
+                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value % 3600)
+                return str(math.trunc(value/3600)) + valueDatetime.strftime('%M:%S')
             else:
                 return str(value)
         if type(value) == float:
             if isTime:
-                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value)
-                return valueDatetime.strftime('%M:%S')
+                valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value % 3600)
+                return str(math.trunc(value/3600)) + valueDatetime.strftime('%M:%S')
             else:
                 if isPercent:
                     return str(round(value * 100, 1)) + '%'
