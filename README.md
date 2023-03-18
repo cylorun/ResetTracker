@@ -16,6 +16,10 @@ Hover over the settings labels to see a brief description of the setting. If you
  - you can update versions by running update.exe
  - you can open the github or update through the gui by clicking on the update menu-button
 
+#### Sheets
+
+Using sheets is NOT necessary, however if you wish to use google sheets in addition to local storage to store your stats, follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q)
+
 ## **Tracking**
 
 #### Start Tracking
@@ -64,5 +68,4 @@ If you have any suggestions, bug reports, or need help setting it up, DM me on d
  - Spawn Image Analysis
  - vod runs analysis
  
-
 
