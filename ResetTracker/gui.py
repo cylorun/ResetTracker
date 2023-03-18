@@ -555,12 +555,15 @@ class NewRecord(FileSystemEventHandler):
                                   1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
                     has_done_something = True
             # diamond pick
-            elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and self.this_run[idx + 1] is None:
-                print('a')
-                if lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
-                    print('b')
-                    self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
-                    has_done_something = True
+            elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] is None:
+                if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]):
+                    if lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
+                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
+                        has_done_something = True
+                elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]):
+                    if lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
+                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
+                        has_done_something = True
 
         if "minecraft:story/smelt_iron" in adv:
             has_done_something = True
@@ -1303,6 +1306,9 @@ class MainView(tk.Frame):
     def promptUserForTracking(self):
         global currentSessionMarker
         if not isTracking:
+            if not os.path.exists(settings['tracking']['records path']):
+                self.errorPoppup('records path does not exists')
+                return
             top1 = Toplevel()
             top1.geometry("180x100")
             top1.title("Start Tracking")
