@@ -9,24 +9,16 @@
 
 #### Settings
 
- - records path: path to your srigt records file, usually `C:/Users/*user*/speedrunigt/records`
- - break threshold: this is the minimum amount of time needed between resets for the tracker to count that time as break-time, and not towards nph calculations
- - delete-old-records: if this is checked, the tracker will auotmatically delete your record files after they are analyzed
- - autoupdate stats: *not currently in use*
- - vault directory: *not currently in use*
- - twitch username: displayed on the master sheet and will be used in the future to be able to download and analyze your twitch vods
- - latest x sessions: when selecting a session for analysis, you can choose latest x sessions, and this is where you chose how many sessions
- - comparison threshold: your data will be compared to users who have similar target times as you; this variable determines how many seconds other users' target times can deviate from yours
- - use local timezone: determines if session times are in your local timezone or UTC
- - upload anonimity: if this box is checked, your name will not be shown on the master sheet
- - instance count: the number of instances that you run
- - target time: the time that you are going for **in seconds**
- - check all of the last 4 checkboxes that are overworlds that you frequently play
+Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do.
 
 #### Updating
 
  - you can update versions by running update.exe
  - you can open the github or update through the gui by clicking on the update menu-button
+
+#### Sheets
+
+Using sheets is NOT necessary, however if you wish to use google sheets in addition to local storage to store your stats, follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q)
 
 ## **Tracking**
 
@@ -50,21 +42,7 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
 
 ## **Analysis**
 
-#### General
-
-Provides general stats and graphs for the selected session
-
-#### Splits
-
-Provides an analysis of the selected split for the selected session, including it's distribution, conversion rate, averages, and so much more
-
-#### Entry Breakdown
-
-Provides an analysis that shows your stats for each type of enter for the selected session
-
-#### Comparison
-
-Currently only shows one graph, which displays your average enter and nph by session
+Check out each of the pages on the gui; they all do different things. They all have a button that you press to present the analysis, and a description of the page at the top. All graphs and tables have headers above them. If you hover over those headers, a brief explanation of the graph or table may appear.
 
 ## **Credits**
 
@@ -82,14 +60,12 @@ Thanks to Weakforced for his countless ideas and help with making decisions and 
 
 ## **Suggestions/Help**
 
-If you have any suggestions or need help setting it up, DM me on discord pncakespoon#4895
+If you have any suggestions, bug reports, or need help setting it up, DM me on discord pncakespoon#4895 or join [EAR](https://discord.gg/jnjrbysy)
 
-## Features Coming Soon
+## Features Coming Soon (or Later)
 
- - Displaying progress over time
- - Displaying the progression of certain stats throughout a session
- - More Graphs, data, and feedback :)
+ - More Graphs, data, analysis, and feedback :)
  - Spawn Image Analysis
+ - vod runs analysis
  
-
 
