@@ -19,11 +19,12 @@ if True:
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
     sqldict = {'int': 'INTEGER', 'str': 'TEXT'}
+    lastRun = None
     useSQL = False
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
     if settings['tracking']['autoupdate stats'] == 1:
-        Stats.appendStats(settings)
+        lastRun = Stats.appendStats(settings, lastRun)
     sessions = FileLoader.getSessions()
     thresholds = FileLoader.getThresholds()
     wks1 = -1
@@ -37,6 +38,7 @@ if True:
     second = timedelta(seconds=1)
     currentSession = {'splits stats': {}, 'general stats': {}}
     currentSessionMarker = 'X'
+
     selectedSession = None
     isTracking = False
     isUpdating = False
@@ -407,10 +409,16 @@ class Feedback:
 
     @classmethod
     def nether(cls, data):
+        text = ''
+
         try:
-            return Feedback.percentilesToText(Feedback.splitDataPercentiles(data), float(settings['display']['comparison threshold']))
+            for split in ['Structure 1', 'Structure 2', 'Nether Exit']:
+                if data['splits stats'][split]['Cumulative Average'] - (thresholds['splitFormulas'][split]['m'] * int(settings['playstyle']['target time']) + thresholds['splitFormulas'][split]['b']) > 30:
+                    text += f'your average {split} is a bit on the slow end\n'
         except Exception as e:
-            return ''
+            print(e)
+
+        return text
 
 
 class CompareProfiles:
@@ -508,8 +516,6 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt):
-        print("Current thread ID:", threading.get_ident())
-        print('a')
         self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
@@ -524,7 +530,6 @@ class NewRecord(FileSystemEventHandler):
         if not validation[0]:
             print(validation[1])
             return
-        print('b')
 
         # Calculate breaks
         if self.prev_datetime is not None:
@@ -549,7 +554,6 @@ class NewRecord(FileSystemEventHandler):
         if len(uids) == 0:
             print('no stats')
             return
-        print('c')
         stats = self.data["stats"][uids[0]]["stats"]
         adv = self.data["advancements"]
         lan = self.data["open_lan"]
@@ -597,8 +601,6 @@ class NewRecord(FileSystemEventHandler):
             self.rta_spent += self.data["final_rta"]
             self.rtaString += str(math.trunc(self.data["final_rta"]/1000)) + '$'
             return
-
-        print('d')
 
         self.rtaString += str(math.trunc(self.data["final_rta"]/1000))
 
@@ -783,7 +785,6 @@ class Tracking:
 
     @classmethod
     def trackResets(cls):
-        print("Current thread ID:", threading.get_ident())
         if settings['tracking']['use sheets'] == 1:
             Sheets.setup()
             try:
@@ -861,7 +862,7 @@ class SettingsPage(Page):
                 ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry'],
                 ['check', 'check', 'check', 'check', 'check']]
-    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time you stop tracking'],
+    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches'],
                    ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet', 'if checked, histograms will display as kdeplots'],
                    ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
                    ['', '', '', '', '']]
@@ -1026,9 +1027,9 @@ class CurrentSessionPage(Page):
             label = Label(subFrame, text=self.splitList2[i])
             check = Checkbutton(subFrame, variable=self.splitVars[i])
 
-            label.grid(row=0, column=0)
-            check.grid(row=0, column=1)
-            subFrame.grid(row=i + 1, column=0)
+            label.grid(row=0, column=1)
+            check.grid(row=0, column=0, padx=3)
+            subFrame.grid(row=i + 1, column=0, sticky='W')
 
 
         self.run_panel = self.frame.add_scrollableContainer(0, 1, rowspan=2, height=400, width=400, xScroll=False, sticky="e")
@@ -1052,7 +1053,9 @@ class GeneralPage(Page):
 
     def displayInfo(self):
         global isGraphingGeneral
+        global lastRun
         if not isGraphingGeneral:
+            lastRun = Stats.appendStats(settings, lastRun)
             isGraphingGeneral = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
             try:
@@ -1120,7 +1123,9 @@ class SplitsPage(Page):
 
     def displayInfo(self):
         global isGraphingSplit
+        global lastRun
         if not isGraphingSplit:
+            lastRun = Stats.appendStats(settings, lastRun)
             isGraphingSplit = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
 
@@ -1172,7 +1177,9 @@ class EntryBreakdownPage(Page):
 
     def displayInfo(self):
         global isGraphingEntry
+        global lastRun
         if not isGraphingEntry:
+            lastRun = Stats.appendStats(settings, lastRun)
             isGraphingEntry = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
             enterTypeList = []
@@ -1218,7 +1225,9 @@ class ComparisonPage(Page):
 
     def displayInfo(self):
         global isGraphingComparison
+        global lastRun
         if not isGraphingComparison:
+            lastRun = Stats.appendStats(settings, lastRun)
             isGraphingComparison = True
 
             self.frame.add_plot_frame(Graphs.graph9(sessions), 0, 0, title='NPH-AVG Scatterplot')
@@ -1253,7 +1262,9 @@ class FeedbackPage(Page):
 
     def displayInfo(self):
         global isGivingFeedback
+        global lastRun
         if not isGivingFeedback:
+            lastRun = Stats.appendStats(settings, lastRun)
             isGivingFeedback = True
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
 
@@ -1374,16 +1385,6 @@ class MainView(tk.Frame):
         else:
             self.errorPoppup('Already Tracking')
 
-    def updateData(self):
-        global isUpdating
-        global sessions
-        self.updatingStatsLabel.config(text='Updating Stats: True', foreground='green', background='black')
-        isUpdating = True
-        Stats.appendStats(settings)
-        sessions = FileLoader.getSessions()
-
-        self.updatingStatsLabel.config(text='Updating Stats: False', foreground='red', background='black')
-        isUpdating = False
 
     def __init__(self, *args, **kwargs):
         global selectedSession
@@ -1397,7 +1398,6 @@ class MainView(tk.Frame):
 
         statsMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Stats', menu=statsMenu)
-        statsMenu.add_command(label="Update Stats", command=self.updateData)
         statsMenu.add_command(label="Upload Data", command=Database.uploadData)
 
         trackingMenu = Menu(menubar, tearoff=0)
