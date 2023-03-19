@@ -42,7 +42,7 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
 
 ## **Analysis**
 
-Check out each of the pages on the gui; they all do different things. They all have a button that you press to present the analysis, and a description of the page at the top. All graphs and tables have headers above them. If you hover over those headers, a brief explanation of the graph or table may appear.
+Check out each of the pages on the gui; they all do different things. They all have a button that you press to present the analysis, and a description of the page at the top. All graphs and tables have headers above them. If you hover over those headers, a brief explanation of the graph or table may appear. Choose which session you want to be analyzed by clicking on the black drop-down next to the tabs.
 
 ## **Credits**
 
