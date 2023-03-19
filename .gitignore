@@ -143,7 +143,6 @@ ResetTracker/Sheets.py
 ResetTracker/credentials1.json
 ResetTracker/settings.json
 ResetTracker/test.py
-ResetTracker/stats.py
 ResetTracker/__init__.py
 ResetTracker/chunk.py
 ResetTracker/nbt.py
