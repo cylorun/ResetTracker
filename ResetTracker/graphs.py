@@ -6,6 +6,30 @@ import matplotlib.patches as mpatches
 
 from stats import *
 
+guiColors = {
+    'primary': '#FFA500',
+    'primary_light': '#FFDAB9',
+    'primary_dark': '#FF8C00',
+    'background': '#F0FFF0',
+    'background_dark': '#DFFFD8',
+    'true': '#00FF00',
+    'true_light': '#7CFC00',
+    'false': '#FF0000',
+    'false_light': '#FF6347',
+    'tab': '#ADD8E6',
+    'tab_light': '#B0E0E6',
+    'button': '#BA55D3',
+    'button_dark': '#4B0082',
+    'text': '#000000',
+    'text_light': '#696969',
+    'header': '#FF6347',
+    'header_light': '#FFA07A',
+    'scrollbar': '#C0C0C0',
+    'scrollbar_dark': '#808080',
+    'entry': '#F0FFFF',
+    'white': '#FFFFFF',
+    'black': '#000000'
+}
 
 # class methods for creating graphs
 class Graphs:
@@ -33,10 +57,12 @@ class Graphs:
             dist = [d for d in dist if d >= minX * 0.95 and d <= maxX * 1.05]
 
             # Set seaborn style
-            sns.set_style("whitegrid")
 
             # Create figure and axis objects
             fig, ax = plt.subplots(figsize=(4, 4))
+
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
 
             # Plot the KDE distribution
             if kde:
@@ -86,6 +112,9 @@ class Graphs:
             # Create a figure and axis object
             fig, ax = plt.subplots(figsize=(3, 3))
 
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
+
             # Create the pie chart with custom colors and explode values
             wedges, labels, _ = ax.pie(data.values(), colors=colors, explode=[0.05] * len(data), autopct='%1.1f%%',
                                        textprops={'fontsize': 10})
@@ -120,7 +149,7 @@ class Graphs:
                                  [Logistics.formatValue(splitStats['Relative Average'], isTime=True)],
                                  [Logistics.formatValue(splitStats['Relative Conversion'], isPercent=True)]
                                  ],
-                         fill_color='#F2F2F2',
+                         fill_color=guiColors['background'],
                          align=['center'],
                          font=dict(color='black', size=12),
                          height=30
@@ -133,7 +162,9 @@ class Graphs:
                 title='Table Title',
                 font=dict(size=14, family='Arial'),
                 width=400,
-                height=400
+                height=400,
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
 
             # Update table properties
@@ -216,7 +247,8 @@ class Graphs:
                 width=400,
                 height=400,
                 margin=dict(l=20, r=20, t=30, b=20),
-                paper_bgcolor='#F5F5F5'
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
             return fig
         except Exception as e:
@@ -251,7 +283,7 @@ class Graphs:
                 ),
                 cells=dict(
                     values=values,
-                    fill_color='white',  # Use white for cell background color
+                    fill_color=guiColors['background'],
                     align='center',
                     font=dict(color=colors, size=12)
                 ))
@@ -259,7 +291,9 @@ class Graphs:
             fig.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),  # Add some margin around the table
                 height=150,
-                width=400
+                width=400,
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
             return fig
         except Exception as e:
@@ -295,7 +329,7 @@ class Graphs:
                 cells=dict(
                     values=values,
                     line_color='#2E2E2E',
-                    fill_color='#FFFFFF',
+                    fill_color=guiColors['background'],
                     align='center',
                     font=dict(color='#2E2E2E', size=11)
                 ))
@@ -307,8 +341,8 @@ class Graphs:
                 width=800,
                 font=dict(size=12),
                 hovermode='closest',
-                paper_bgcolor='#F2F2F2',
-                plot_bgcolor='#F2F2F2'
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
 
             return fig
@@ -333,7 +367,7 @@ class Graphs:
                 ),
                 cells=dict(
                     values=values,
-                    fill_color='white',  # Use white for cell background color
+                    fill_color=guiColors['background'],  # Use white for cell background color
                     align='center',
                     font=dict(color='#1f77b4', size=12)
                 ))
@@ -341,7 +375,9 @@ class Graphs:
             fig.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),  # Add some margin around the table
                 height=150,
-                width=400
+                width=400,
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
             return fig
         except Exception as e:
@@ -357,6 +393,9 @@ class Graphs:
 
             # Create a figure and axis object
             fig, ax = plt.subplots(figsize=(3, 3))
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
+
             # Create the pie chart with custom colors and explode values
             wedges, labels, _ = ax.pie(data.values(), colors=colors, explode=[0.05] * len(data), autopct='%1.1f%%', textprops={'fontsize': 10})
 
@@ -391,6 +430,9 @@ class Graphs:
             dict1 = {'nph': nph_list, 'avg_enter': avg_enter_list, 'profile': profile_list}
 
             fig, ax = plt.subplots(figsize=(6, 4))
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
+
             p2 = sns.scatterplot(x='nph', y='avg_enter', hue='profile', data=dict1, s=60, alpha=0.8, palette='Set1',
                                  edgecolor='none')
             ax.set_xlabel('NPH', fontsize=16)
@@ -427,7 +469,7 @@ class Graphs:
                 cells=dict(
                     values=values,
                     line_color='#2E2E2E',
-                    fill_color='#FFFFFF',
+                    fill_color=guiColors['background'],
                     align='center',
                     font=dict(color='#2E2E2E', size=11)
                 ))
@@ -439,8 +481,8 @@ class Graphs:
                 width=600,
                 font=dict(size=12),
                 hovermode='closest',
-                paper_bgcolor='#F2F2F2',
-                plot_bgcolor='#F2F2F2'
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
 
             return fig
@@ -466,7 +508,7 @@ class Graphs:
                 ),
                 cells=dict(
                     values=values,
-                    fill_color='white',  # Use white for cell background color
+                    fill_color=guiColors['background'],
                     align='center',
                     font=dict(color='#1f77b4', size=12)
                 ))
@@ -474,7 +516,9 @@ class Graphs:
             fig.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),  # Add some margin around the table
                 height=100,
-                width=400
+                width=400,
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
             return fig
         except Exception as e:
@@ -500,7 +544,7 @@ class Graphs:
                 ),
                 cells=dict(
                     values=values,
-                    fill_color='white',  # Use white for cell background color
+                    fill_color=guiColors['background'],  # Use white for cell background color
                     align='center',
                     font=dict(color='#1f77b4', size=12)
                 ))
@@ -508,7 +552,9 @@ class Graphs:
             fig.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),  # Add some margin around the table
                 height=100,
-                width=400
+                width=400,
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
             )
             return fig
         except Exception as e:
@@ -531,6 +577,8 @@ class Graphs:
                 data[keys.index(latestSplits[i])].append(igtDist[i])
 
             fig, ax = plt.subplots(figsize=(4, 4))
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
 
             plt.hist(data, color=values, stacked=True,
                      bins=np.linspace(0, round(math.sqrt(max(igtDist))) + 1, round(math.sqrt(max(igtDist))) + 2) ** 2)

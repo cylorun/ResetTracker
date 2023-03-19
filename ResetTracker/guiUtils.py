@@ -50,7 +50,7 @@ class PlotFrame(tk.Frame):
             raise ValueError('Unsupported figure type')
 
     def add_title(self, text):
-        label = Label(self, text=text, font=("Arial", 14))
+        label = Label(self, text=text, font=("Arial", 14), background=guiColors['background'])
         label.grid(row=0, column=0)
         return label
 
@@ -103,16 +103,16 @@ class ScrollableTextFrame(tk.Frame):
         self.header_label.pack(side=tk.TOP, fill=tk.X)
 
         # Create a vertical scrollbar
-        vscrollbar = tk.Scrollbar(self, orient=tk.VERTICAL)
+        vscrollbar = tk.Scrollbar(self, orient=tk.VERTICAL, background=guiColors['scrollbar'])
         vscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Create a horizontal scrollbar
-        hscrollbar = tk.Scrollbar(self, orient=tk.HORIZONTAL)
+        hscrollbar = tk.Scrollbar(self, orient=tk.HORIZONTAL, background=guiColors['scrollbar'])
         hscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Create a text widget with scrollbars
         self.text = tk.Text(self, wrap=tk.NONE, xscrollcommand=hscrollbar.set, yscrollcommand=vscrollbar.set,
-                            state='disabled')
+                            state='disabled', font=("Arial", 10), background=guiColors['background'])
         self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Configure the scrollbars to scroll the text widget
@@ -132,18 +132,19 @@ class ScrollableTextFrame(tk.Frame):
 
 class ScrollableContainer(tk.Frame):
     def __init__(self, parent, yScroll=True, xScroll=True, width=850, height=550):
-        super().__init__(parent)
+        super().__init__(parent, background=guiColors['background'], highlightcolor=guiColors['black'], highlightthickness=0)
 
         # Create a Frame widget with a canvas inside it
-        self.canvas = tk.Canvas(self, width=width, height=height)
-        self.container = tk.Frame(self.canvas)
+        self.canvas = tk.Canvas(self, width=width, height=height, background=guiColors['background'])
+        self.canvas.configure(background=guiColors['background'])
+        self.container = tk.Frame(self.canvas, background=guiColors['background'])
 
         # Create a scrollbar and bind it to the canvas
         if xScroll:
-            self.xscrollbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview)
+            self.xscrollbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview, background=guiColors['scrollbar'])
             self.canvas.configure(xscrollcommand=self.xscrollbar.set)
         if yScroll:
-            self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+            self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview, background=guiColors['scrollbar'])
             self.canvas.configure(yscrollcommand=self.yscrollbar.set)
 
         # Pack the widgets into the window
@@ -158,21 +159,24 @@ class ScrollableContainer(tk.Frame):
         self.container.bind('<Configure>', self.on_container_configure)
         self.canvas.create_window((0, 0), window=self.container, anchor='nw')
 
+    def temp(self):
+        self.canvas.configure(background=guiColors['background'])
+
     def on_container_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox('all'))
 
     def add_title(self, text):
-        label = Label(self, text=text, font=("Arial", 14))
+        label = Label(self, text=text, font=("Arial", 14), background=guiColors['background'])
         label.grid(row=0, column=0)
 
 
     def add_plot_frame(self, graph, row, column, rowspan=1, columnspan=1, title='', explanation=''):
         try:
-            panel = PlotFrame(self.container, graph)
+            panel = PlotFrame(self.container, graph, background=guiColors['background'])
         except Exception as e:
             print(e)
-            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables')
-        if title != '':
+            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
+        if title != '' and isinstance(panel, PlotFrame):
             label = panel.add_title(title)
             if explanation != '':
                 Tooltip.createToolTip(label, explanation)
@@ -181,15 +185,16 @@ class ScrollableContainer(tk.Frame):
 
     def add_label(self, text, row, column, rowspan=1, columnspan=1):
         try:
-            panel = tk.Label(self.container, text=text, wraplength=300, font=("Arial", 12))
+            panel = tk.Label(self.container, text=text, wraplength=300, font=("Arial", 12), background=guiColors['background'])
         except Exception as e:
-            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables')
+            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
 
         panel.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky="nsew", pady=6, padx=2)
         return panel
 
     def add_scrollableContainer(self, row, column, rowspan=1, columnspan=1, yScroll=True, xScroll=True, width=750, height=550, sticky=""):
         scrollableContainer = ScrollableContainer(self.container, yScroll=yScroll, xScroll=xScroll, width=width, height=height)
+        scrollableContainer.canvas.configure(background=guiColors['background'])  # set the background color of the canvas
         scrollableContainer.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky=sticky, pady=6, padx=2)
         return scrollableContainer
 
