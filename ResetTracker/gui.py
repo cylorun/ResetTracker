@@ -18,6 +18,8 @@ global variables
 if True:
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
+    sqldict = {'int': 'INTEGER', 'str': 'TEXT'}
+    useSQL = False
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
     if settings['tracking']['autoupdate stats'] == 1:
@@ -126,6 +128,9 @@ class CurrentSession:
     @classmethod
     def updateCurrentSession(cls, row):
         global currentSession
+        for i in range(len(row)):
+            if row[i] == '':
+                row[i] = None
         rowCells = {}
         for i in range(len(headerLabels)):
             if row[i] is not None and '-' in row[i] and ':' in row[i]:
@@ -357,34 +362,46 @@ class Feedback:
         recomendedSeedsPlayed = None
 
         # wall seeds played
-        for item in thresholds['recomendedSeedsPlayed']:
-            if item['instMin'] <= int(settings['playstyle']['instance count']) <= item['instMax']:
-                recomendedSeedsPlayed = {'a': item['lowerBound'], 'b': item['upperBound']}
+        try:
+            for item in thresholds['recomendedSeedsPlayed']:
+                if item['instMin'] <= int(settings['playstyle']['instance count']) <= item['instMax']:
+                    recomendedSeedsPlayed = {'a': item['lowerBound'], 'b': item['upperBound']}
 
-        if recomendedSeedsPlayed is not None:
-            if (data['general stats']['percent played'] < recomendedSeedsPlayed['a']):
-                text += 'click into more seeds; be less picky with the previews you want to play\n'
-            elif (data['general stats']['percent played'] > recomendedSeedsPlayed['b']):
-                text += 'click into less seeds; be more selective with the previews you want to play\n'
+            if recomendedSeedsPlayed is not None:
+                if (data['general stats']['percent played'] < recomendedSeedsPlayed['a']):
+                    text += 'click into more seeds; be less picky with the previews you want to play\n'
+                elif (data['general stats']['percent played'] > recomendedSeedsPlayed['b']):
+                    text += 'click into less seeds; be more selective with the previews you want to play\n'
+        except Exception as e:
+            pass
 
         # overall reset hardness
-        fast = data['general stats']['average enter'] > thresholds['splitFormulas']['Nether']['m'] * int(settings['playstyle']['target time']) + thresholds['splitFormulas']['Nether']['b']
-        if data['general stats']['rnph'] < thresholds['nph']['low'] and fast:
-            text += 'consider resetting your overworlds less aggressively; reset softer\n'
-        if data['general stats']['rnph'] > thresholds['nph']['high'] and not fast:
-            text += 'consider resetting your overworlds more agressively; reset harder\n'
+        try:
+            fast = data['general stats']['average enter'] > thresholds['splitFormulas']['Nether']['m'] * int(settings['playstyle']['target time']) + thresholds['splitFormulas']['Nether']['b']
+            if data['general stats']['rnph'] < thresholds['nph']['low'] and fast:
+                text += 'consider resetting your overworlds less aggressively; reset softer\n'
+            if data['general stats']['rnph'] > thresholds['nph']['high'] and not fast:
+                text += 'consider resetting your overworlds more agressively; reset harder\n'
+        except Exception as e:
+            pass
 
         # conversions
-        eSuccess = data['general stats']['Exit Success']
-        bt2WoodConversion = (eSuccess['Buried Treasure w/ tnt']['Wood Conversion'] * eSuccess['Buried Treasure w/ tnt']['Iron Count'] + eSuccess['Buried Treasure']['Wood Conversion'] * eSuccess['Buried Treasure']['Iron Count']) / (eSuccess['Buried Treasure w/ tnt']['Iron Count'] + eSuccess['Buried Treasure']['Iron Count'])
-        if bt2WoodConversion > thresholds['owConversions']['bt-wood']['high']:
-            text += 'you might be playing out too many buried treasures; remember to judge ocean quality and pace while running to trees, and reset if they are not favourable\n'
-        elif bt2WoodConversion < thresholds['owConversions']['bt-wood']['low']:
-            text += 'if you play out islands that do not have trees, stop doing that; consider doing more thorough assessment of ocean quality while looking for the bt\n'
+        try:
+            eSuccess = data['general stats']['Exit Success']
+            bt2WoodConversion = (eSuccess['Buried Treasure w/ tnt']['Wood Conversion'] * eSuccess['Buried Treasure w/ tnt']['Iron Count'] + eSuccess['Buried Treasure']['Wood Conversion'] * eSuccess['Buried Treasure']['Iron Count']) / (eSuccess['Buried Treasure w/ tnt']['Iron Count'] + eSuccess['Buried Treasure']['Iron Count'])
+            if bt2WoodConversion > thresholds['owConversions']['bt-wood']['high']:
+                text += 'you might be playing out too many buried treasures; remember to judge ocean quality and pace while running to trees, and reset if they are not favourable\n'
+            elif bt2WoodConversion < thresholds['owConversions']['bt-wood']['low']:
+                text += 'if you play out islands that do not have trees, stop doing that; consider doing more thorough assessment of ocean quality while looking for the bt\n'
+        except Exception as e:
+            pass
 
-        played2btConversion = data['splits stats']['Iron']['Count']/data['general stats']['percent played']/data['general stats']['total resets']
-        if played2btConversion < thresholds['owConversions']['played-bt']['low']:
-            text += 'If you are resetting for mapless buried treasure, you might want to work on your mapless; you may be to selective with the spikes you play out for mapless'
+        try:
+            played2btConversion = data['splits stats']['Iron']['Count']/data['general stats']['percent played']/data['general stats']['total resets']
+            if played2btConversion < thresholds['owConversions']['played-bt']['low']:
+                text += 'If you are resetting for mapless buried treasure, you might want to work on your mapless; you may be to selective with the spikes you play out for mapless'
+        except Exception as e:
+            pass
 
         return text
 
@@ -491,7 +508,9 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt):
-        self.this_run = [None] * (len(advChecks) + 2 + len(statsChecks))
+        print("Current thread ID:", threading.get_ident())
+        print('a')
+        self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
             try:
@@ -505,6 +524,7 @@ class NewRecord(FileSystemEventHandler):
         if not validation[0]:
             print(validation[1])
             return
+        print('b')
 
         # Calculate breaks
         if self.prev_datetime is not None:
@@ -529,6 +549,7 @@ class NewRecord(FileSystemEventHandler):
         if len(uids) == 0:
             print('no stats')
             return
+        print('c')
         stats = self.data["stats"][uids[0]]["stats"]
         adv = self.data["advancements"]
         lan = self.data["open_lan"]
@@ -542,20 +563,20 @@ class NewRecord(FileSystemEventHandler):
         self.this_run[0] = Logistics.ms_to_string(self.data["final_rta"])
         for idx in range(len(advChecks)):
             # Prefer to read from timelines
-            if advChecks[idx][0] == "timelines" and self.this_run[idx + 1] is None:
+            if advChecks[idx][0] == "timelines" and self.this_run[idx + 1] == '':
                 for tl in self.data["timelines"]:
                     if tl["name"] == advChecks[idx][1]:
                         if lan > int(tl["rta"]):
                             self.this_run[idx + 1] = Logistics.ms_to_string(tl["igt"])
                             has_done_something = True
             # Read other stuff from advancements
-            elif (advChecks[idx][0] in adv and adv[advChecks[idx][0]]["complete"] and self.this_run[idx + 1] is None):
+            elif (advChecks[idx][0] in adv and adv[advChecks[idx][0]]["complete"] and self.this_run[idx + 1] == ''):
                 if lan > int(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["rta"]):
                     self.this_run[idx +
                                   1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
                     has_done_something = True
             # diamond pick
-            elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] is None:
+            elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
                 if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]):
                     if lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
                         self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
@@ -576,6 +597,8 @@ class NewRecord(FileSystemEventHandler):
             self.rta_spent += self.data["final_rta"]
             self.rtaString += str(math.trunc(self.data["final_rta"]/1000)) + '$'
             return
+
+        print('d')
 
         self.rtaString += str(math.trunc(self.data["final_rta"]/1000))
 
@@ -608,6 +631,15 @@ class NewRecord(FileSystemEventHandler):
         with open("stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
             writer.writerow(data)
+
+        if useSQL:
+            sep1 = '", "'
+            sep2 = ', '
+            q = '?'
+            conn1 = sqlite3.connect('data/stats.db')
+            c1 = conn1.cursor()
+            c1.execute(f'INSERT INTO stats ("{sep1.join(headerLabels)}") VALUES ({sep2.join([q] * len(data))})', data)
+            conn1.commit()
 
         if settings['tracking']['use sheets'] == 1:
             with open("temp.csv", "r") as infile:
@@ -751,12 +783,17 @@ class Tracking:
 
     @classmethod
     def trackResets(cls):
+        print("Current thread ID:", threading.get_ident())
         if settings['tracking']['use sheets'] == 1:
             Sheets.setup()
             try:
                 open("temp.csv", "x")
             except Exception as e:
                 pass
+        if useSQL:
+            conn1 = sqlite3.connect('data/stats.db')
+            c1 = conn1.cursor()
+            c1.execute('CREATE TABLE IF NOT EXISTS stats (id INTEGER PRIMARY KEY, "Date and Time" TEXT, "Iron Source" TEXT, "Enter Type" TEXT, "Gold Source" TEXT, "Spawn Biome" TEXT, "RTA" TEXT, "Wood" TEXT, "Iron Pickaxe" TEXT, "Nether" TEXT, "Bastion" TEXT, "Fortress" TEXT, "Nether Exit" TEXT, "Stronghold" TEXT, "End" TEXT, "Retimed IGT" TEXT, "IGT" TEXT, "Gold Dropped" TEXT, "Blaze Rods" TEXT, "Blazes" TEXT, "Flint" TEXT, "Gravel" TEXT, "Deaths" TEXT, "Traded" TEXT, "Endermen" TEXT, "Eyes Thrown" TEXT, "Iron" TEXT, "Wall Resets Since Prev" TEXT, "Played Since Prev" TEXT, "RTA Since Prev" TEXT, "Break RTA Since Prev" TEXT, "Wall Time Since Prev" TEXT, "Session Marker" TEXT, "RTA Distribution" TEXT)')
         while True:
             try:
                 newRecordObserver = Observer()
@@ -937,7 +974,6 @@ class CurrentSessionPage(Page):
     splitList2 = ['Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']
     splitVars = []
 
-
     def updateTables(self, run):
         self.frame.clear_widgets()
         self.frame.add_plot_frame(currentSession['figs'][0], 0, 0, title='Splits')
@@ -980,6 +1016,10 @@ class CurrentSessionPage(Page):
         self.frame = ScrollableContainer(self)
         self.control_panel = Frame(self)
 
+        panel_label = Label(self.control_panel, text="Runs to Display", font=("Arial", 14))
+        panel_label.grid(row=0, column=0, columnspan=2, pady=5)
+        Tooltip.createToolTip(panel_label, "Choose a few splits! All runs which reach the split you checked will show up")
+
         for i in range(len(self.splitList2)):
             self.splitVars.append(tk.IntVar())
             subFrame = Frame(self.control_panel)
@@ -988,7 +1028,8 @@ class CurrentSessionPage(Page):
 
             label.grid(row=0, column=0)
             check.grid(row=0, column=1)
-            subFrame.grid(row=i, column=0)
+            subFrame.grid(row=i + 1, column=0)
+
 
         self.run_panel = self.frame.add_scrollableContainer(0, 1, rowspan=2, height=400, width=400, xScroll=False, sticky="e")
         self.run_panel.add_title("Session Runs")

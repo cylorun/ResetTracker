@@ -8,6 +8,7 @@ from typing import Optional
 from ctypes import windll, create_unicode_buffer
 import time
 import math
+import sqlite3
 
 
 
@@ -66,7 +67,7 @@ class Logistics:
     @classmethod
     def ms_to_string(cls, ms, returnTime=False):
         if ms is None:
-            return None
+            return ''
 
         ms = int(ms)
 
