@@ -6,30 +6,8 @@ import matplotlib.patches as mpatches
 
 from stats import *
 
-guiColors = {
-    'primary': '#FFA500',
-    'primary_light': '#FFDAB9',
-    'primary_dark': '#FF8C00',
-    'background': '#F0FFF0',
-    'background_dark': '#DFFFD8',
-    'true': '#00FF00',
-    'true_light': '#7CFC00',
-    'false': '#FF0000',
-    'false_light': '#FF6347',
-    'tab': '#ADD8E6',
-    'tab_light': '#B0E0E6',
-    'button': '#BA55D3',
-    'button_dark': '#4B0082',
-    'text': '#000000',
-    'text_light': '#696969',
-    'header': '#FF6347',
-    'header_light': '#FFA07A',
-    'scrollbar': '#C0C0C0',
-    'scrollbar_dark': '#808080',
-    'entry': '#F0FFFF',
-    'white': '#FFFFFF',
-    'black': '#000000'
-}
+with open('data/palette.json', 'r') as f:
+    guiColors = json.load(f)
 
 # class methods for creating graphs
 class Graphs:
@@ -92,7 +70,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # makes a pie chart given a list of strings
@@ -131,7 +108,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # makes a table for relevant information of a split
@@ -175,7 +151,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # makes a 2-way table showing the frequency of each combination of iron source and entry method
@@ -252,7 +227,6 @@ class Graphs:
             )
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # table displaying info about a specific split
@@ -297,7 +271,6 @@ class Graphs:
             )
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # table display split stats of current session
@@ -347,7 +320,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # table displaying general stats of the current session
@@ -381,7 +353,6 @@ class Graphs:
             )
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # pie chart from dict of numerical data
@@ -411,7 +382,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # scatterplot displaying nph and average enter, with a canvas based on efficiency score
@@ -442,7 +412,6 @@ class Graphs:
             plt.tight_layout()
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # table displaying some nether stats for each enter type
@@ -487,7 +456,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # table displaying general stats of a session
@@ -522,7 +490,6 @@ class Graphs:
             )
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # table displaying general stats of a session
@@ -558,7 +525,6 @@ class Graphs:
             )
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     # makes a histogram distribution of rta colour coded based on the current split during reset
@@ -595,7 +561,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     @classmethod
@@ -625,7 +590,6 @@ class Graphs:
 
             return fig
         except Exception as e:
-            print(e)
             return 1
 
     @classmethod

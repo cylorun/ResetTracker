@@ -414,7 +414,7 @@ class Feedback:
                 if data['splits stats'][split]['Cumulative Average'] - (thresholds['splitFormulas'][split]['m'] * int(settings['playstyle']['target time']) + thresholds['splitFormulas'][split]['b']) > 30:
                     text += f'your average {split} is a bit on the slow end\n'
         except Exception as e:
-            print(e)
+            pass
 
         return text
 
@@ -432,7 +432,6 @@ class Sheets:
             sh = gc_sheets.open_by_url(settings['tracking']['sheet link'])
             wks = sh.worksheet_by_title('Raw Data')
         except Exception as e:
-            print(e)
             return -1
         return wks
 
@@ -471,14 +470,13 @@ class Sheets:
 
 
                 except Exception as e2:
-                    print(e2)
+                    pass
 
             live = True
             while live:
                 push_data()
                 time.sleep(5)
         except Exception as e:
-            print(e)
             input("")
 
 
@@ -522,11 +520,9 @@ class NewRecord(FileSystemEventHandler):
             except Exception as e:
                 return
         if self.data is None:
-            print("Record file couldnt be read")
             return
         validation = self.ensure_run()
         if not validation[0]:
-            print(validation[1])
             return
 
         # Calculate breaks
@@ -550,7 +546,6 @@ class NewRecord(FileSystemEventHandler):
             return
         uids = list(self.data["stats"].keys())
         if len(uids) == 0:
-            print('no stats')
             return
         stats = self.data["stats"][uids[0]]["stats"]
         adv = self.data["advancements"]
@@ -801,7 +796,7 @@ class Tracking:
                     event_handler, settings['tracking']["records path"], recursive=False)
                 newRecordObserver.start()
             except Exception as e:
-                print("Records directory could not be found")
+                main1.errorPoppup("Records directory could not be found")
             else:
                 break
         if settings['tracking']["delete-old-records"] == 1:
@@ -814,7 +809,6 @@ class Tracking:
             t.daemon = True
             t.start()
 
-        print("Tracking...")
         live = True
 
         try:
@@ -823,7 +817,7 @@ class Tracking:
                     live = False
                 time.sleep(1)
         except Exception as e:
-            print(e)
+            pass
         finally:
             newRecordObserver.stop()
             newRecordObserver.join()
@@ -860,7 +854,7 @@ class SettingsPage(Page):
                 ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry'],
                 ['check', 'check', 'check', 'check', 'check']]
-    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches'],
+    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches'],
                    ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet', 'if checked, histograms will display as kdeplots'],
                    ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
                    ['', '', '', '', '']]
@@ -936,7 +930,10 @@ class SettingsPage(Page):
                 elif self.varTypes[i1][i2] == 'check':
                     self.settingsVars[i1].append(tk.IntVar())
                 self.settingsVars[i1][i2].set(loadedSettings[self.varGroups[i1]][self.varStrings[i1][i2]])
-                self.labels[i1].append(tk.Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2]))
+                if self.varStrings[i1][i2] == 'vault directory':
+                    self.labels[i1].append(tk.Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2] + ' (irrelevant)'))
+                else:
+                    self.labels[i1].append(tk.Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2]))
                 self.labels[i1][i2].pack(side="left")
                 if self.varTypes[i1][i2] == 'entry':
                     self.widgets[i1].append(tk.Entry(self.subcontainers[i1][i2], textvariable=self.settingsVars[i1][i2], foreground=guiColors['black'], bg=guiColors['entry']))
@@ -1271,13 +1268,12 @@ class FeedbackPage(Page):
                 self.panel1.set_text("Feedback:\n" + Feedback.overworld(sessionData))
             except Exception as e:
                 self.panel1.set_text('An error occured')
-                print(e)
+
 
             try:
                 self.panel2.set_text("Feedback:\n" + Feedback.nether(sessionData))
             except Exception as e:
                 self.panel2.set_text('An error occured')
-                print(e)
 
             isGivingFeedback = False
 
