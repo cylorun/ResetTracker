@@ -42,6 +42,7 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
 
 ## **Analysis**
 
+IMPORTANT: this tracker is still compatible with specnr's website
 Check out each of the pages on the gui; they all do different things. They all have a button that you press to present the analysis, and a description of the page at the top. All graphs and tables have headers above them. If you hover over those headers, a brief explanation of the graph or table may appear. Choose which session you want to be analyzed by clicking on the black drop-down next to the tabs.
 
 ## **Credits**
@@ -67,5 +68,6 @@ If you have any suggestions, bug reports, or need help setting it up, DM me on d
  - More Graphs, data, analysis, and feedback :)
  - Spawn Image Analysis
  - vod runs analysis
+ - Comparing stats with your freinds!
  
 
