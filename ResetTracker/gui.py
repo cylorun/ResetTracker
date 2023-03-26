@@ -1444,9 +1444,11 @@ class MainView(tk.Frame):
         buttonframe1 = tk.Frame(buttonframeMain)
         container = tk.Frame(self)
 
+        """
         statsMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Stats', menu=statsMenu)
         statsMenu.add_command(label="Upload Data", command=Database.uploadData)
+        """
 
         trackingMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label='Tracking', menu=trackingMenu)
@@ -1462,8 +1464,9 @@ class MainView(tk.Frame):
             menubar.add_cascade(label='Update', menu=updateMenu)
         updateMenu.add_command(label="Open Github", command=Update.openGithub)
 
-        resourcesMenu = Menu(menubar, tearoff=0)
-        menubar.add_cascade(label='Resources', menu=resourcesMenu)
+
+        #resourcesMenu = Menu(menubar, tearoff=0)
+        #menubar.add_cascade(label='Resources', menu=resourcesMenu)
 
         for i in range(len(self.pages)):
             self.pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
