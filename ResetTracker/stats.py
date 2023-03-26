@@ -5,7 +5,12 @@ from functools import partial
 from speedrun_models import SplitDistribution
 from utils import *
 
-headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
+headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
+                'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT',
+                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
+                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev',
+                'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker',
+                'RTA Distribution']
 
 
 class StatsDB:
@@ -428,7 +433,7 @@ class Stats:
     def appendStats(cls, settings, last):
         global sessions
         new_last = Stats.get_last_time()
-        if last is None or new_last != last:
+        if True or last is None or new_last != last:
             sessionList = Stats.get_sessions(settings)
             if len(sessionList) == 0:
                 return None

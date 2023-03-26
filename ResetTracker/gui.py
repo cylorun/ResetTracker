@@ -17,7 +17,7 @@ global variables
 
 if True:
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
+    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
     sqldict = {'int': 'INTEGER', 'str': 'TEXT'}
     lastRun = None
     useSQL = False
@@ -62,14 +62,54 @@ if True:
         ("minecraft:dropped", "minecraft:gold_ingot"),
         ("minecraft:picked_up", "minecraft:blaze_rod"),
         ("minecraft:killed", "minecraft:blaze"),
-        ("minecraft:picked_up", "minecraft:flint"),
-        ("minecraft:mined", "minecraft:gravel"),
+        ("minecraft:crafted", "minecraft:diamond_pickaxe"),
+        ("minecraft:used", "minecraft:ender_pearl"),
         ("minecraft:custom", "minecraft:deaths"),
-        ("minecraft:custom", "minecraft:traded_with_villager"),
-        ("minecraft:killed", "minecraft:enderman"),
-        ("minecraft:picked_up", "minecraft:ender_eye")
+        ("minecraft:used", "minecraft:obsidian"),
+        ("minecraft:crafted", "minecraft:diamond_sword")
     ]
 
+    blocks = ['minecraft:gravel',
+             'minecraft:dirt',
+             'minecraft:sand',
+             'minecraft:soul_sand',
+             'minecraft:soul_soil',
+             'minecraft:stone',
+             'minecraft:andesite',
+             'minecraft:diorite',
+             'minecraft:granite',
+             'minecraft:gold_block',
+             'minecraft:basalt',
+             'minecraft:netherack',
+             'minecraft:nether_bricks',
+             'minecraft:blackstone',
+             'minecraft:blackstone_wall',
+             'minecraft:blackstone_slab',
+             'minecraft:blackstone_stairs',
+             'minecraft:gilded_blackstone',
+             'minecraft:blackstone',
+             'minecraft:polished_blackstone_bricks',
+             'minecraft:chiseled_polished_blackstone',
+             'minecraft:polished_blackstone_brick_wall',
+             'minecraft:polished_blackstone_brick_slab',
+             'minecraft:polished_blackstone_brick_stairs',
+             'minecraft:cracked_polished_blackstone_bricks',
+             'minecraft:crafting_table',
+             'minecraft:oak_log',
+             'minecraft:birch_log',
+             'minecraft:spruce_log',
+             'minecraft:jungle_log',
+             'minecraft:acacia_log',
+             'minecraft:dark_oak_log',
+             'minecraft:warped_stem',
+             'minecraft:crimson_stem',
+             'minecraft:oak_leaves',
+             'minecraft:birch_leaves',
+             'minecraft:spruce_leaves',
+             'minecraft:jungle_leaves',
+             'minecraft:acacia_leaves',
+             'minecraft:dark_oak_leaves'
+             ]
 """
 global variables
 """
@@ -437,7 +477,7 @@ class Sheets:
 
     @classmethod
     def setup(cls):
-        wks1.update_row(index=1, values=['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Deaths', 'Traded', 'Endermen', 'Eyes Thrown', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution'], col_offset=0)
+        wks1.update_row(index=1, values=headerLabels, col_offset=0)
 
     @classmethod
     def sheets(cls):
@@ -503,6 +543,8 @@ class NewRecord(FileSystemEventHandler):
             self.isFirstRun = currentSessionMarker + '$' + config['version']
 
     def ensure_run(self):
+        if settings['tracking']['detect RSG'] == 0:
+            return True, ""
         if self.path is None:
             return False, "Path error"
         if self.data is None:
@@ -612,13 +654,14 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
-        enter_type, gold_source, spawn_biome, iron_source = Tracking.getMiscData(stats, adv)
+        enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
+        print(blocks_mined)
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 
         # Push to csv
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
-        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run +
+        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run + [blocks_mined] +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
                  Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
         self.isFirstRun = ''
@@ -770,7 +813,17 @@ class Tracking:
                             iron_source = "Half Shipwreck"
                         else:
                             iron_source = "Buried Treasure"
-        return enter_type, gold_source, spawn_biome, iron_source
+
+        blocks_mined_list = ['0'] * len(blocks)
+
+        if "minecraft:mined" in stats:
+            for i in range(len(blocks)):
+                if blocks[i] in stats["minecraft:mined"]:
+                    blocks_mined_list[i] = str(stats["minecraft:mined"][blocks[i]])
+
+        blocks_mined = '$'.join(blocks_mined_list)
+
+        return enter_type, gold_source, spawn_biome, iron_source, blocks_mined
 
     @classmethod
     def trackOldRecords(cls):
@@ -846,15 +899,15 @@ class IntroPage(Page):
 # gui
 class SettingsPage(Page):
     explanationText = 'This is the page where you adjust your settings. Your settings are saved in the data folder. Remember to press save to save and apply the adjustments!'
-    varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats'],
+    varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats', 'detect RSG'],
                   ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity', 'use KDE'],
                   ['instance count', 'target time', 'rd', 'ed'],
                   ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'entry', 'check', 'check', 'check'],
+    varTypes = [['entry', 'entry', 'entry', 'check', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry'],
                 ['check', 'check', 'check', 'check', 'check']]
-    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches'],
+    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches', 'Only track random seed runs. Disable for other categories.'],
                    ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet', 'if checked, histograms will display as kdeplots'],
                    ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
                    ['', '', '', '', '']]
@@ -1312,6 +1365,7 @@ class MainView(tk.Frame):
     currentSessionMarkerLock = threading.Lock()
     pages = None
     trackingLabel = None
+    drop = None
 
     def authenticateSheets(self):
         if settings['tracking']['use sheets'] == 1:
@@ -1421,11 +1475,11 @@ class MainView(tk.Frame):
         for session in sessions['sessions']:
             sessionStrings.append(session['string'])
         selectedSession.set(sessionStrings[0])
-        drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
-        drop.configure(background=guiColors['button'], foreground=guiColors['text'])
+        self.drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
+        self.drop.configure(background=guiColors['button'], foreground=guiColors['text'])
         self.trackingLabel = Label(buttonframeMain, text='Tracking: False', background=guiColors['false_light'], foreground=guiColors['black'], font=("Arial Bold", 10), pady=3, padx=10, )
         self.trackingLabel.pack(side="right", expand=True)
-        drop.pack(side="right")
+        self.drop.pack(side="right")
         buttonframe1.pack(side="left", fill="x", expand=False)
         buttonframeMain.pack(side="top")
         container.pack(side="top", fill="both", expand=True)

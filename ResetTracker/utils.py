@@ -70,7 +70,9 @@ class Logistics:
             return ''
 
         ms = int(ms)
-
+        td = timedelta(milliseconds=ms)
+        if not timedelta(hours=0) < td < timedelta(hours=12):
+            td = timedelta(days=1) - td
         t = datetime(1970, 1, 1) + timedelta(milliseconds=ms)
         if returnTime:
             return t
@@ -120,7 +122,7 @@ class Logistics:
         return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
     @classmethod
-    def formatValue(cls, value, isTime=False, isPercent=False):
+    def formatValue(cls, value, isTime=False, isPercent=False, includeHours=False):
         if value is None:
             return ""
         if type(value) == str:
@@ -128,13 +130,16 @@ class Logistics:
         if type(value) == int:
             if isTime:
                 valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value % 3600)
-                return str(math.trunc(value/3600)) + valueDatetime.strftime('%M:%S')
+                return str(math.trunc(value/3600)) + ':' + valueDatetime.strftime('%M:%S')
             else:
                 return str(value)
         if type(value) == float:
             if isTime:
                 valueDatetime = datetime(year=1970, month=1, day=1) + timedelta(seconds=value % 3600)
-                return str(math.trunc(value/3600)) + valueDatetime.strftime('%M:%S')
+                if includeHours:
+                    return str(math.trunc(value / 3600)) + ':' + valueDatetime.strftime('%M:%S') + '.' + str(round(int(10 * (value % 1)), 0))
+                else:
+                    return valueDatetime.strftime('%M:%S') + '.' + str(round(int(10 * (value % 1)), 0))
             else:
                 if isPercent:
                     return str(round(value * 100, 1)) + '%'
@@ -143,7 +148,10 @@ class Logistics:
         if type(value) == timedelta:
             if isTime:
                 valueDatetime = datetime(year=1970, month=1, day=1) + value
-                return valueDatetime.strftime("%M:%S.") + str(round(int(10 * ((value / timedelta(seconds=1)) % 1)), 0))
+                if includeHours:
+                    return str(math.trunc((value / timedelta(seconds=1)) / 3600)) + ':' + valueDatetime.strftime("%M:%S") + '.' + str(round(int(10 * ((value / timedelta(seconds=1)) % 1)), 0))
+                else:
+                    return valueDatetime.strftime("%M:%S") + '.' + str(round(int(10 * ((value / timedelta(seconds=1)) % 1)), 0))
             else:
                 return value/timedelta(seconds=1)
 
