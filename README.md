@@ -9,7 +9,7 @@
 
 #### Settings
 
-After running gui.exe, go to the settings tab. Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do.
+After running gui.exe, go to the settings tab. Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do when you try to save them or start tracking.
 
 #### Updating
 
@@ -36,7 +36,7 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
  - Date and Time: the date and time at which the run ended in UTC
  - Run Type Stats: stats that describe the strategies used in the run
  - Splits: stats that record the time of each split
- - Misc. stats: random stats that aren't really important
+ - Misc. stats: random stats that aren't used yet but will be used later for research purposes
  - Cumulating stats: stats that record how many resets and how much time since the last run with a split
  - Session Marker: marks the start of the session and the strategy associated with it
 
