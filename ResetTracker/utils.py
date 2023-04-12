@@ -4,13 +4,41 @@ import datetime
 from datetime import datetime, timedelta
 import json
 from datetime import time
-from typing import Optional
-from ctypes import windll, create_unicode_buffer
+import sys
 import time
 import math
 import sqlite3
 
+multiCheckSupported = True
 
+if sys.platform.startswith("win32"):
+    from ctypes import create_unicode_buffer, windll
+
+elif sys.platform.startswith("darwin"):
+    print("Warning: On MacOS, do not put OBS in fullscreen mode.") # because of the checks used
+    try:
+        from AppKit import NSWorkspace
+        from Quartz import (
+            CGWindowListCopyWindowInfo,
+            kCGWindowListOptionOnScreenOnly,
+            kCGNullWindowID
+        )
+    except ModuleNotFoundError:
+        multiCheckSupported = False
+        print("If you are running multi on MacOS, you should run this command in your terminal: pip install pyobjc")
+
+elif sys.platform.startswith("linux"):
+    # xdotool is used to get the foreground window title, which requires x11
+    import subprocess
+    if subprocess.run(["echo", "$XDG_SESSION_TYPE"]).stdout != "x11":
+        multiCheckSupported = False
+
+else:
+    multiCheckSupported = False
+    print("can minecraft even run on your os lol")
+
+if not multiCheckSupported:
+    print("The tracker does not support multi for your software, so it will assume that you are running single instance.")
 
 class FileLoader:
     @classmethod
@@ -52,17 +80,38 @@ class Logistics:
             return None
 
     @classmethod
-    def getForegroundWindowTitle(cls) -> Optional[str]:
-        hWnd = windll.user32.GetForegroundWindow()
-        length = windll.user32.GetWindowTextLengthW(hWnd)
-        buf = create_unicode_buffer(length + 1)
-        windll.user32.GetWindowTextW(hWnd, buf, length + 1)
-
-        # 1-liner alternative: return buf.value if buf.value else None
-        if buf.value:
-            return buf.value
-        else:
-            return ''
+    def isOnWallScreen(cls):
+        # if we can't check for multi, we assume that it isn't there
+        if not multiSupported:
+            return False
+        
+        if sys.platform.startswith("win32"):
+            hWnd = windll.user32.GetForegroundWindow()
+            length = windll.user32.GetWindowTextLengthW(hWnd)
+            buf = create_unicode_buffer(length + 1)
+            windll.user32.GetWindowTextW(hWnd, buf, length + 1)
+            return "Fullscreen Projector" in buf.value or "Full-screen Projector" in buf.value
+        
+        elif sys.platform.startswith("darwin"):
+            curr_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            curr_pid = NSWorkspace.sharedWorkspace().activeApplication()["NSApplicationProcessIdentifier"]
+            curr_app_name = curr_app.localizedName()
+            options = kCGWindowListOptionOnScreenOnly
+            windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
+            for window in windowList:
+                pid = window["kCGWindowOwnerPID"]
+                ownerName = window["kCGWindowOwnerName"]
+                geometry = dict(window["kCGWindowBounds"])
+                windowTitle = window.get("kCGWindowName", u"Unknown")
+                # window name is rarely used on mac so we assume that if an obs window goes over the taskbar (aka fullscreen), it's a projector
+                if curr_pid == pid and ownerName == "OBS Studio" and geometry["Y"] == 0:
+                    return True
+            return False
+        
+        elif sys.platform.startswith("linux"):
+            process = subprocess.run(["xdotool", "getactivewindow", "getwindowname"], capture_output=True, text=True)
+            title = process.stdout
+            return "Fullscreen Projector" in title or "Full-screen Projector" in title
 
     @classmethod
     def ms_to_string(cls, ms, returnTime=False):
