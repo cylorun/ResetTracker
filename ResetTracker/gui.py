@@ -1,9 +1,14 @@
-import importlib
 import sys
-for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget"]:
-    if importlib.util.find_spec(lib) == None:
-        print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget")
-        sys.exit()
+
+#"""
+if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
+    import importlib
+    for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget"]:
+        if importlib.util.find_spec(lib) == None:
+            print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget")
+            print("(If you already have the libraries, remove the # on lines 3 and 11 of gui.py)")
+            sys.exit()
+#"""
 
 import pygsheets
 import glob
@@ -41,7 +46,7 @@ if True:
         base_path = os.path.abspath(".")
     databasePath = os.path.join(base_path, 'assets/databaseCredentials.json')
     if not os.path.exists(databasePath):
-        print("DM pncakespoon on Discord to obtain the credentials file, then put it in the assets folder.")
+        print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the assets folder.")
         sys.exit()
     gc_sheets_database = pygsheets.authorize(service_file=databasePath)
     sh2 = gc_sheets_database.open_by_url(databaseLink)
