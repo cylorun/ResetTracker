@@ -7,12 +7,8 @@ from datetime import time
 import sys
 import time
 import math
-<<<<<<< HEAD
-=======
-import sqlite3
 
 multiCheckSupported = True
->>>>>>> f9e261d8a7b015e027f253752e49f937ee8d25d5
 
 if sys.platform.startswith("win32"):
     from ctypes import create_unicode_buffer, windll
@@ -123,11 +119,11 @@ class Logistics:
 
         ms = int(ms)
         td = timedelta(milliseconds=ms)
+        if returnTime:
+            return datetime(1970, 1, 1) + td
         if not timedelta(hours=0) < td < timedelta(hours=12):
             td = timedelta(days=1) - td
         t = datetime(1970, 1, 1) + td
-        if returnTime:
-            return t
         return t.strftime("%H:%M:%S")
 
 

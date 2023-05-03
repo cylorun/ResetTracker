@@ -534,7 +534,7 @@ class Sheets:
             live = True
             while live:
                 push_data()
-                time.sleep(5)
+                time.sleep(3)
         except Exception as e:
             input("")
 
@@ -875,7 +875,7 @@ class Tracking:
             while live:
                 if not isTracking:
                     live = False
-                time.sleep(1)
+                time.sleep(3)
         except Exception as e:
             pass
         finally:
