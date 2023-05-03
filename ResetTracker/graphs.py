@@ -326,10 +326,12 @@ class Graphs:
     @classmethod
     def graph7(cls, currentSession):
         try:
-            headers = ['rnph', '% played', 'rpe']
+            headers = ['rnph', '% played', 'rpe', 'resets', 'playtime']
             values = [[Logistics.formatValue(currentSession['general stats']['rnph'])],
                         [Logistics.formatValue(currentSession['general stats']['% played'], isPercent=True)],
-                        [Logistics.formatValue(currentSession['general stats']['rpe'])]]
+                        [Logistics.formatValue(currentSession['general stats']['rpe'])],
+                        [Logistics.formatValue(currentSession['general stats']['total wall resets'] + currentSession['general stats']['total played'])],
+                        [Logistics.formatValue(currentSession['general stats']['total RTA'] + currentSession['general stats']['total wall time'], isTime=True, includeHours=True)]]
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,

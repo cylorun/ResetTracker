@@ -1,8 +1,9 @@
+import tkinter as tk
 from tkinter import *
 from PIL import ImageTk, Image
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import tkinter as tk
 import io
+
 
 from graphs import *
 
@@ -42,7 +43,7 @@ class PlotFrame(tk.Frame):
             img_bytes = self.fig.to_image(format='png')
             img = Image.open(io.BytesIO(img_bytes))
             img_tk = ImageTk.PhotoImage(img)
-            self.plot_widget = tk.Label(self, image=img_tk)
+            self.plot_widget = Label(self, image=img_tk)
             self.plot_widget.image = img_tk
             self.plot_widget.grid(row=1, column=0)
 
@@ -72,7 +73,7 @@ class TooltipObject:
         self.tip_window = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry("+%d+%d" % (x, y))
-        label = tk.Label(tw, text=self.text, justify='left',
+        label = Label(tw, text=self.text, justify='left',
                          background="#ffffe0", relief='solid', borderwidth=1,
                          font=("tahoma", "8", "normal"))
         label.grid(row=0, column=0)
@@ -99,7 +100,7 @@ class ScrollableTextFrame(tk.Frame):
         super().__init__(master, **kwargs)
 
         # Create header label
-        self.header_label = tk.Label(self, text=header_text, font=('TkDefaultFont', 14, 'bold'))
+        self.header_label = Label(self, text=header_text, font=('TkDefaultFont', 14, 'bold'))
         self.header_label.pack(side=tk.TOP, fill=tk.X)
 
         # Create a vertical scrollbar
@@ -147,6 +148,8 @@ class ScrollableContainer(tk.Frame):
             self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview, background=guiColors['scrollbar'])
             self.canvas.configure(yscrollcommand=self.yscrollbar.set)
 
+
+
         # Pack the widgets into the window
         self.canvas.grid(row=1, column=0)
         if xScroll:
@@ -174,7 +177,7 @@ class ScrollableContainer(tk.Frame):
         try:
             panel = PlotFrame(self.container, graph, background=guiColors['background'])
         except Exception as e:
-            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
+            panel = Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
         if title != '' and isinstance(panel, PlotFrame):
             label = panel.add_title(title)
             if explanation != '':
@@ -184,9 +187,9 @@ class ScrollableContainer(tk.Frame):
 
     def add_label(self, text, row, column, rowspan=1, columnspan=1):
         try:
-            panel = tk.Label(self.container, text=text, wraplength=300, font=("Arial", 12), background=guiColors['background'])
+            panel = Label(self.container, text=text, wraplength=300, font=("Arial", 12), background=guiColors['background'])
         except Exception as e:
-            panel = tk.Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
+            panel = Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
 
         panel.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky="nsew", pady=6, padx=2)
         return panel

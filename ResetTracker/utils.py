@@ -8,8 +8,6 @@ from typing import Optional
 from ctypes import windll, create_unicode_buffer
 import time
 import math
-import sqlite3
-
 
 
 class FileLoader:
@@ -73,7 +71,7 @@ class Logistics:
         td = timedelta(milliseconds=ms)
         if not timedelta(hours=0) < td < timedelta(hours=12):
             td = timedelta(days=1) - td
-        t = datetime(1970, 1, 1) + timedelta(milliseconds=ms)
+        t = datetime(1970, 1, 1) + td
         if returnTime:
             return t
         return t.strftime("%H:%M:%S")

@@ -13,51 +13,18 @@ headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Sp
                 'RTA Distribution']
 
 
-class StatsDB:
-    headerLabels1 = headerLabels
-    def __init__(self, dbname):
-        self.dbname = dbname
-        self.conn = sqlite3.connect(dbname)
-        self.cursor = self.conn.cursor()
-        self.table_types = ['stats', 'splits', 'enters', 'general']
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        self.rows = self.cursor.fetchall()
-        self.table_names_temp = [row[0] for row in self.rows]
-        self.table_names_temp.sort(key=lambda x: x[-4:])  # sort by last 4 characters
-        self.table_names = []
-        for i in range(0, len(self.table_names_temp), len(self.table_types)):
-            self.table_names.append({})
-            for item in self.table_names_temp[i]:
-                self.table_names[int(i/(len(self.table_types)))][item[:-4]] = item
-
-    def create_table(self, table_name, columns):
-        query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns)})"
-        self.cursor.execute(query)
-        self.conn.commit()
-
-    def insert_data(self, table_name, data):
-        placeholders = ', '.join(['?' for _ in data[0]])
-        query = f"INSERT INTO {table_name} VALUES ({placeholders})"
-        self.cursor.executemany(query, data)
-        self.conn.commit()
-
-    def query(self, query_string):
-        self.cursor.execute(query_string)
-        return self.cursor.fetchall()
-
-    def close(self):
-        self.conn.close()
-
-
 class Stats:
     @classmethod
     def get_last_time(cls):
         with open('stats.csv', 'r') as file:
             csv_reader = csv.reader(file)
             last_line = None
-            for row in csv_reader:
-                last_line = row
-            return last_line[0]
+            try:
+                for row in csv_reader:
+                    last_line = row
+                return last_line[0]
+            except Exception as e:
+                return None
 
 
     @classmethod
@@ -433,7 +400,7 @@ class Stats:
     def appendStats(cls, settings, last):
         global sessions
         new_last = Stats.get_last_time()
-        if True or last is None or new_last != last:
+        if new_last is not None and (last is None or new_last != last):
             sessionList = Stats.get_sessions(settings)
             if len(sessionList) == 0:
                 return None

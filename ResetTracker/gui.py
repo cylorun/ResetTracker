@@ -18,11 +18,14 @@ global variables
 if True:
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
-    sqldict = {'int': 'INTEGER', 'str': 'TEXT'}
     lastRun = None
-    useSQL = False
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
+    try:
+        with open('stats.csv', 'x') as f:
+            pass
+    except Exception as e:
+        pass
     if settings['tracking']['autoupdate stats'] == 1:
         lastRun = Stats.appendStats(settings, lastRun)
     sessions = FileLoader.getSessions()
@@ -617,11 +620,11 @@ class NewRecord(FileSystemEventHandler):
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
                 if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]):
-                    if lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
+                    if "has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
                         self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
                         has_done_something = True
                 elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]):
-                    if lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
+                    if "has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
                         self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
                         has_done_something = True
 
@@ -669,15 +672,6 @@ class NewRecord(FileSystemEventHandler):
         with open("stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
             writer.writerow(data)
-
-        if useSQL:
-            sep1 = '", "'
-            sep2 = ', '
-            q = '?'
-            conn1 = sqlite3.connect('data/stats.db')
-            c1 = conn1.cursor()
-            c1.execute(f'INSERT INTO stats ("{sep1.join(headerLabels)}") VALUES ({sep2.join([q] * len(data))})', data)
-            conn1.commit()
 
         if settings['tracking']['use sheets'] == 1:
             with open("temp.csv", "r") as infile:
@@ -834,13 +828,10 @@ class Tracking:
         if settings['tracking']['use sheets'] == 1:
             Sheets.setup()
             try:
-                open("temp.csv", "x")
+                with open("temp.csv", "x") as f:
+                    pass
             except Exception as e:
                 pass
-        if useSQL:
-            conn1 = sqlite3.connect('data/stats.db')
-            c1 = conn1.cursor()
-            c1.execute('CREATE TABLE IF NOT EXISTS stats (id INTEGER PRIMARY KEY, "Date and Time" TEXT, "Iron Source" TEXT, "Enter Type" TEXT, "Gold Source" TEXT, "Spawn Biome" TEXT, "RTA" TEXT, "Wood" TEXT, "Iron Pickaxe" TEXT, "Nether" TEXT, "Bastion" TEXT, "Fortress" TEXT, "Nether Exit" TEXT, "Stronghold" TEXT, "End" TEXT, "Retimed IGT" TEXT, "IGT" TEXT, "Gold Dropped" TEXT, "Blaze Rods" TEXT, "Blazes" TEXT, "Flint" TEXT, "Gravel" TEXT, "Deaths" TEXT, "Traded" TEXT, "Endermen" TEXT, "Eyes Thrown" TEXT, "Iron" TEXT, "Wall Resets Since Prev" TEXT, "Played Since Prev" TEXT, "RTA Since Prev" TEXT, "Break RTA Since Prev" TEXT, "Wall Time Since Prev" TEXT, "Session Marker" TEXT, "RTA Distribution" TEXT)')
         while True:
             try:
                 newRecordObserver = Observer()
@@ -1501,3 +1492,4 @@ if __name__ == "__main__":
     root.wm_geometry("1000x700")
 
     root.mainloop()
+    gc_sheets_database = None
