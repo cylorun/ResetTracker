@@ -1,6 +1,6 @@
-# **ResetTracker**
+# ResetTracker
 
-## **Setup**
+## Setup
 
 #### Required Mods
 
@@ -9,18 +9,18 @@
 
 #### Settings
 
-After running gui.exe, go to the settings tab. Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do when you try to save them or start tracking.
+After running ResetTracker2.exe (scripts/gui.py on Mac or Linux), go to the settings tab. Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do when you try to save them or start tracking.
 
 #### Updating
 
- - you can update versions by running update.exe
- - you can open the github or update through the gui by clicking on the update menu-button
+ - you can update versions by running update.exe (Windows only)
+ - or you can open the github or update through the gui by clicking on the update menu-button
 
 #### Sheets
 
 Using sheets is NOT necessary, however if you wish to use google sheets in addition to local storage to store your stats, follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q)
 
-## **Tracking**
+## Tracking
 
 #### Start Tracking
 
@@ -40,12 +40,12 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
  - Cumulating stats: stats that record how many resets and how much time since the last run with a split
  - Session Marker: marks the start of the session and the strategy associated with it
 
-## **Analysis**
+## Analysis
 
 IMPORTANT: this tracker is still compatible with specnr's website
 Check out each of the pages on the gui; they all do different things. They all have a button that you press to present the analysis, and a description of the page at the top. All graphs and tables have headers above them. If you hover over those headers, a brief explanation of the graph or table may appear. Choose which session you want to be analyzed by clicking on the black drop-down next to the tabs.
 
-## **Credits**
+## Credits
 
 #### Developers
 
@@ -59,7 +59,7 @@ Huge thanks to those who helped me test, incuding Chloe, Lathil, AeroAsteroid, R
 
 Thanks to Weakforced for his countless ideas and help with making decisions and brainstorming solutions
 
-## **Suggestions/Help**
+## Suggestions/Help
 
 If you have any suggestions, bug reports, or need help setting it up, DM me on discord pncakespoon#4895 or join [EAR](https://discord.gg/jnjrbysy)
 

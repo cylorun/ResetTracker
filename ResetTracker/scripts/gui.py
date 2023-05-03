@@ -1,3 +1,15 @@
+import sys
+
+#"""
+if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
+    import importlib
+    for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget"]:
+        if importlib.util.find_spec(lib) == None:
+            print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget")
+            print("(If you already have the libraries, remove the # on lines 3 and 11 of gui.py)")
+            sys.exit()
+#"""
+
 import pygsheets
 import glob
 import os
@@ -6,7 +18,6 @@ from watchdog.observers import Observer
 import requests
 import webbrowser
 import subprocess
-import sys
 
 from guiUtils import *
 
@@ -16,6 +27,7 @@ global variables
 """
 
 if True:
+    os.chdir("..")
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
     lastRun = None
@@ -35,7 +47,11 @@ if True:
         base_path = sys._MEIPASS
     else:
         base_path = os.path.abspath(".")
-    gc_sheets_database = pygsheets.authorize(service_file=os.path.join(base_path, 'databaseCredentials.json'))
+    databasePath = os.path.join(base_path, 'assets/databaseCredentials.json')
+    if not os.path.exists(databasePath):
+        print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the assets folder.")
+        sys.exit()
+    gc_sheets_database = pygsheets.authorize(service_file=databasePath)
     sh2 = gc_sheets_database.open_by_url(databaseLink)
     wks2 = sh2[0]
     second = timedelta(seconds=1)
@@ -576,7 +592,7 @@ class NewRecord(FileSystemEventHandler):
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            if 'Projector' in Logistics.getForegroundWindowTitle() or settings['playstyle']["instance count"] == "1":
+            if Logistics.isOnWallScreen() or settings['playstyle']["instance count"] == "1":
                 if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
@@ -871,7 +887,7 @@ class Tracking:
 class IntroPage(Page):
     def populate(self):
         # Load the image using PIL
-        img = Image.open(os.path.join(base_path, "cover.png"))
+        img = Image.open(os.path.join(base_path, "assets/cover.png"))
 
         # Resize the image
         resized_img = img.resize((900, 600))  # Replace (200, 200) with your desired size
