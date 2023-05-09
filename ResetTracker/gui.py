@@ -27,7 +27,6 @@ global variables
 """
 
 if True:
-    os.chdir("..")
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
     lastRun = None
@@ -47,9 +46,9 @@ if True:
         base_path = sys._MEIPASS
     else:
         base_path = os.path.abspath(".")
-    databasePath = os.path.join(base_path, 'assets/databaseCredentials.json')
+    databasePath = os.path.join(base_path, 'databaseCredentials.json')
     if not os.path.exists(databasePath):
-        print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the assets folder.")
+        print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the tracker folder.")
         sys.exit()
     gc_sheets_database = pygsheets.authorize(service_file=databasePath)
     sh2 = gc_sheets_database.open_by_url(databaseLink)
@@ -887,7 +886,7 @@ class Tracking:
 class IntroPage(Page):
     def populate(self):
         # Load the image using PIL
-        img = Image.open(os.path.join(base_path, "assets/cover.png"))
+        img = Image.open(os.path.join(base_path, "cover.png"))
 
         # Resize the image
         resized_img = img.resize((900, 600))  # Replace (200, 200) with your desired size

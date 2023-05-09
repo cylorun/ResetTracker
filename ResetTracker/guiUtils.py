@@ -1,9 +1,16 @@
 import tkinter as tk
 from tkinter import *
-from PIL import ImageTk, Image
+from PIL import Image
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import io
 
+try:
+    from PIL import ImageTk
+except:
+    if sys.platform.startswith("linux"):
+        print("The PIL.ImageTk library is not supported, try to install the python3-pil.imagetk package.")
+    else:
+        sys.exit()
 
 from graphs import *
 
