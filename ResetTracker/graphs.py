@@ -70,6 +70,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(1)
+            print(e)
             return 1
 
     # makes a pie chart given a list of strings
@@ -108,6 +110,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(2)
+            print(e)
             return 1
 
     # makes a table for relevant information of a split
@@ -151,6 +155,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(3)
+            print(e)
             return 1
 
     # makes a 2-way table showing the frequency of each combination of iron source and entry method
@@ -227,6 +233,8 @@ class Graphs:
             )
             return fig
         except Exception as e:
+            print(4)
+            print(e)
             return 1
 
     # table displaying info about a specific split
@@ -271,6 +279,8 @@ class Graphs:
             )
             return fig
         except Exception as e:
+            print(5)
+            print(e)
             return 1
 
     # table display split stats of current session
@@ -320,6 +330,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(6)
+            print(e)
             return 1
 
     # table displaying general stats of the current session
@@ -355,6 +367,8 @@ class Graphs:
             )
             return fig
         except Exception as e:
+            print(7)
+            print(e)
             return 1
 
     # pie chart from dict of numerical data
@@ -384,6 +398,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(8)
+            print(e)
             return 1
 
     # scatterplot displaying nph and average enter, with a canvas based on efficiency score
@@ -414,6 +430,8 @@ class Graphs:
             plt.tight_layout()
             return fig
         except Exception as e:
+            print(9)
+            print(e)
             return 1
 
     # table displaying some nether stats for each enter type
@@ -458,6 +476,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(10)
+            print(e)
             return 1
 
     # table displaying general stats of a session
@@ -492,6 +512,8 @@ class Graphs:
             )
             return fig
         except Exception as e:
+            print(11)
+            print(e)
             return 1
 
     # table displaying general stats of a session
@@ -527,6 +549,8 @@ class Graphs:
             )
             return fig
         except Exception as e:
+            print(12)
+            print(e)
             return 1
 
     # makes a histogram distribution of rta colour coded based on the current split during reset
@@ -563,6 +587,8 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(13)
+            print(e)
             return 1
 
     @classmethod
@@ -592,6 +618,59 @@ class Graphs:
 
             return fig
         except Exception as e:
+            print(14)
+            print(e)
+            return 1
+
+    # table display split stats of selected session
+    @classmethod
+    def graph15(cls, session):
+        try:
+            # Define headers and values for the table
+            headers = ['', 'Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit',
+                       'Stronghold', 'End']
+            values = [['Count', 'Average', 'Average Split', 'Conversion']
+                      ]
+            for split in headers[1:]:
+                values.append([
+                    Logistics.formatValue(session['splits stats'][split]['Count']),
+                    Logistics.formatValue(session['splits stats'][split]['Cumulative Average'], isTime=True),
+                    Logistics.formatValue(session['splits stats'][split]['Relative Average'], isTime=True),
+                    Logistics.formatValue(session['splits stats'][split]['Relative Conversion'], isPercent=True)
+                ])
+
+            # Create the plot
+            fig = go.Figure(data=[go.Table(
+                header=dict(
+                    values=headers,
+                    line_color='#2E2E2E',
+                    fill_color='#2E2E2E',
+                    align='center',
+                    font=dict(color='white', size=12)
+                ),
+                cells=dict(
+                    values=values,
+                    line_color='#2E2E2E',
+                    fill_color=guiColors['background'],
+                    align='center',
+                    font=dict(color='#2E2E2E', size=11)
+                ))
+            ])
+
+            fig.update_layout(
+                margin=dict(l=20, r=20, t=20, b=20),
+                height=300,
+                width=800,
+                font=dict(size=12),
+                hovermode='closest',
+                plot_bgcolor=guiColors['background'],
+                paper_bgcolor=guiColors['background']
+            )
+
+            return fig
+        except Exception as e:
+            print(15)
+            print(e)
             return 1
 
     @classmethod

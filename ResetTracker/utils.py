@@ -81,7 +81,7 @@ class Logistics:
     @classmethod
     def isOnWallScreen(cls):
         # if we can't check for multi, we assume that it isn't there
-        if not multiSupported:
+        if not multiCheckSupported:
             return False
         
         if sys.platform.startswith("win32"):

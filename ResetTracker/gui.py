@@ -1,6 +1,6 @@
 import sys
 
-#"""
+"""
 if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
     import importlib
     for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget"]:
@@ -8,7 +8,7 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
             print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget")
             print("(If you already have the libraries, remove the # on lines 3 and 11 of gui.py)")
             sys.exit()
-#"""
+"""
 
 import pygsheets
 import glob
@@ -283,10 +283,13 @@ class CurrentSession:
         try:
             currentSession['figs'][0] = Graphs.graph6(currentSession)
         except Exception as e:
-            pass
+            print(16)
+            print(e)
         try:
             currentSession['figs'][1] = Graphs.graph7(currentSession)
         except Exception as e:
+            print(17)
+            print(e)
             pass
 
         main1.updateCSGraphs(row)
@@ -431,7 +434,8 @@ class Feedback:
                 elif (data['general stats']['percent played'] > recomendedSeedsPlayed['b']):
                     text += 'click into less seeds; be more selective with the previews you want to play\n'
         except Exception as e:
-            pass
+            print(18)
+            print(e)
 
         # overall reset hardness
         try:
@@ -441,7 +445,8 @@ class Feedback:
             if data['general stats']['rnph'] > thresholds['nph']['high'] and not fast:
                 text += 'consider resetting your overworlds more agressively; reset harder\n'
         except Exception as e:
-            pass
+            print(19)
+            print(e)
 
         # conversions
         try:
@@ -452,14 +457,16 @@ class Feedback:
             elif bt2WoodConversion < thresholds['owConversions']['bt-wood']['low']:
                 text += 'if you play out islands that do not have trees, stop doing that; consider doing more thorough assessment of ocean quality while looking for the bt\n'
         except Exception as e:
-            pass
+            print(20)
+            print(e)
 
         try:
             played2btConversion = data['splits stats']['Iron']['Count']/data['general stats']['percent played']/data['general stats']['total resets']
             if played2btConversion < thresholds['owConversions']['played-bt']['low']:
                 text += 'If you are resetting for mapless buried treasure, you might want to work on your mapless; you may be to selective with the spikes you play out for mapless'
         except Exception as e:
-            pass
+            print(21)
+            print(e)
 
         return text
 
@@ -472,7 +479,8 @@ class Feedback:
                 if data['splits stats'][split]['Cumulative Average'] - (thresholds['splitFormulas'][split]['m'] * int(settings['playstyle']['target time']) + thresholds['splitFormulas'][split]['b']) > 30:
                     text += f'your average {split} is a bit on the slow end\n'
         except Exception as e:
-            pass
+            print(22)
+            print(e)
 
         return text
 
@@ -528,7 +536,8 @@ class Sheets:
 
 
                 except Exception as e2:
-                    pass
+                    print(23)
+                    print(e2)
 
             live = True
             while live:
@@ -578,6 +587,8 @@ class NewRecord(FileSystemEventHandler):
             try:
                 self.data = json.load(record_file)
             except Exception as e:
+                print(24)
+                print(e)
                 return
         if self.data is None:
             return
@@ -846,7 +857,8 @@ class Tracking:
                 with open("temp.csv", "x") as f:
                     pass
             except Exception as e:
-                pass
+                print(25)
+                print(e)
         while True:
             try:
                 newRecordObserver = Observer()
@@ -876,7 +888,8 @@ class Tracking:
                     live = False
                 time.sleep(3)
         except Exception as e:
-            pass
+            print(26)
+            print(e)
         finally:
             newRecordObserver.stop()
             newRecordObserver.join()
@@ -1044,12 +1057,14 @@ class CurrentSessionPage(Page):
                 try:
                     bastion = datetime.strptime(time, '%H:%M:%S')
                 except Exception as e:
-                    pass
+                    print(27)
+                    print(e)
             elif split1 == 'Fortress':
                 try:
                     fortress = datetime.strptime(time, '%H:%M:%S')
                 except Exception as e:
-                    pass
+                    print(28)
+                    print(e)
                 if bastion is not None and fortress is not None:
                     if self.splitVars[3].get() == 1:
                         text += (min(bastion, fortress)).strftime('%H:%M:%S') + ' Structure 1    '
@@ -1095,6 +1110,59 @@ class CurrentSessionPage(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.populate()
+
+
+class SummaryPage(Page):
+    explanationText = 'Any stats, data, or figures found on this page are basic, and are more elaborate on other pages'
+    frame = None
+    control_panel = None
+
+    def displayInfo(self):
+        global isGraphingGeneral
+        global lastRun
+        if not isGraphingGeneral:
+            lastRun = Stats.appendStats(settings, lastRun)
+            isGraphingGeneral = True
+            sessionData = Stats.getSessionData(selectedSession.get(), sessions)
+
+            self.frame.clear_widgets()
+            self.frame.add_plot_frame()
+            isGraphingGeneral = False
+
+
+    def populate(self):
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
+
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=1, column=1)
+
+        self.control_panel = Frame(self)
+        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+
+        self.rta_min = tk.StringVar()
+        self.rta_max = tk.StringVar()
+        self.rta_min.set('-1')
+        self.rta_max.set('-1')
+        label1 = Label(self.control_panel, text='rta minimum')
+        label2 = Label(self.control_panel, text='rta maximum')
+        Tooltip.createToolTip(label1, 'left side cutoff for RTA Distribution')
+        Tooltip.createToolTip(label2, 'right side cutoff for RTA Distribution')
+        entry1 = Entry(self.control_panel, textvariable=self.rta_min, width=6, background=guiColors['entry'])
+        entry2 = Entry(self.control_panel, textvariable=self.rta_max, width=6, background=guiColors['entry'])
+        label1.grid(row=1, column=0)
+        label2.grid(row=2, column=0)
+        entry1.grid(row=1, column=1)
+        entry2.grid(row=2, column=1)
+
+
+        cmd = partial(self.displayInfo)
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn.grid(row=0, column=0, columnspan=2)
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        SummaryPage.populate(self)
 
 
 # gui
