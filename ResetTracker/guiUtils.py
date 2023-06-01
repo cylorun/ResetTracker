@@ -145,6 +145,7 @@ class ScrollableContainer(tk.Frame):
         # Create a Frame widget with a canvas inside it
         self.canvas = tk.Canvas(self, width=width, height=height, background=guiColors['background'])
         self.canvas.configure(background=guiColors['background'])
+
         self.container = tk.Frame(self.canvas, background=guiColors['background'])
 
         # Create a scrollbar and bind it to the canvas
@@ -155,10 +156,8 @@ class ScrollableContainer(tk.Frame):
             self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview, background=guiColors['scrollbar'])
             self.canvas.configure(yscrollcommand=self.yscrollbar.set)
 
-
-
         # Pack the widgets into the window
-        self.canvas.grid(row=1, column=0)
+        self.canvas.grid(row=1, column=0, sticky='nsew')
         if xScroll:
             self.xscrollbar.grid(row=2, column=0, sticky='ew')
         if yScroll:
@@ -169,11 +168,17 @@ class ScrollableContainer(tk.Frame):
         self.container.bind('<Configure>', self.on_container_configure)
         self.canvas.create_window((0, 0), window=self.container, anchor='nw')
 
-    def temp(self):
-        self.canvas.configure(background=guiColors['background'])
+        # Bind the mouse wheel event to the container frame
+        self.container.bind("<MouseWheel>", self.on_mousewheel)
+
+    def on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def on_container_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+
+    def temp(self):
+        self.canvas.configure(background=guiColors['background'])
 
     def add_title(self, text):
         label = Label(self, text=text, font=("Arial", 14), background=guiColors['background'])

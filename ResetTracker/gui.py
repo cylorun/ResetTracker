@@ -204,10 +204,10 @@ class CurrentSession:
                 rowCells[headerLabels[i]] = row[i]
 
         # resets/time
-        currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev']
+        currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev'] + rowCells['Wall Time Since Prev']
         currentSession['general stats']['total wall resets'] += int(rowCells['Wall Resets Since Prev'])
         currentSession['general stats']['total played'] += int(rowCells['Played Since Prev']) + 1
-        currentSession['general stats']['total wall time'] += int(rowCells['Wall Time Since Prev'])
+        currentSession['general stats']['total wall time'] += rowCells['Wall Time Since Prev']
 
         # overworld
         for split in ['Wood', 'Iron Pickaxe', 'Iron']:
@@ -381,7 +381,7 @@ class Feedback:
         scoreList = similarUserList[y_index]
         myTargetTime = myData[x_index]
         myScore = myData[y_index]
-        reg_m, reg_b, reg_s = Logistics.getRegressionLine(targetTimeList, scoreList)
+        reg_m, reg_b, reg_s, reg_r2, reg_p = Logistics.getRegressionLine(targetTimeList, scoreList)
         return (myScore - (reg_m * myTargetTime + reg_b))/reg_s
 
     @classmethod
@@ -580,7 +580,7 @@ class NewRecord(FileSystemEventHandler):
             return False, "Set seed detected, will not track"
         return True, ""
 
-    def on_created(self, evt):
+    def on_created(self, evt, dt1=None):
         self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
@@ -595,22 +595,25 @@ class NewRecord(FileSystemEventHandler):
         validation = self.ensure_run()
         if not validation[0]:
             return
-
+        if dt1 is None:
+            now = datetime.now()
+        else:
+            now = datetime(year=1970, month=1, day=1, second=int(dt1/1000))
         # Calculate breaks
         if self.prev_datetime is not None:
-            run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
+            run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
-                run_differ = (datetime.now() - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
+                run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
             if Logistics.isOnWallScreen() or settings['playstyle']["instance count"] == "1":
                 if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
                     self.wall_time += run_differ.total_seconds() * 1000
-                self.prev_datetime = datetime.now()
+                self.prev_datetime = now
 
         else:
-            self.prev_datetime = datetime.now()
+            self.prev_datetime = now
 
         if self.data["final_rta"] == 0:
             self.wall_resets += 1
@@ -711,6 +714,173 @@ class NewRecord(FileSystemEventHandler):
         # updates displayed stats
         CurrentSession.updateCurrentSession(data)
 
+
+        # Reset all counters/sums
+        self.wall_resets = 0
+        self.rta_spent = 0
+        self.splitless_count = 0
+        self.wall_time = 0
+        self.break_time = 0
+        self.rtaString = ''
+
+
+
+class OldRecord:
+    sessionStart = None
+    prev = None
+    prev_datetime = None
+    wall_resets = 0
+    rta_spent = 0
+    splitless_count = 0
+    break_time = 0
+    wall_time = 0
+    rtaString = ''
+    isFirstRun = None
+
+    def __init__(self):
+        self.path = None
+        self.data = None
+        with main1.currentSessionMarkerLock:
+            self.isFirstRun = currentSessionMarker + '$' + config['version']
+
+    def ensure_run(self):
+        if settings['tracking']['detect RSG'] == 0:
+            return True, ""
+        if self.path is None:
+            return False, "Path error"
+        if self.data is None:
+            return False, "Empty data error"
+        if self.data['run_type'] != 'random_seed':
+            return False, "Set seed detected, will not track"
+        return True, ""
+
+    def analyze_record(self, path):
+        self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
+        self.path = path
+        with open(self.path, "r") as record_file:
+            try:
+                self.data = json.load(record_file)
+            except Exception as e:
+                print(24)
+                print(e)
+                return
+        if self.data is None:
+            return
+        validation = self.ensure_run()
+        if not validation[0]:
+            return
+        now = datetime(year=1970, month=1, day=1, second=1) + timedelta(milliseconds=self.data['date'])
+        # Calculate breaks
+        if self.prev_datetime is not None:
+            run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
+            if run_differ < timedelta(0):
+                self.data['final_rta'] = self.data["final_igt"]
+                run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
+            if Logistics.isOnWallScreen() or settings['playstyle']["instance count"] == "1":
+                if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
+                    self.break_time += run_differ.total_seconds() * 1000
+                else:
+                    self.wall_time += run_differ.total_seconds() * 1000
+                self.prev_datetime = now
+
+        else:
+            self.prev_datetime = now
+
+        if self.data["final_rta"] == 0:
+            self.wall_resets += 1
+            return
+        uids = list(self.data["stats"].keys())
+        if len(uids) == 0:
+            return
+        stats = self.data["stats"][uids[0]]["stats"]
+        adv = self.data["advancements"]
+        lan = self.data["open_lan"]
+        if lan is not None:
+            lan = int(lan)
+        else:
+            lan = math.inf
+
+        # Advancements
+        has_done_something = False
+        self.this_run[0] = Logistics.ms_to_string(self.data["final_rta"])
+        for idx in range(len(advChecks)):
+            # Prefer to read from timelines
+            if advChecks[idx][0] == "timelines" and self.this_run[idx + 1] == '':
+                for tl in self.data["timelines"]:
+                    if tl["name"] == advChecks[idx][1]:
+                        if lan > int(tl["rta"]):
+                            self.this_run[idx + 1] = Logistics.ms_to_string(tl["igt"])
+                            has_done_something = True
+            # Read other stuff from advancements
+            elif (advChecks[idx][0] in adv and adv[advChecks[idx][0]]["complete"] and self.this_run[idx + 1] == ''):
+                if lan > int(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["rta"]):
+                    self.this_run[idx +
+                                  1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
+                    has_done_something = True
+            # diamond pick
+            elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
+                if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]):
+                    if "has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
+                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
+                        has_done_something = True
+                elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]):
+                    if "has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
+                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
+                        has_done_something = True
+
+        if "minecraft:story/smelt_iron" in adv:
+            has_done_something = True
+
+        # If nothing was done, just count as reset
+        if not has_done_something:
+            # From earlier we know that final_rta > 0 so this is a splitless non-wall/bg reset
+            self.splitless_count += 1
+            # Only account for splitless RTA
+            self.rta_spent += self.data["final_rta"]
+            self.rtaString += str(math.trunc(self.data["final_rta"]/1000)) + '$'
+            return
+
+        self.rtaString += str(math.trunc(self.data["final_rta"]/1000))
+
+        # Stats
+        self.this_run[len(advChecks) + 1] = Logistics.ms_to_string(
+            self.data["final_igt"])
+        self.this_run[len(advChecks) + 2] = Logistics.ms_to_string(
+            self.data["retimed_igt"])
+        for idx in range(1, len(statsChecks)):
+            if (
+                statsChecks[idx][0] in stats
+                and statsChecks[idx][1] in stats[statsChecks[idx][0]]
+            ):
+                self.this_run[len(advChecks) + 2 + idx] = str(
+                    stats[statsChecks[idx][0]][statsChecks[idx][1]]
+                )
+
+        # Generate other stuff
+        enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
+        print(blocks_mined)
+
+        iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
+
+        # Push to csv
+        d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
+        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run + [blocks_mined] +
+                [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
+        self.isFirstRun = ''
+
+        with open("stats.csv", "a", newline="") as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(data)
+
+        if settings['tracking']['use sheets'] == 1:
+            with open("temp.csv", "r") as infile:
+                reader = list(csv.reader(infile))
+                reader.insert(0, data)
+            with open("temp.csv", "w", newline="") as outfile:
+                writer = csv.writer(outfile)
+                for line in reader:
+                    writer.writerow(line)
 
         # Reset all counters/sums
         self.wall_resets = 0
@@ -847,7 +1017,27 @@ class Tracking:
 
     @classmethod
     def trackOldRecords(cls):
-        pass
+        directory = 'records'
+
+        oldrecordtracker = OldRecord()
+
+        # Get a list of all files in the directory with their creation timestamps
+        files = [(filename, os.path.getctime(os.path.join(directory, filename)))
+                 for filename in os.listdir(directory)
+                 if os.path.isfile(os.path.join(directory, filename))]
+
+        # Sort the files based on their creation timestamps in ascending order
+        sorted_files = sorted(files, key=lambda x: x[1], reverse=True)
+
+        # Print the file paths in order from oldest to newest
+        for file in sorted_files:
+            filepath = os.path.join(directory, file[0])
+            oldrecordtracker.analyze_record(filepath)
+
+        for file in sorted_files:
+            filepath = os.path.join(directory, file[0])
+            os.remove(filepath)
+
 
     @classmethod
     def trackResets(cls):
@@ -1126,7 +1316,7 @@ class SummaryPage(Page):
             sessionData = Stats.getSessionData(selectedSession.get(), sessions)
 
             self.frame.clear_widgets()
-            self.frame.add_plot_frame()
+            self.frame.add_plot_frame(Graphs.graph6(sessionData), 0, 0)
             isGraphingGeneral = False
 
 
@@ -1139,22 +1329,6 @@ class SummaryPage(Page):
 
         self.control_panel = Frame(self)
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
-
-        self.rta_min = tk.StringVar()
-        self.rta_max = tk.StringVar()
-        self.rta_min.set('-1')
-        self.rta_max.set('-1')
-        label1 = Label(self.control_panel, text='rta minimum')
-        label2 = Label(self.control_panel, text='rta maximum')
-        Tooltip.createToolTip(label1, 'left side cutoff for RTA Distribution')
-        Tooltip.createToolTip(label2, 'right side cutoff for RTA Distribution')
-        entry1 = Entry(self.control_panel, textvariable=self.rta_min, width=6, background=guiColors['entry'])
-        entry2 = Entry(self.control_panel, textvariable=self.rta_max, width=6, background=guiColors['entry'])
-        label1.grid(row=1, column=0)
-        label2.grid(row=2, column=0)
-        entry1.grid(row=1, column=1)
-        entry2.grid(row=2, column=1)
-
 
         cmd = partial(self.displayInfo)
         graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
@@ -1428,6 +1602,118 @@ class FeedbackPage(Page):
         Page.__init__(self, *args, **kwargs)
         self.populate()
 
+class ExperimentPage(Page):
+    explanationText = '***TESTING***'
+    frame = None
+    control_panel = None
+
+    def displayInfo(self):
+        global isGraphingGeneral
+        global lastRun
+        if not isGraphingGeneral:
+            lastRun = Stats.appendStats(settings, lastRun)
+            sessionData = Stats.getSessionData(selectedSession.get(), sessions)
+            sessionMetaData = Stats.getSessionData(selectedSession.get(), sessions, returnMetaData=True)
+            hour_list = []
+            rpe_list = []
+            breakTimeProportion_list = []
+            x_list = []
+            y_list = []
+            # Assuming you have a list of sessionmd objects called sessionmd_list
+
+            # Find the length of the longest session
+            longest_session_length = 1 + int(max([Stats.getSessionLength(session['string']) for session in sessions['sessions']]))
+            print(longest_session_length)
+            # Create a 2D array of size longest_session_length by longest_session_length
+            distribution_array = [[0] * (i3+1) for i3 in range(longest_session_length)]
+            print(distribution_array)
+
+            for i in range(len(sessions['sessions'])):
+
+
+                try:
+                    hour = int(sessions['sessions'][i]['string'][6:8]) + int(sessions['sessions'][i]['string'][9:11])/60
+                except Exception as e:
+                    pass
+                else:
+                    rpe = sessions['stats'][i]['general stats']['rpe']
+                    breakTimeProportion = sessions['stats'][i]['general stats']['total break time']/Stats.getSessionLength(sessions['sessions'][i]['string'])/3600
+
+                    date_time = Stats.get_column_data("Date and Time", sessions['sessions'][i])
+                    nether = Stats.get_column_data("Nether", sessions['sessions'][i])
+                    x_list_sub = []
+                    y_list_sub = []
+                    start = datetime.strptime(date_time[0], '%Y-%m-%d %H:%M:%S.%f')
+                    prev = start
+                    for i2 in range(len(nether)):
+                        if nether[i2] != '':
+                            value = datetime.strptime(date_time[i2], '%Y-%m-%d %H:%M:%S.%f')
+                            x_list_sub.append((value - start) / timedelta(seconds=1))
+                            y_list_sub.append(int(nether[i2][3:5]) * 60 + int(nether[i2][6:8]))
+                            # y_list_sub.append((value - prev) / timedelta(seconds=1))
+                            prev = value
+                    if len(x_list_sub) > 3:
+                        hour_list.append(hour)
+                        rpe_list.append(rpe)
+                        breakTimeProportion_list.append(breakTimeProportion)
+                        x_list.append(x_list_sub)
+                        y_list.append(y_list_sub)
+
+                        sessionmd = sessions['sessions'][i]
+                        # Calculate the distribution using getNetherTimelineDist method
+                        distribution = Stats.getNetherTimelineDist(sessionmd)
+
+                        # Find the index of the greatest value in the distribution list
+                        distribution_array[len(distribution)-1] = [x + y for x, y in zip(distribution_array[len(distribution)-1], distribution)]
+
+
+
+                # except Exception as e:
+                    # print(e)
+            print(distribution_array)
+            for observed_frequencies in distribution_array:
+                # Calculate the expected frequencies assuming a uniform distribution
+                total_observed = sum(observed_frequencies)
+                num_categories = len(observed_frequencies)
+                expected_frequency = total_observed / num_categories
+                expected_frequencies = [expected_frequency] * num_categories
+
+                # Perform the chi-squared goodness-of-fit test
+                chi2, p_value = stats.chisquare(observed_frequencies, expected_frequencies)
+
+                # Print the test statistics and p-value
+                print(observed_frequencies)
+                print("Chi-square statistic:", chi2)
+                print("p-value:", p_value)
+
+            self.frame.clear_widgets()
+            self.frame.add_plot_frame(Graphs.graph16(Stats.get_column_data("Date and Time", sessionMetaData), Stats.get_column_data("Nether", sessionMetaData)), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph17(x_list, y_list, hour_list, x_quantity="time of day", y_quanity="p"), 1, 0)
+            self.frame.add_plot_frame(Graphs.graph17(x_list, y_list, hour_list, x_quantity="time of day", y_quanity="slope"), 1, 1)
+            self.frame.add_plot_frame(Graphs.graph17(x_list, y_list, rpe_list, x_quantity="rpe", y_quanity="p"), 2, 0)
+            self.frame.add_plot_frame(Graphs.graph17(x_list, y_list, rpe_list, x_quantity="rpe", y_quanity="slope"), 2, 1)
+            self.frame.add_plot_frame(Graphs.graph17(x_list, y_list, breakTimeProportion_list, x_quantity="session break time", y_quanity="p"), 3, 0)
+            self.frame.add_plot_frame(Graphs.graph17(x_list, y_list, breakTimeProportion_list, x_quantity="session break time", y_quanity="slope"), 3, 1)
+
+
+    def populate(self):
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation.grid(row=0, column=0, columnspan=2, padx=50)
+
+        self.frame = ScrollableContainer(self)
+        self.frame.grid(row=1, column=1)
+
+        self.control_panel = Frame(self)
+        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+
+        cmd = partial(self.displayInfo)
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn.grid(row=0, column=0, columnspan=2)
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        ExperimentPage.populate(self)
+
 
 # gui
 class MainView(tk.Frame):
@@ -1511,8 +1797,8 @@ class MainView(tk.Frame):
     def __init__(self, *args, **kwargs):
         global selectedSession
         tk.Frame.__init__(self, *args, **kwargs)
-        pageTitles = ['About', 'Settings', 'Current Session', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback']
-        self.pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self)]
+        pageTitles = ['About', 'Settings', 'Current Session', 'Summery', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
+        self.pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)

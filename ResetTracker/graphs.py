@@ -125,9 +125,9 @@ class Graphs:
                           height=40
                           )
             cells = dict(values=[[Logistics.formatValue(splitStats['Count'])],
-                                 [Logistics.formatValue(splitStats['Cumulative Average'], isTime=True)],
-                                 [Logistics.formatValue(splitStats['Relative Average'], isTime=True)],
-                                 [Logistics.formatValue(splitStats['Relative Conversion'], isPercent=True)]
+                                 [Logistics.formatValue(splitStats['Cumulative Average'], moe=Logistics.t_int_moe(splitStats['Count'], splitStats['Cumulative Stdev'], 0.95), isTime=True)],
+                                 [Logistics.formatValue(splitStats['Relative Average'], moe=Logistics.t_int_moe(splitStats['Count'], splitStats['Relative Stdev'], 0.95), isTime=True)],
+                                 [Logistics.formatValue(splitStats['Relative Conversion'], moe=Logistics.z_int_moe(splitStats['Count']/splitStats['Relative Conversion'], splitStats['Count'], 0.95), isPercent=True)]
                                  ],
                          fill_color=guiColors['background'],
                          align=['center'],
@@ -243,8 +243,8 @@ class Graphs:
         try:
             headers = ['Count', 'Avg', 'Rate', 'Stdev', 'XPH']
             values = [[f"<b>{Logistics.formatValue(splitData['Count'])}</b>"],
-                        [f"<b>{Logistics.formatValue(splitData['Cumulative Average'], isTime=True)}</b>", f"<b>{Logistics.formatValue(splitData['Relative Average'], isTime=True)}</b>"],
-                        [f"<b>{Logistics.formatValue(splitData['Cumulative Conversion'], isPercent=True)}</b>", f"<b>{Logistics.formatValue(splitData['Relative Conversion'], isPercent=True)}</b>"],
+                        [f"<b>{Logistics.formatValue(splitData['Cumulative Average'], moe=Logistics.t_int_moe(splitData['Count'], splitData['Cumulative Stdev'], 0.95), isTime=True)}</b>", f"<b>{Logistics.formatValue(splitData['Relative Average'], moe=Logistics.t_int_moe(splitData['Count'], splitData['Relative Stdev'], 0.95), isTime=True)}</b>"],
+                        [f"<b>{Logistics.formatValue(splitData['Cumulative Conversion'], isPercent=True)}</b>", f"<b>{Logistics.formatValue(splitData['Relative Conversion'], moe=Logistics.z_int_moe(splitData['Count']/splitData['Relative Conversion'], splitData['Count'], 0.95), isPercent=True)}</b>"],
                         [f"<b>{Logistics.formatValue(splitData['Cumulative Stdev'], isTime=True)}</b>", f"<b>{Logistics.formatValue(splitData['Relative Stdev'], isTime=True)}</b>"],
                         [f"<b>{Logistics.formatValue(splitData['xph'])}</b>"]]
             colors = []
@@ -272,7 +272,7 @@ class Graphs:
             ])
             fig.update_layout(
                 margin=dict(l=20, r=20, t=30, b=20),  # Add some margin around the table
-                height=150,
+                height=180,
                 width=400,
                 plot_bgcolor=guiColors['background'],
                 paper_bgcolor=guiColors['background']
@@ -298,6 +298,10 @@ class Graphs:
                     Logistics.formatValue(currentSession['splits stats'][split]['Cumulative Average'], isTime=True),
                     Logistics.formatValue(currentSession['splits stats'][split]['Relative Average'], isTime=True),
                     Logistics.formatValue(currentSession['splits stats'][split]['Relative Conversion'], isPercent=True)
+
+                    # Logistics.formatValue(currentSession['splits stats'][split]['Cumulative Average'], moe=Logistics.t_int_moe(currentSession['splits stats'][split]['Count'], currentSession['splits stats'][split]['Cumulative Stdev'], 0.95), isTime=True),
+                    # Logistics.formatValue(currentSession['splits stats'][split]['Relative Average'], moe=Logistics.t_int_moe(currentSession['splits stats'][split]['Count'], currentSession['splits stats'][split]['Relative Stdev'], 0.95), isTime=True),
+                    # Logistics.formatValue(currentSession['splits stats'][split]['Relative Conversion'], moe=Logistics.z_int_moe(currentSession['splits stats'][split]['Count']/currentSession['splits stats'][split]['Relative Conversion'], currentSession['splits stats'][split]['Count'], 0.95), isPercent=True)
                 ])
 
             # Create the plot
@@ -485,7 +489,7 @@ class Graphs:
     def graph11(cls, generalData):
         try:
             headers = ['rnph', 'avg. enter', 'score']
-            values = [[Logistics.formatValue(generalData['rnph'])],
+            values = [[Logistics.formatValue(generalData['rnph'], moe=Logistics.xph_int_moe1(generalData['rnph'], len(generalData['enters']), 0.95), isNPH=True)],
                       [Logistics.formatValue(generalData['average enter'], isTime=True)],
                       [Logistics.formatValue(generalData['efficiency score'])]]
 
@@ -591,6 +595,7 @@ class Graphs:
             print(e)
             return 1
 
+    # heatmap or 2d histogram for split showing density of split-to-reset and start-to-split distribution
     @classmethod
     def graph14(cls, data, split):
         try:
@@ -614,7 +619,6 @@ class Graphs:
             sns.heatmap(bins, cmap='Blues')
             plt.xlabel('List 2')
             plt.ylabel('List 1')
-            plt.show()
 
             return fig
         except Exception as e:
@@ -673,8 +677,112 @@ class Graphs:
             print(e)
             return 1
 
+    # plots inverted nph to session timestamp
     @classmethod
-    def testGraphs(cls):
-        fig = Graphs.graph5({"Relative Distribution": [28.0, 18.0, 25.0, 15.0, 16.0, 17.0, 15.0, 22.0, 53.0, 23.0, 31.0, 37.0, 28.0, 30.0], "Cumulative Distribution": [28.0, 18.0, 25.0, 15.0, 16.0, 17.0, 15.0, 22.0, 53.0, 23.0, 31.0, 37.0, 28.0, 30.0], "Relative Conversion": 0.020378457059679767, "Cumulative Conversion": 0.020378457059679767, "Relative Average": 25.571428571428573, "Cumulative Average": 25.571428571428573, "Count": 14, "xph": 16.600790513833992})
+    def graph16(cls, date_time, nether):
+        try:
 
+            x_list = []
+            y_list = []
+            start = datetime.strptime(date_time[0], '%Y-%m-%d %H:%M:%S.%f')
+            prev = start
+            for i in range(len(nether)):
+                if nether[i] != '':
 
+                    value = datetime.strptime(date_time[i], '%Y-%m-%d %H:%M:%S.%f')
+                    x_list.append((value-start)/timedelta(seconds=1))
+                    y_list.append((value-prev)/timedelta(seconds=1))
+                    prev = value
+            dict1 = {'time since start': x_list, 'time since prev': y_list}
+
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
+
+            p2 = sns.scatterplot(x='time since start', y='time since prev', data=dict1, s=60, alpha=0.8, palette='Set1',
+                                 edgecolor='none')
+            ax.set_xlabel('session timeline', fontsize=16)
+            ax.set_ylabel('time since last enter', fontsize=16)
+            ax.tick_params(axis='both', labelsize=14)
+            plt.tight_layout()
+            # Calculate slope and margin of error
+            confidence_level = 0.95
+            slope, margin_of_error = Logistics.slope_int_moe(x_list, y_list, confidence_level)
+
+            # Format the slope and margin of error values
+            slope_formatted = '{:.2f}'.format(slope)
+            margin_of_error_formatted = '{:.2f}'.format(margin_of_error)
+
+            # Add text with slope and margin of error to the graph
+            plt.text(0.5, 0.1, f'Slope: {slope_formatted}\nMargin of Error: {margin_of_error_formatted}',
+                     fontsize=12, ha='center', transform=ax.transAxes)
+            return fig
+        except Exception as e:
+            print(e)
+            return 1
+
+    # plots slope of subsets from x/y var against z_var
+    @classmethod
+    def graph17(cls, x_var, y_var, z_var, x_quantity="variable", y_quanity="slope", p_positive=True):
+        try:
+            slope_list = []
+            error_list = []
+            p_list = []
+
+            if not(len(x_var) == len(y_var) == len(z_var)):
+                raise ValueError
+
+            for x, y, z in zip(x_var, y_var, z_var):
+                slope, se = Logistics.slope_int_moe(x, y, 0.95, returnStandard=True)
+                _, _, _, p, _ = stats.linregress(x, y)
+                if slope < 0 ^ p_positive:
+                    p_prime = p/2
+                else:
+                    p_prime = 1 - p/2
+
+                slope_list.append(slope)
+                error_list.append(se)
+                p_list.append(p_prime)
+
+            x_list = z_var
+            if y_quanity == "slope":
+                y_list = slope_list
+            elif y_quanity == "p":
+                y_list = p_list
+
+            if y_quanity == "slope":
+                x1 = sm.add_constant(z_var)
+                y1 = y_list
+                wls_model = sm.WLS(y1, x1, weights=[1/error for error in error_list])
+                results = wls_model.fit()
+                p_value = results.pvalues[1]
+            elif y_quanity == "p":
+                _, _, _, p_value, _ = stats.linregress(x_list, y_list)
+
+            dict1 = {x_quantity: x_list, y_quanity: y_list}
+
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.set_facecolor(guiColors['background'])
+            fig.set_facecolor(guiColors['background'])
+
+            p2 = sns.scatterplot(x=x_quantity, y=y_quanity, data=dict1, s=60, alpha=0.8, palette='Set1',
+                                 edgecolor='none')
+            ax.set_xlabel(x_quantity, fontsize=16)
+            ax.set_ylabel(y_quanity, fontsize=16)
+            ax.tick_params(axis='both', labelsize=14)
+            plt.tight_layout()
+            # Calculate slope and margin of error
+
+            # Format the slope and margin of error values
+            p_value_formatted = '{:.3f}'.format(p_value)
+
+            if y_quanity == "slope":
+                plt.errorbar(z_var, slope_list, yerr=error_list, fmt='o', capsize=3)
+
+            # Add text with slope and margin of error to the graph
+            plt.text(0.5, 0.1, f'p-value: {p_value_formatted}',
+                     fontsize=12, ha='center', transform=ax.transAxes)
+            return fig
+        except Exception as e:
+            print(e)
+            return 1

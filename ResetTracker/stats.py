@@ -28,14 +28,17 @@ class Stats:
 
 
     @classmethod
-    def getSessionData(cls, sessionString, sessions):
+    def getSessionData(cls, sessionString, sessions, returnMetaData=False):
         index = 0
         for i in range(len(sessions['sessions'])):
             session = sessions['sessions'][i]
             if sessionString in session.values():
                 index = i
                 break
-        return sessions['stats'][index]
+        if returnMetaData:
+            return sessions['sessions'][index]
+        else:
+            return sessions['stats'][index]
 
     @classmethod
     def get_sessions(cls, settings):
@@ -68,7 +71,7 @@ class Stats:
                 if count == int(settings['display']['latest x sessions']):
                     sessionList.insert(0, {'start row': [session_start + 1], 'end row': [1], 'string': "Latest " + settings['display']['latest x sessions'], 'profile': None, 'version': None})
                 start_time = datetime.strptime(time_col[i], '%Y-%m-%d %H:%M:%S.%f') + timezoneOffset
-                sessionString = start_time.strftime('%m/%d %H:%M') + " - " + end_time.strftime('%m/%d %H:%M')
+                sessionString = start_time.strftime('%m/%d/%Y %H:%M') + " - " + end_time.strftime('%m/%d/%Y %H:%M')
                 profile = (session_col[i].split('$'))[0]
                 version = (session_col[i].split('$'))[1]
                 sessionList.append({'start row': [session_start + 1], 'end row': [session_end], 'string': sessionString, 'profile': profile, 'version': version})
@@ -85,6 +88,52 @@ class Stats:
         except:
             return []
         return sessionList
+
+    @classmethod
+    def get_column_data(cls, column_name, session_element):
+        with open('stats.csv', newline="") as f:
+            reader = csv.reader(f)
+            data = list(reader)
+            f.close()
+
+        start_row = session_element['start row'][0]
+        end_row = session_element['end row'][0]
+
+        column_index = headerLabels.index(column_name)  # Assuming column names are in the first row
+        if end_row == 1:
+            column_data = [row[column_index] for row in data[-start_row:]]
+        else:
+            column_data = [row[column_index] for row in data[-start_row:-end_row]]
+
+        return column_data
+
+    @classmethod
+    def getSessionLength(cls, string):
+        try:
+            return (datetime.strptime(string[-16:], '%m/%d/%Y %H:%M') - datetime.strptime(string[:16], '%m/%d/%Y %H:%M'))/timedelta(hours=1)
+        except Exception as e:
+            print(e, 'a')
+            return -1
+
+
+    @classmethod
+    def getNetherTimelineDist(cls, sessionMD):
+        dt = Stats.get_column_data("Date and Time", sessionMD)
+        nether = Stats.get_column_data("Nether", sessionMD)
+        print(dt)
+        n = 1 + int(Stats.getSessionLength(sessionMD['string']))
+        print('n: ', n)
+        if n == -1:
+            return -1
+        start = datetime.strptime(dt[0], '%Y-%m-%d %H:%M:%S.%f')
+        dist = n * [0]
+        for i in range(len(nether)):
+            if nether[i] != '':
+                hour_num = int((datetime.strptime(dt[i], '%Y-%m-%d %H:%M:%S.%f') - start) / timedelta(hours=1))
+                print(hour_num)
+                dist[hour_num] += 1
+        print(dist)
+        return dist
 
     @classmethod
     def get_stats(cls, session, makeScoreKeys, settings):
@@ -104,6 +153,8 @@ class Stats:
         total_played = 0
         total_wallTime = 0
         total_owTime = 0
+        total_break_RTA = 0
+        breakCount = 0
         entry_labels = []
         enters = []
         latestSplitList = []
@@ -163,10 +214,13 @@ class Stats:
 
 
                 # resets/time
-                total_RTA += rowCells['RTA'] + rowCells['RTA Since Prev']
+                total_RTA += rowCells['RTA'] + rowCells['RTA Since Prev'] + rowCells['Wall Time Since Prev']
                 total_wallResets += int(rowCells['Wall Resets Since Prev'])
                 total_played += int(rowCells['Played Since Prev']) + 1
                 total_wallTime += int(rowCells['Wall Time Since Prev'])
+                total_break_RTA += rowCells['Break RTA Since Prev']
+                if rowCells['Break RTA Since Prev'] > 0:
+                    breakCount += 1
                 latestSplit = 'None'
 
                 if rowCells['Iron Source'] != 'None':
@@ -347,6 +401,8 @@ class Stats:
                                        'total Walltime': total_wallTime,
                                        'total ow time': total_owTime,
                                        'total nether time': total_RTA - total_owTime,
+                                       'total break time': total_break_RTA,
+                                       'break count': breakCount,
                                        'total resets': total_played + total_wallResets,
                                        'rpe': Logistics.getQuotient((total_wallResets + total_played), returndict['splits stats']['Nether']['Count']),
                                        'percent played': Logistics.getQuotient(len(rtaDist), total_played + total_wallResets),

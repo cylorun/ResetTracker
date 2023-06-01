@@ -1,4 +1,5 @@
 from statistics import mean, stdev, median
+import scipy.stats as stats
 import numpy as np
 import datetime
 from datetime import datetime, timedelta
@@ -7,6 +8,7 @@ from datetime import time
 import sys
 import time
 import math
+import statsmodels.api as sm
 
 multiCheckSupported = True
 
@@ -170,7 +172,7 @@ class Logistics:
         return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
     @classmethod
-    def formatValue(cls, value, isTime=False, isPercent=False, includeHours=False):
+    def formatValue(cls, value, moe=None, dp=1, isNPH=False, isTime=False, isPercent=False, includeHours=False):
         if value is None:
             return ""
         if type(value) == str:
@@ -187,13 +189,24 @@ class Logistics:
                 if includeHours:
                     return str(math.trunc(value / 3600)) + ':' + valueDatetime.strftime('%M:%S') + '.' + str(round(int(10 * (value % 1)), 0))
                 else:
-                    return valueDatetime.strftime('%M:%S') + '.' + str(round(int(10 * (value % 1)), 0))
-            else:
-                if isPercent:
-                    return str(round(value * 100, 1)) + '%'
+                    if moe is not None:
+                        return valueDatetime.strftime('%M:%S') + '.' + str(round(int(10 * (value % 1)), 0)) + " +- " + str(round(moe, dp))
+                    else:
+                        return valueDatetime.strftime('%M:%S') + '.' + str(round(int(10 * (value % 1)), 0))
+            elif isPercent:
+                if moe is not None:
+                    return str(round(value * 100, dp)) + '% +- ' + str(round(moe, dp)) + '%'
                 else:
-                    return str(round(value, 1))
+                    return str(round(value * 100, dp)) + '%'
+            elif isNPH:
+                if moe is not None:
+                    return str(round(value, dp)) + ' +- ' + str(round(moe, dp))
+                else:
+                    return str(round(value, dp))
+            else:
+                return str(round(value, dp))
         if type(value) == timedelta:
+            print('x')
             if isTime:
                 valueDatetime = datetime(year=1970, month=1, day=1) + value
                 if includeHours:
@@ -215,20 +228,101 @@ class Logistics:
         x = np.array(x_list)
         y = np.array(y_list)
 
-        # Calculate the slope and y-intercept of the regression line
-        m, b = np.polyfit(x, y, 1)
+        # Calculate the slope, y-intercept, R-squared, and p-value
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
 
         # Calculate the residuals
-        residuals = y - (m * x + b)
+        residuals = y - (slope * x + intercept)
 
         # Calculate the residual standard deviation (s)
         s = np.std(residuals, ddof=1)
 
-        return m, b, s
+        # Calculate the R-squared value
+        r_squared = r_value ** 2
+
+        return slope, intercept, s, r_squared, p_value
 
     @classmethod
     def getResidual(cls, y, m, x, b):
         return y - m * x - b
+
+    @classmethod
+    def t_int_moe(cls, sample_size, sample_std, confidence_level):
+        print('t')
+        # Calculate the critical value based on the confidence level and degrees of freedom
+        degrees_of_freedom = sample_size - 1
+        critical_value = stats.t.ppf((1 + confidence_level) / 2, degrees_of_freedom)
+
+        # Calculate the margin of error
+        margin_of_error = critical_value * (sample_std / (sample_size ** 0.5))
+        print(margin_of_error)
+        return margin_of_error
+
+    @classmethod
+    def z_int_moe(cls, sample_size, sample_num, confidence_level):
+        print('z')
+        sample_proportion = sample_num/sample_size
+
+        # Calculate the critical value based on the confidence level
+        critical_value = stats.norm.ppf((1 + confidence_level) / 2)
+
+        # Calculate the margin of error
+        margin_of_error = critical_value * ((sample_proportion * (1 - sample_proportion)) / sample_size) ** 0.5
+        print(margin_of_error)
+        return margin_of_error
+
+    @classmethod
+    def xph_int_moe1(cls, xph, n, confidence_level):
+        critical_value = stats.poisson.ppf((1 + confidence_level) / 2, xph)
+        print(critical_value)
+        margin_of_error = critical_value * math.sqrt(xph / n)
+        return margin_of_error
+
+    @classmethod
+    def xph_int_moe2(cls, xph, n, confidence_level):
+        critical_value = stats.norm.ppf((1 + confidence_level) / 2)
+        margin_of_error = critical_value * math.sqrt(xph / n)
+        return margin_of_error
+
+    @classmethod
+    def slope_int_moe(cls, x, y, confidence_level, returnStandard=False):
+        # Extract the variables from the data
+
+        # Calculate the number of data points
+        n = len(x)
+
+        # Calculate the means of x and y
+        x_mean = np.mean(x)
+        y_mean = np.mean(y)
+
+        # Calculate the sum of squared deviations
+        ss_xx = np.sum((x - x_mean) ** 2)
+        ss_yy = np.sum((y - y_mean) ** 2)
+        ss_xy = np.sum((x - x_mean) * (y - y_mean))
+
+        # Calculate the slope of the linear regression model
+        slope = ss_xy / ss_xx
+
+        # Calculate the residual sum of squares
+        residuals = [y1 - (slope * x1) for x1, y1 in zip(x, y)]
+        rss = np.sum([residual ** 2 for residual in residuals])
+
+        # Calculate the degrees of freedom
+        df = n - 2
+
+        # Calculate the standard error of the slope
+        standard_error = np.sqrt(rss / (df * ss_xx))
+
+        # Calculate the critical value based on the t-distribution and confidence level
+        critical_value = 1
+        if not returnStandard:
+            critical_value = stats.t.ppf((1 + confidence_level) / 2, df)
+
+        # Calculate the margin of error
+        margin_of_error = critical_value * standard_error
+
+        # Return the t-interval for the slope as a tuple
+        return slope, margin_of_error
 
     @classmethod
     def remove_top_X_percent(cls, data, x):
