@@ -150,7 +150,7 @@ class Logistics:
             import subprocess
             process = subprocess.run(["xdotool", "getactivewindow", "getwindowname"], capture_output=True, text=True)
             title = process.stdout
-            return "Fullscreen Projector" in title or "Full-screen Projector" in title
+            return "Projector" in title
 
     @classmethod
     def ms_to_string(cls, ms, returnTime=False):

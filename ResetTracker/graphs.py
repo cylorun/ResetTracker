@@ -519,8 +519,8 @@ class Graphs:
     def graph12(cls, generalData):
         try:
             values = [Logistics.formatValue(generalData['total resets']),
-                      Logistics.formatValue(generalData['total time'] + generalData['total Walltime'], isTime=True, includeHours=True),
-                      Logistics.formatValue(generalData['percent played'], isPercent=True),
+                      Logistics.formatValue(generalData['total RTA'] + generalData['total wall time'], isTime=True, includeHours=True),
+                      Logistics.formatValue(generalData['% played'], isPercent=True),
                       Logistics.formatValue(generalData['rpe'])]
             headers = ['Resets', 'Playtime', '% played', 'rpe']
 

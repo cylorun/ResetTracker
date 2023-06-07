@@ -175,7 +175,7 @@ class Database:
             json.dump(config, configFile)
             configFile.close()
         values = [config['lbName'], str(int(settings['playstyle']['instance count'])), str(int(settings['playstyle']['target time']))]
-        for statistic in ['rnph', 'rpe', 'percent played', 'efficiency score']:
+        for statistic in ['rnph', 'rpe', '% played', 'efficiency score']:
             values.append(careerData['general stats'][statistic])
         for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion', 'xph']:
             for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
@@ -436,9 +436,9 @@ class Feedback:
                     recomendedSeedsPlayed = {'a': item['lowerBound'], 'b': item['upperBound']}
 
             if recomendedSeedsPlayed is not None:
-                if (data['general stats']['percent played'] < recomendedSeedsPlayed['a']):
+                if (data['general stats']['% played'] < recomendedSeedsPlayed['a']):
                     text += 'click into more seeds; be less picky with the previews you want to play\n'
-                elif (data['general stats']['percent played'] > recomendedSeedsPlayed['b']):
+                elif (data['general stats']['% played'] > recomendedSeedsPlayed['b']):
                     text += 'click into less seeds; be more selective with the previews you want to play\n'
         except Exception as e:
             print(18)
@@ -468,7 +468,7 @@ class Feedback:
             print(e)
 
         try:
-            played2btConversion = data['splits stats']['Iron']['Count']/data['general stats']['percent played']/data['general stats']['total resets']
+            played2btConversion = data['splits stats']['Iron']['Count']/data['general stats']['% played']/data['general stats']['total resets']
             if played2btConversion < thresholds['owConversions']['played-bt']['low']:
                 text += 'If you are resetting for mapless buried treasure, you might want to work on your mapless; you may be to selective with the spikes you play out for mapless'
         except Exception as e:
@@ -1051,12 +1051,11 @@ class Tracking:
     def trackResets(cls):
         if settings['tracking']['use sheets'] == 1:
             Sheets.setup()
-            try:
-                with open("temp.csv", "x") as f:
-                    pass
-            except Exception as e:
-                print(25)
-                print(e)
+            # Create temp.csv if it doesn't exist
+            if not os.path.exists('temp.csv'):
+                with open('temp.csv', 'w') as f:
+                    f.write('')
+  
         while True:
             try:
                 newRecordObserver = Observer()
@@ -1095,15 +1094,21 @@ class Tracking:
 
 # gui
 class ControlPage(Page):
+    def toggle_tracking(self):
+        if isTracking:
+            main1.stopResetTracker()
+            self.toggle_tracking_button.config(text='Start Tracking', background=guiColors['true'])
+        else:
+            main1.promptUserForTracking()
+            self.toggle_tracking_button.config(text='Stop Tracking', background=guiColors['false'])
+
+            
     def populate(self):
         # Create the buttons
         self.grid_columnconfigure(0, weight=1)
 
-        start_button = tk.Button(self, text="Start Tracking", command=self.main1.promptUserForTracking, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 48))
-        start_button.grid(row=0, column=0, padx=10, pady=(60, 10))
-
-        stop_button = tk.Button(self, text="Stop Tracking", command=self.main1.stopResetTracker, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
-        stop_button.grid(row=1, column=0, padx=10, pady=10)
+        self.toggle_tracking_button = tk.Button(self, text="Start Tracking", command=self.toggle_tracking, background=guiColors['true'], foreground=guiColors['text1'], font=('Arial', 48))
+        self.toggle_tracking_button.grid(row=0, column=0, padx=10, pady=(60, 10))
 
         track_old_button = tk.Button(self, text="Track Old Records", command=Tracking.trackOldRecords, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
         track_old_button.grid(row=2, column=0, padx=10, pady=10)
@@ -1114,8 +1119,7 @@ class ControlPage(Page):
             update_button = tk.Button(self, text="Update", state=tk.DISABLED, background=guiColors['button3'], foreground=guiColors['text3'], font=('Arial', 24))
         update_button.grid(row=3, column=0, padx=10, pady=10)
 
-    def __init__(self, main1, *args, **kwargs):
-        self.main1 = main1
+    def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.populate()
 
@@ -1352,6 +1356,7 @@ class SummaryPage(Page):
 
             self.frame.clear_widgets()
             self.frame.add_plot_frame(Graphs.graph6(sessionData), 0, 0)
+            self.frame.add_plot_frame(Graphs.graph7(sessionData), 1, 0)
             isGraphingGeneral = False
 
 
@@ -1401,7 +1406,7 @@ class GeneralPage(Page):
             self.frame.clear_widgets()
             self.frame.add_plot_frame(Graphs.graph11(sessionData['general stats']), 1, 0, title='Very Important')
             self.frame.add_plot_frame(Graphs.graph12(sessionData['general stats']), 1, 1, title='Important')
-            self.frame.add_plot_frame(Graphs.graph8({'Wall': sessionData['general stats']['total Walltime'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}), 0, 2, title='Wall-OW-Nether breakdown')
+            self.frame.add_plot_frame(Graphs.graph8({'Wall': sessionData['general stats']['total wall time'], 'Overworld': sessionData['general stats']['total ow time'], 'Nether': sessionData['general stats']['total nether time']}), 0, 2, title='Wall-OW-Nether breakdown')
             self.frame.add_plot_frame(Graphs.graph1(sessionData['general stats']['RTA Distribution'], 'RTA', kde=(settings['display']['use KDE'] == 1), min2=min1, max2=max1), 0, 0, title='RTA Distribution', explanation='based on RTA min and max')
             self.frame.add_plot_frame(Graphs.graph13(sessionData['general stats']['IGT Distribution'], sessionData['general stats']['latest split list']), 0, 1, title='Detailed RTA Distribution', explanation='Colors indicate the split after which the runner reset')
 
@@ -1874,7 +1879,7 @@ class MainView(tk.Frame):
         global selectedSession
         tk.Frame.__init__(self, *args, **kwargs)
         pageTitles = ['Control', 'About', 'Settings', 'Current Session', 'Summary', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
-        self.pages = [ControlPage(self, self), IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
+        self.pages = [ControlPage(self), IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)
