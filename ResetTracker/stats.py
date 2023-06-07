@@ -1,7 +1,3 @@
-import csv
-import threading
-from functools import partial
-
 from speedrun_models import SplitDistribution
 from utils import *
 
@@ -120,9 +116,7 @@ class Stats:
     def getNetherTimelineDist(cls, sessionMD):
         dt = Stats.get_column_data("Date and Time", sessionMD)
         nether = Stats.get_column_data("Nether", sessionMD)
-        print(dt)
         n = 1 + int(Stats.getSessionLength(sessionMD['string']))
-        print('n: ', n)
         if n == -1:
             return -1
         start = datetime.strptime(dt[0], '%Y-%m-%d %H:%M:%S.%f')
@@ -130,9 +124,7 @@ class Stats:
         for i in range(len(nether)):
             if nether[i] != '':
                 hour_num = int((datetime.strptime(dt[i], '%Y-%m-%d %H:%M:%S.%f') - start) / timedelta(hours=1))
-                print(hour_num)
                 dist[hour_num] += 1
-        print(dist)
         return dist
 
     @classmethod

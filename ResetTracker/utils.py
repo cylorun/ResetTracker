@@ -1,14 +1,48 @@
-from statistics import mean, stdev, median
-import scipy.stats as stats
-import numpy as np
-import datetime
-from datetime import datetime, timedelta
-import json
-from datetime import time
 import sys
-import time
-import math
-import statsmodels.api as sm
+
+
+if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
+    import importlib
+    try:
+        from statistics import mean, stdev, median
+        import scipy.stats as stats
+        import numpy as np
+        import datetime
+        from datetime import datetime, timedelta
+        import json
+        from datetime import time
+        import sys
+        import time
+        import math
+        import statsmodels.api as sm
+        import pygsheets
+        import glob
+        import os
+        from watchdog.events import FileSystemEventHandler
+        from watchdog.observers import Observer
+        import requests
+        import webbrowser
+        import csv
+        import threading
+        from functools import partial
+        import tkinter as tk
+        from tkinter import *
+        from PIL import Image
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        import io
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        import plotly.graph_objects as go
+        from plotly.colors import n_colors
+        import matplotlib.patches as mpatches
+    except Exception as e:
+        for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget", "statsmodels", "statistics", "scipy"]:
+            if importlib.util.find_spec(lib) == None:
+                print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget statsmodels statistics scipy")
+                sys.exit()
+
+
+
 
 multiCheckSupported = True
 
@@ -206,7 +240,6 @@ class Logistics:
             else:
                 return str(round(value, dp))
         if type(value) == timedelta:
-            print('x')
             if isTime:
                 valueDatetime = datetime(year=1970, month=1, day=1) + value
                 if includeHours:
@@ -248,19 +281,16 @@ class Logistics:
 
     @classmethod
     def t_int_moe(cls, sample_size, sample_std, confidence_level):
-        print('t')
         # Calculate the critical value based on the confidence level and degrees of freedom
         degrees_of_freedom = sample_size - 1
         critical_value = stats.t.ppf((1 + confidence_level) / 2, degrees_of_freedom)
 
         # Calculate the margin of error
         margin_of_error = critical_value * (sample_std / (sample_size ** 0.5))
-        print(margin_of_error)
         return margin_of_error
 
     @classmethod
     def z_int_moe(cls, sample_size, sample_num, confidence_level):
-        print('z')
         sample_proportion = sample_num/sample_size
 
         # Calculate the critical value based on the confidence level
@@ -268,13 +298,11 @@ class Logistics:
 
         # Calculate the margin of error
         margin_of_error = critical_value * ((sample_proportion * (1 - sample_proportion)) / sample_size) ** 0.5
-        print(margin_of_error)
         return margin_of_error
 
     @classmethod
     def xph_int_moe1(cls, xph, n, confidence_level):
         critical_value = stats.poisson.ppf((1 + confidence_level) / 2, xph)
-        print(critical_value)
         margin_of_error = critical_value * math.sqrt(xph / n)
         return margin_of_error
 

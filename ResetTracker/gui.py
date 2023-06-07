@@ -1,24 +1,3 @@
-import sys
-
-"""
-if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
-    import importlib
-    for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget"]:
-        if importlib.util.find_spec(lib) == None:
-            print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget")
-            print("(If you already have the libraries, remove the # on lines 3 and 11 of gui.py)")
-            sys.exit()
-"""
-
-import pygsheets
-import glob
-import os
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
-import requests
-import webbrowser
-import subprocess
-
 from guiUtils import *
 
 
@@ -46,13 +25,15 @@ if True:
         base_path = sys._MEIPASS
     else:
         base_path = os.path.abspath(".")
-    databasePath = os.path.join(base_path, 'databaseCredentials.json')
-    if not os.path.exists(databasePath):
-        print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the tracker folder.")
-        sys.exit()
-    gc_sheets_database = pygsheets.authorize(service_file=databasePath)
-    sh2 = gc_sheets_database.open_by_url(databaseLink)
-    wks2 = sh2[0]
+    useDatabase = False
+    if useDatabase:
+        databasePath = os.path.join(base_path, 'databaseCredentials.json')
+        if not os.path.exists(databasePath):
+            print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the tracker folder.")
+            sys.exit()
+        gc_sheets_database = pygsheets.authorize(service_file=databasePath)
+        sh2 = gc_sheets_database.open_by_url(databaseLink)
+        wks2 = sh2[0]
     second = timedelta(seconds=1)
     currentSession = {'splits stats': {}, 'general stats': {}}
     currentSessionMarker = 'X'
@@ -136,15 +117,27 @@ global variables
 class Update:
     @classmethod
     def checkGithub(cls):
-        latest = requests.get("https://api.github.com/repos/pncakespoon1/ResetTracker/releases/latest")
-        if latest == config['version']:
+        response = requests.get("https://api.github.com/repos/pncakespoon1/ResetTracker/releases/latest")
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Get the JSON data from the response
+            release_data = response.json()
+
+            # Extract the tag name from the release data
+            latest_tag = release_data["tag_name"]
+        else:
+            return False
+        if latest_tag == config['version']:
             return False
         else:
             return True
 
     @classmethod
     def update(cls):
-        subprocess.Popen('update.exe')
+        if not getattr(sys, 'frozen', False):
+            subprocess.Popen('update.exe')
+        else:
+            subprocess.Popen('py update.py')
         root.destroy()
 
 
@@ -581,6 +574,7 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt, dt1=None):
+        print('a')
         self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
@@ -1086,6 +1080,33 @@ class Tracking:
 
 
 # gui
+class ControlPage(Page):
+    def populate(self):
+        # Create the buttons
+        self.grid_columnconfigure(0, weight=1)
+
+        start_button = tk.Button(self, text="Start Tracking", command=self.main1.promptUserForTracking, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 48))
+        start_button.grid(row=0, column=0, padx=10, pady=(60, 10))
+
+        stop_button = tk.Button(self, text="Stop Tracking", command=self.main1.stopResetTracker, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
+        stop_button.grid(row=1, column=0, padx=10, pady=10)
+
+        track_old_button = tk.Button(self, text="Track Old Records", command=Tracking.trackOldRecords, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
+        track_old_button.grid(row=2, column=0, padx=10, pady=10)
+
+        if Update.checkGithub():
+            update_button = tk.Button(self, text="Update", command=Update.update, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
+        else:
+            update_button = tk.Button(self, text="Update", state=tk.DISABLED, background=guiColors['button3'], foreground=guiColors['text3'], font=('Arial', 24))
+        update_button.grid(row=3, column=0, padx=10, pady=10)
+
+    def __init__(self, main1, *args, **kwargs):
+        self.main1 = main1
+        Page.__init__(self, *args, **kwargs)
+        self.populate()
+
+
+# gui
 class IntroPage(Page):
     def populate(self):
         # Load the image using PIL
@@ -1176,7 +1197,7 @@ class SettingsPage(Page):
             main1.errorPoppup('did you move your settings file from where it originally was?')
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=3, padx=50)
         loadedSettings = FileLoader.getSettings()
         for i1 in range(len(self.varStrings)):
@@ -1210,7 +1231,7 @@ class SettingsPage(Page):
         self.containers[3].grid(row=2, column=2, sticky="nsew")
 
         cmd = partial(self.saveSettings)
-        save_Btn = tk.Button(self, text='Save', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        save_Btn = tk.Button(self, text='Save', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         save_Btn.grid(row=3, column=1, sticky="nsew")
 
 
@@ -1271,7 +1292,7 @@ class CurrentSessionPage(Page):
             self.layer += 1
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, padx=50, columnspan=2)
         self.frame = ScrollableContainer(self)
         self.control_panel = Frame(self)
@@ -1321,7 +1342,7 @@ class SummaryPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1331,7 +1352,7 @@ class SummaryPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
@@ -1374,7 +1395,7 @@ class GeneralPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1400,7 +1421,7 @@ class GeneralPage(Page):
 
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
@@ -1437,7 +1458,7 @@ class SplitsPage(Page):
             isGraphingSplit = False
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=3, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1449,7 +1470,7 @@ class SplitsPage(Page):
         self.selectedSplit = StringVar()
         self.selectedSplit.set("Nether")
         drop1 = OptionMenu(self.control_panel, self.selectedSplit, *self.splits)
-        drop1.configure(background=guiColors['button'], foreground=guiColors['text'])
+        drop1.configure(background=guiColors['button1'], foreground=guiColors['text1'])
         drop1.grid(row=0, column=0)
 
         self.selectedAdjustment = DoubleVar()
@@ -1458,7 +1479,7 @@ class SplitsPage(Page):
         scale1.grid(row=1, column=0)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=2, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1495,7 +1516,7 @@ class EntryBreakdownPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1505,7 +1526,7 @@ class EntryBreakdownPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1532,7 +1553,7 @@ class ComparisonPage(Page):
             isGraphingComparison = False
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1542,7 +1563,7 @@ class ComparisonPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=0, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1580,7 +1601,7 @@ class FeedbackPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.container = ScrollableContainer(self)
@@ -1595,7 +1616,7 @@ class FeedbackPage(Page):
         self.panel2.grid(row=1, column=0, sticky="nsew")
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self, text='Generate Feedback', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self, text='Generate Feedback', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=1, column=0, sticky='n', pady=10)
 
     def __init__(self, *args, **kwargs):
@@ -1619,14 +1640,13 @@ class ExperimentPage(Page):
             breakTimeProportion_list = []
             x_list = []
             y_list = []
+            y_list2 = []
             # Assuming you have a list of sessionmd objects called sessionmd_list
 
             # Find the length of the longest session
             longest_session_length = 1 + int(max([Stats.getSessionLength(session['string']) for session in sessions['sessions']]))
-            print(longest_session_length)
             # Create a 2D array of size longest_session_length by longest_session_length
             distribution_array = [[0] * (i3+1) for i3 in range(longest_session_length)]
-            print(distribution_array)
 
             for i in range(len(sessions['sessions'])):
 
@@ -1643,6 +1663,7 @@ class ExperimentPage(Page):
                     nether = Stats.get_column_data("Nether", sessions['sessions'][i])
                     x_list_sub = []
                     y_list_sub = []
+                    y_list_sub2 = []
                     start = datetime.strptime(date_time[0], '%Y-%m-%d %H:%M:%S.%f')
                     prev = start
                     for i2 in range(len(nether)):
@@ -1650,7 +1671,7 @@ class ExperimentPage(Page):
                             value = datetime.strptime(date_time[i2], '%Y-%m-%d %H:%M:%S.%f')
                             x_list_sub.append((value - start) / timedelta(seconds=1))
                             y_list_sub.append(int(nether[i2][3:5]) * 60 + int(nether[i2][6:8]))
-                            # y_list_sub.append((value - prev) / timedelta(seconds=1))
+                            y_list_sub2.append((value - prev) / timedelta(seconds=1))
                             prev = value
                     if len(x_list_sub) > 3:
                         hour_list.append(hour)
@@ -1666,11 +1687,9 @@ class ExperimentPage(Page):
                         # Find the index of the greatest value in the distribution list
                         distribution_array[len(distribution)-1] = [x + y for x, y in zip(distribution_array[len(distribution)-1], distribution)]
 
+                        y_list2 += y_list_sub2
 
 
-                # except Exception as e:
-                    # print(e)
-            print(distribution_array)
             for observed_frequencies in distribution_array:
                 # Calculate the expected frequencies assuming a uniform distribution
                 total_observed = sum(observed_frequencies)
@@ -1681,10 +1700,53 @@ class ExperimentPage(Page):
                 # Perform the chi-squared goodness-of-fit test
                 chi2, p_value = stats.chisquare(observed_frequencies, expected_frequencies)
 
-                # Print the test statistics and p-value
-                print(observed_frequencies)
-                print("Chi-square statistic:", chi2)
-                print("p-value:", p_value)
+            y_list2 = [item for item in y_list2 if 0 < item < 1800]
+
+            print(y_list2)
+
+            # Define the observed values of t
+            observed_t = y_list2  # Update with your actual data
+
+            # Define the observed value of n
+            n = len(observed_t)  # Update with your actual data
+
+            # Estimate the parameters of the gamma distribution for t
+            shape, _, scale = stats.gamma.fit(observed_t, floc=0)
+
+            # Calculate the estimated value of nph
+            estimated_nph = n / np.sum(observed_t)
+
+            # Calculate the derivative of nph with respect to the shape parameter (alpha)
+            d_nph_d_alpha = -n / np.sum(observed_t) ** 2
+
+            # Calculate the derivative of nph with respect to the scale parameter (beta)
+            d_nph_d_beta = n / (np.sum(observed_t) * scale)
+
+            # Get the estimated variance of the shape parameter (alpha)
+            var_alpha = stats.gamma.fit(observed_t, floc=0)[0] / n
+
+            # Get the estimated variance of the scale parameter (beta)
+            var_beta = (stats.gamma.fit(observed_t, floc=0)[1] / scale) ** 2
+
+            # Get the estimated covariance between the shape and scale parameters
+            cov_alpha_beta = 0  # Assuming no covariance for simplicity
+
+            # Calculate the standard error of nph using the Delta Method
+            standard_error = np.sqrt((d_nph_d_alpha ** 2) * var_alpha + (
+                        d_nph_d_beta ** 2) * var_beta + 2 * d_nph_d_alpha * d_nph_d_beta * cov_alpha_beta)
+
+            # Set the desired confidence level
+            confidence_level = 0.95
+
+            # Find the critical value based on the confidence level (assuming a two-tailed test)
+            critical_value = stats.norm.ppf((1 + confidence_level) / 2)
+
+            # Calculate the confidence interval for nph
+            lower_bound = (estimated_nph - critical_value * standard_error) * 3600
+            upper_bound = (estimated_nph + critical_value * standard_error) * 3600
+
+            # Print the confidence interval
+            print(f"Confidence Interval for nph: ({lower_bound}, {upper_bound})")
 
             self.frame.clear_widgets()
             self.frame.add_plot_frame(Graphs.graph16(Stats.get_column_data("Date and Time", sessionMetaData), Stats.get_column_data("Nether", sessionMetaData)), 0, 0)
@@ -1697,7 +1759,7 @@ class ExperimentPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['header'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1707,7 +1769,7 @@ class ExperimentPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button'], foreground=guiColors['white'])
+        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
         graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
@@ -1749,7 +1811,7 @@ class MainView(tk.Frame):
     def stopResetTracker(self):
         global isTracking
         isTracking = False
-        self.trackingLabel.config(text='Tracking: False', background=guiColors['false_light'])
+        self.trackingLabel.config(text='Tracking: False', background=guiColors['false'])
 
     def startResetTracker(self):
         global isTracking
@@ -1758,7 +1820,7 @@ class MainView(tk.Frame):
         if not isinstance(wks1, int):
             isTracking = True
             CurrentSession.resetCurrentSession()
-            self.trackingLabel.config(text='Tracking: True', background=guiColors['true_light'])
+            self.trackingLabel.config(text='Tracking: True', background=guiColors['true'])
             t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
             t1.daemon = True
             t1.start()
@@ -1788,7 +1850,7 @@ class MainView(tk.Frame):
                 self.startResetTracker()
                 return value
 
-            startTrackingButton = Button(top1, text="Start Tracking", command=get_value, background=guiColors['button'], foreground=guiColors['white'])
+            startTrackingButton = Button(top1, text="Start Tracking", command=get_value, background=guiColors['button1'], foreground=guiColors['text1'])
             startTrackingButton.pack()
         else:
             self.errorPoppup('Already Tracking')
@@ -1797,40 +1859,16 @@ class MainView(tk.Frame):
     def __init__(self, *args, **kwargs):
         global selectedSession
         tk.Frame.__init__(self, *args, **kwargs)
-        pageTitles = ['About', 'Settings', 'Current Session', 'Summery', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
-        self.pages = [IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
+        pageTitles = ['Control', 'About', 'Settings', 'Current Session', 'Summary', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
+        self.pages = [ControlPage(self, self), IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)
         container = tk.Frame(self)
 
-        """
-        statsMenu = Menu(menubar, tearoff=0)
-        menubar.add_cascade(label='Stats', menu=statsMenu)
-        statsMenu.add_command(label="Upload Data", command=Database.uploadData)
-        """
-
-        trackingMenu = Menu(menubar, tearoff=0)
-        menubar.add_cascade(label='Tracking', menu=trackingMenu)
-        trackingMenu.add_command(label="Start Tracking", command=self.promptUserForTracking)
-        trackingMenu.add_command(label="Stop Tracking", command=self.stopResetTracker)
-        trackingMenu.add_command(label="track old records", command=Tracking.trackOldRecords)
-
-        updateMenu = Menu(menubar, tearoff=0)
-        if Update.checkGithub():
-            menubar.add_cascade(label='Update', menu=updateMenu)
-            updateMenu.add_command(label="Update", command=Update.update)
-        else:
-            menubar.add_cascade(label='Update', menu=updateMenu)
-        updateMenu.add_command(label="Open Github", command=Update.openGithub)
-
-
-        #resourcesMenu = Menu(menubar, tearoff=0)
-        #menubar.add_cascade(label='Resources', menu=resourcesMenu)
-
         for i in range(len(self.pages)):
             self.pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
-            button = tk.Button(buttonframe1, text=pageTitles[i], command=self.pages[i].show, foreground=guiColors['text'], background=guiColors['tab'])
+            button = tk.Button(buttonframe1, text=pageTitles[i], command=self.pages[i].show, foreground=guiColors['text2'], background=guiColors['button2'])
             button.grid(row=0, column=i, sticky="nsew")
 
         selectedSession = tk.StringVar()
@@ -1839,8 +1877,8 @@ class MainView(tk.Frame):
             sessionStrings.append(session['string'])
         selectedSession.set(sessionStrings[0])
         self.drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
-        self.drop.configure(background=guiColors['button'], foreground=guiColors['text'])
-        self.trackingLabel = Label(buttonframeMain, text='Tracking: False', background=guiColors['false_light'], foreground=guiColors['black'], font=("Arial Bold", 10), pady=3, padx=10, )
+        self.drop.configure(background=guiColors['button1'], foreground=guiColors['text1'])
+        self.trackingLabel = Label(buttonframeMain, text='Tracking: False', foreground=guiColors['false'], font=("Arial Bold", 10), pady=3, padx=10, )
         self.trackingLabel.pack(side="right", expand=True)
         self.drop.pack(side="right")
         buttonframe1.pack(side="left", fill="x", expand=False)
@@ -1853,10 +1891,8 @@ class MainView(tk.Frame):
 if __name__ == "__main__":
     root = tk.Tk()
     root.title('Reset Tracker')
-    menubar = Menu(root)
     main1 = MainView(root)
-    root.config(menu=menubar)
-    root.tk_setPalette(background=guiColors['background_dark'])
+    root.tk_setPalette(background=guiColors['background'])
     main1.pack(side="top", fill="both", expand=True)
     root.wm_geometry("1000x700")
 

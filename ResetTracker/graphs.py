@@ -1,9 +1,3 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.graph_objects as go
-from plotly.colors import n_colors
-import matplotlib.patches as mpatches
-
 from stats import *
 
 with open('data/palette.json', 'r') as f:
@@ -11,7 +5,7 @@ with open('data/palette.json', 'r') as f:
 
 # class methods for creating graphs
 class Graphs:
-    # makes a kde histogram of a distribution of datapoints
+    # makes a histogram of a distribution of datapoints
     @classmethod
     def graph1(cls, dist, title, smoothness=0.4, removeX=0, kde=True, min2=0, max2=3600):
         try:

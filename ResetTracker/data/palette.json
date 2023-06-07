@@ -1,1 +1,20 @@
-{"primary": "#FFA500", "primary_light": "#FFDAB9", "primary_dark": "#FF8C00", "background": "#F0FFF0", "background_dark": "#DFFFD8", "true": "#00FF00", "true_light": "#7CFC00", "false": "#FF0000", "false_light": "#FF6347", "tab": "#ADD8E6", "tab_light": "#B0E0E6", "button": "#BA55D3", "button_dark": "#4B0082", "text": "#000000", "text_light": "#696969", "header": "#FF6347", "header_light": "#FFA07A", "scrollbar": "#C0C0C0", "scrollbar_dark": "#808080", "entry": "#F0FFFF", "white": "#FFFFFF", "black": "#000000"}
+{
+    "background": "#D9D9D9",
+    "background_dark": "#C0C0C0",
+    "true": "#A5D6A7",
+    "false": "#F51720",
+    "button1": "#4DA9E6",
+    "text1": "#FFFFFF",
+    "text4": "#FF5252",
+    "text2": "#000000",
+    "text3": "#888888",
+    "button4": "#888888",
+    "button3": "#888888",
+    "text5": "#000000",
+    "scrollbar": "#BDBDBD",
+    "entry": "#FFFFFF",
+    "button2": "#18A568",
+    "misc2": "#E0E0E0",
+    "white": "#FFFFFF",
+    "black": "#000000"
+}
