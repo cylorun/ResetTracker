@@ -152,3 +152,6 @@ ResetTracker/seed.py
 ResetTracker/settings.json
 ResetTracker/seed.py
 ResetTracker/.vscode/launch.json
+stats.csv
+temp.csv
+ResetTracker/obs
