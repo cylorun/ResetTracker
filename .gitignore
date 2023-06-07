@@ -155,3 +155,4 @@ ResetTracker/.vscode/launch.json
 stats.csv
 temp.csv
 ResetTracker/obs
+ResetTracker/data
