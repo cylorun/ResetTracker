@@ -1,10 +1,23 @@
+
+import os
+import shutil
+"""
+    STARTUP:
+    Recreate data folder if not exists, copying it from the default folder
+"""
+if not os.path.exists("data"):
+    os.makedirs("data")
+
+for file in os.listdir("default"):
+    if not os.path.exists(os.path.join("data", file)):
+        shutil.copyfile(os.path.join("default", file), os.path.join("data", file))
+
 from guiUtils import *
 
 
 """
 global variables
 """
-
 if True:
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
@@ -26,7 +39,6 @@ if True:
     else:
         base_path = os.path.abspath(".")
     if(settings['tracking']['addToGlobalDatabase'] == 1):
-
         databasePath = os.path.join(base_path, 'databaseCredentials.json')
         if not os.path.exists(databasePath):
             print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the tracker folder. Or Disable tracking.addToGlobalDatabase in settings.json")
