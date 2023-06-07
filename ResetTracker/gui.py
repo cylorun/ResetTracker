@@ -25,11 +25,11 @@ if True:
         base_path = sys._MEIPASS
     else:
         base_path = os.path.abspath(".")
-    useDatabase = False
-    if useDatabase:
+    if(settings['tracking']['addToGlobalDatabase'] == 1):
+
         databasePath = os.path.join(base_path, 'databaseCredentials.json')
         if not os.path.exists(databasePath):
-            print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the tracker folder.")
+            print("DM pncakespoon#4895 on Discord to obtain the credentials file, then put it in the tracker folder. Or Disable tracking.addToGlobalDatabase in settings.json")
             sys.exit()
         gc_sheets_database = pygsheets.authorize(service_file=databasePath)
         sh2 = gc_sheets_database.open_by_url(databaseLink)
@@ -168,11 +168,12 @@ class Database:
         for statistic in ['Cumulative Average', 'Relative Average', 'Relative Conversion', 'xph']:
             for split in ['Iron', 'Wood', 'Iron Pickaxe', 'Nether', 'Structure 1', 'Structure 2', 'Nether Exit', 'Stronghold', 'End']:
                 values.append(careerData['splits stats'][split][statistic])
-        if config['lbName'] in nameList:
-            rownum = nameList.index(config['lbName']) + 1
-            wks2.update_row(index=rownum - 1, values=values, col_offset=0)
-        else:
-            wks2.insert_rows(row=userCount, number=1, values=values, inherit=False)
+        if settings['tracking']['addToGlobalDatabase'] == 1:
+            if config['lbName'] in nameList:
+                rownum = nameList.index(config['lbName']) + 1
+                wks2.update_row(index=rownum - 1, values=values, col_offset=0)
+            else:
+                wks2.insert_rows(row=userCount, number=1, values=values, inherit=False)
 
 
 class CurrentSession:
@@ -329,15 +330,16 @@ class Feedback:
 
     @classmethod
     def readDatabase(cls):
-        targetTimeCol = wks2.get_col(col=3, returnas='matrix', include_tailing_empty=False)
-        targetTimeCol.pop(0)
         similarUserList = []
-        for i in range(len(targetTimeCol)):
-            if -1 * int(settings['display']['comparison threshold']) < (
-                    int(targetTimeCol[i]) - int(settings['playstyle']['target time'])) < int(
-                    settings['display']['comparison threshold']):
-                row = wks2.get_row(row=i, returnas='matrix', include_tailing_empty=True)
-                similarUserList.append(row)
+        if(settings['tracking']['addToGlobalDatabase']) == 1 :
+            targetTimeCol = wks2.get_col(col=3, returnas='matrix', include_tailing_empty=False)
+            targetTimeCol.pop(0)
+            for i in range(len(targetTimeCol)):
+                if -1 * int(settings['display']['comparison threshold']) < (
+                        int(targetTimeCol[i]) - int(settings['playstyle']['target time'])) < int(
+                        settings['display']['comparison threshold']):
+                    row = wks2.get_row(row=i, returnas='matrix', include_tailing_empty=True)
+                    similarUserList.append(row)
         return similarUserList
 
     @classmethod
@@ -1799,7 +1801,7 @@ class MainView(tk.Frame):
             return None
 
     def updateCSGraphs(self, run):
-        self.pages[2].updateTables(run)
+        self.pages[3].updateTables(run)
 
     def errorPoppup(self, text):
         top = Toplevel()

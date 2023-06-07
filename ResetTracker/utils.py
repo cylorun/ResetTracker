@@ -41,6 +41,8 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
                 print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget statsmodels statistics scipy")
                 sys.exit()
 
+                
+
 
 
 
@@ -64,8 +66,9 @@ elif sys.platform.startswith("darwin"):
 
 elif sys.platform.startswith("linux"):
     # xdotool is used to get the foreground window title, which requires x11
-    import subprocess
-    if subprocess.run(["echo", "$XDG_SESSION_TYPE"]).stdout != "x11":
+    import os
+    session_type = os.environ.get('XDG_SESSION_TYPE')
+    if session_type!="x11":
         multiCheckSupported = False
 
 else:
@@ -144,6 +147,7 @@ class Logistics:
             return False
         
         elif sys.platform.startswith("linux"):
+            import subprocess
             process = subprocess.run(["xdotool", "getactivewindow", "getwindowname"], capture_output=True, text=True)
             title = process.stdout
             return "Fullscreen Projector" in title or "Full-screen Projector" in title

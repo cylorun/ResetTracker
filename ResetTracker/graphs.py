@@ -1,6 +1,6 @@
 from stats import *
 
-with open('data/palette.json', 'r') as f:
+with open("data/palette.json","r") as f:
     guiColors = json.load(f)
 
 # class methods for creating graphs

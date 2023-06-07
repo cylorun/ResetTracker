@@ -183,6 +183,7 @@ class ScrollableContainer(tk.Frame):
         try:
             panel = PlotFrame(self.container, graph, background=guiColors['background'])
         except Exception as e:
+            # print the exception
             print(e)
             panel = Label(self.container, text='something went wrong whilst making one of the graphs or tables', background=guiColors['background'])
         if title != '' and isinstance(panel, PlotFrame):
