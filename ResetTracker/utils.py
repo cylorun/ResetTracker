@@ -36,10 +36,8 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         from plotly.colors import n_colors
         import matplotlib.patches as mpatches
     except Exception as e:
-        for lib in ["Pillow", "plotly", "pygsheets", "requests", "seaborn", "watchdog", "wget", "statsmodels", "statistics", "scipy"]:
-            if importlib.util.find_spec(lib) == None:
-                print("Run the following command in your terminal: pip install Pillow plotly pygsheets requests seaborn watchdog wget statsmodels statistics scipy")
-                sys.exit()
+        print("Run the following command in your terminal: pip install numpy Pillow plotly pygsheets requests seaborn watchdog wget statsmodels statistics scipy")
+        sys.exit()
 
                 
 

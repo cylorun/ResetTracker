@@ -1125,26 +1125,6 @@ class ControlPage(Page):
 
 
 # gui
-class IntroPage(Page):
-    def populate(self):
-        # Load the image using PIL
-        img = Image.open(os.path.join(base_path, "cover.png"))
-
-        # Resize the image
-        resized_img = img.resize((900, 600))  # Replace (200, 200) with your desired size
-
-        # Create a PhotoImage object to display the resized image in the tkinter window
-        photo = ImageTk.PhotoImage(resized_img)
-        label = Label(self, image=photo)
-        label.image = photo
-        label.pack()
-
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        self.populate()
-
-
-# gui
 class SettingsPage(Page):
     explanationText = 'This is the page where you adjust your settings. Your settings are saved in the data folder. Remember to press save to save and apply the adjustments!'
     varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats', 'detect RSG'],
@@ -1818,7 +1798,7 @@ class MainView(tk.Frame):
             return None
 
     def updateCSGraphs(self, run):
-        self.pages[3].updateTables(run)
+        self.pages[2].updateTables(run)
 
     def errorPoppup(self, text):
         top = Toplevel()
@@ -1848,7 +1828,7 @@ class MainView(tk.Frame):
         global currentSessionMarker
         if not isTracking:
             if not os.path.exists(settings['tracking']['records path']):
-                self.errorPoppup('records path does not exists')
+                self.errorPoppup('records path does not exists. configure/reconfigure your settings.')
                 return
             top1 = Toplevel()
             top1.geometry("180x100")
@@ -1878,8 +1858,8 @@ class MainView(tk.Frame):
     def __init__(self, *args, **kwargs):
         global selectedSession
         tk.Frame.__init__(self, *args, **kwargs)
-        pageTitles = ['Control', 'About', 'Settings', 'Current Session', 'Summary', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
-        self.pages = [ControlPage(self), IntroPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
+        pageTitles = ['Control', 'Settings', 'Current Session', 'Summary', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
+        self.pages = [ControlPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
 
         buttonframeMain = tk.Frame(self)
         buttonframe1 = tk.Frame(buttonframeMain)

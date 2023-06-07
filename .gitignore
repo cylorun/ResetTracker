@@ -137,6 +137,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+.idea/
+
 credentials.json
 defualt_options.json
 ResetTracker/Sheets.py
@@ -152,7 +154,18 @@ ResetTracker/seed.py
 ResetTracker/settings.json
 ResetTracker/seed.py
 ResetTracker/.vscode/launch.json
-stats.csv
-temp.csv
-ResetTracker/obs
-ResetTracker/data
+ResetTracker/stats.csv
+ResetTracker/temp.csv
+ResetTracker/*.exe
+ResetTracker/*.dll
+ResetTracker/obs/
+ResetTracker/data/
+ResetTracker/build/
+ResetTracker/dist/
+ResetTracker/records/
+ResetTracker/temp/
+ResetTracker/matplotlib/
+ResetTracker/test1.py
+ResetTracker/test2.py
+ResetTracker/credentials.json
+ResetTracker/databaseCredentials.json
