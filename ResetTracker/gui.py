@@ -329,7 +329,6 @@ class CurrentSession:
         for stat in statDict.keys():
             with open('obs/' + stat + '.txt', 'w') as obsTxtFile:
                 obsTxtFile.write(statDict[stat])
-                obsTxtFile.close()
 
 
 # class methods for giving feedback

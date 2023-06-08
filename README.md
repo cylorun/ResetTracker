@@ -7,25 +7,27 @@
  - Atum 1.0.5+
  - SpeedrunIGT 10.7+
 
+#### Non-Windows Users
+
+ - Download the source code
+ - Make sure you have python and pip installed
+ - Open the terminal and set the directory to the `ResetTracker` folder using `cd filepath`
+ - Run the program using `python3 gui.py`
+ - The program will guide you through the rest of the process
+
 #### Settings
 
-After running ResetTracker2.exe (scripts/gui.py on Mac or Linux), go to the settings tab. Hover over the settings labels to see a brief description of the setting. If you do not have correctly configured settings, the program will tell you what to do when you try to save them or start tracking.
+ - Configure your settings in the settings tab and save them. When saving, the program will let you know if you have any invalid values. If you're unsure about the purpose or meaning of a setting, hover over its label for a tooltip to pop up.
 
 #### Updating
 
- - you can update versions by running update.exe (Windows only)
- - or you can open the github or update through the gui by clicking on the update menu-button
+If an update is available, the update button on the Control page will be clickable. Pressing it will close the tracker and automatically update it.
 
 #### Sheets
 
 Using sheets is NOT necessary, however if you wish to use google sheets in addition to local storage to store your stats, follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q)
 
 ## Tracking
-
-#### Start Tracking
-
- - to start tracking, click the tracking menu-button to reveal a dropdown
- - it will prompt you to put a session marker; these session markers are used in analysis, so you can associate certain certain strategies with different session markers to distinguish them in analysis and comparison
 
 #### How It Works
 
@@ -49,7 +51,7 @@ Check out each of the pages on the gui; they all do different things. They all h
 
 #### Developers
 
-Original reset tracker was made by TheTalkingMime, and further developed by Specnr. Then I made it better :D. Also huge thanks to chatGPT for helping me code this!
+Original reset tracker was made by TheTalkingMime, and further developed by Specnr. Then I made it better :D. Baryllium did most of the work in making the tracker accessible to mac and linux. Boyenn is also helping me develop the tracker. Also huge thanks to chatGPT for helping me code this!
 
 #### Testers
 
