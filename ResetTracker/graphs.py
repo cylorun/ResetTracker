@@ -38,7 +38,7 @@ class Graphs:
 
             # Plot the KDE distribution
             if kde:
-                sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness, color='#FF1493')
+                sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness, color=guiColors['primary'])
             else:
                 n, bins, patches = plt.hist(dist, bins=30, range=rangeX, density=False)
                 maxN = max(n)
@@ -349,15 +349,15 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color='#1f77b4',  # Use blue for header background color
+                    fill_color=guiColors['primary'],  # Use blue for header background color
                     align='center',
-                    font=dict(color='white', size=14)
+                    font=dict(color=guiColors['white'], size=14)
                 ),
                 cells=dict(
                     values=values,
                     fill_color=guiColors['background'],  # Use white for cell background color
                     align='center',
-                    font=dict(color='#1f77b4', size=12)
+                    font=dict(color=guiColors['secondary'], size=12)
                 ))
             ])
             fig.update_layout(
@@ -499,7 +499,7 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color='#1f77b4',  # Use blue for header background color
+                    fill_color=guiColors['primary'],  # Use blue for header background color
                     align='center',
                     font=dict(color='white', size=14)
                 ),
@@ -507,7 +507,7 @@ class Graphs:
                     values=values,
                     fill_color=guiColors['background'],
                     align='center',
-                    font=dict(color='#1f77b4', size=12)
+                    font=dict(color=guiColors['secondary'], size=12)
                 ))
             ])
             fig.update_layout(
@@ -536,7 +536,7 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color='#1f77b4',  # Use blue for header background color
+                    fill_color=guiColors['primary'],  # Use blue for header background color
                     align='center',
                     font=dict(color='white', size=14)
                 ),
@@ -544,7 +544,7 @@ class Graphs:
                     values=values,
                     fill_color=guiColors['background'],  # Use white for cell background color
                     align='center',
-                    font=dict(color='#1f77b4', size=12)
+                    font=dict(color=guiColors['secondary'], size=12)
                 ))
             ])
             fig.update_layout(

@@ -1,10 +1,11 @@
 {
-    "background": "#F5F5F5",
+    "background": "#C5C5E5",
     "true": "#A5D6A7",
     "false": "#F51720",
-    "primary": "#FF5733",
-    "secondary": "#5C33FF",
-    "text": "#333333",
-    "white": "#DDDDDD",
+    "primary": "#00B4FC",
+    "secondary": "#005BC5",
+    "tertiary": "#2E1437",
+    "text": "#FFFFFF",
+    "white": "#FFFFFF",
     "black": "#000000"
 }

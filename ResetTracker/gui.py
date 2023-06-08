@@ -1420,7 +1420,7 @@ class GeneralPage(Page):
         self.rta_min = tk.StringVar()
         self.rta_max = tk.StringVar()
         self.rta_min.set('-1')
-        self.rta_max.set('-1')
+        self.rta_max.set('360')
         label1 = Label(self.control_panel, text='rta minimum')
         label2 = Label(self.control_panel, text='rta maximum')
         Tooltip.createToolTip(label1, 'left side cutoff for RTA Distribution')
