@@ -8,6 +8,13 @@ except:
 
 from graphs import *
 
+
+class Scale(tk.Scale):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
+
+
 class Toplevel(tk.Toplevel):
     def __init__(self, master=None, **kwargs):
         kwargs['background'] = guiColors['background']
@@ -170,10 +177,9 @@ class ScrollableContainer(Frame):
         super().__init__(parent, background=guiColors['background'], highlightcolor=guiColors['black'], highlightthickness=0)
 
         # Create a Frame widget with a canvas inside it
-        self.canvas = Canvas(self, width=width, height=height, background=guiColors['background'])
-        self.canvas.configure(background=guiColors['background'])
+        self.canvas = Canvas(self, width=width, height=height)
 
-        self.container = Frame(self.canvas, background=guiColors['background'])
+        self.container = Frame(self.canvas)
 
         # Create a scrollbar and bind it to the canvas
         if xScroll:

@@ -46,14 +46,14 @@ class Graphs:
 
             plt.axvline(mean, color='orange', linestyle='--', ymin=0.15)
             plt.axvline(mean, color='orange', linestyle='--', ymax=0.07)
-            ax.text(mean, ax.get_ylim()[1]*0.1, f'μ: {mean:.2f}', ha='left', va='center', color='#FFC68C')
+            ax.text(mean, ax.get_ylim()[1]*0.1, f'μ: {mean:.2f}', ha='left', va='center', color='orange')
             if removeX != 0:
-                plt.axvline(new_mean, color='green', linestyle='--', ymin=0.25)
-                plt.axvline(new_mean, color='green', linestyle='--', ymax=0.17)
-                ax.text(new_mean, ax.get_ylim()[1] * 0.2, f'μ`: {new_mean:.2f}', ha='right', va='center', color='#90EE90')
-                plt.axvline(max1, color='blue', linestyle='--', ymin=0.35)
-                plt.axvline(max1, color='blue', linestyle='--', ymax=0.27)
-                ax.text(max1, ax.get_ylim()[1] * 0.3, f'{(1 - removeX) * 100}th pctl: {max1:.2f}', ha='center', va='center', color='#ADD8E6')
+                plt.axvline(new_mean, color='red', linestyle='--', ymin=0.25)
+                plt.axvline(new_mean, color='red', linestyle='--', ymax=0.17)
+                ax.text(new_mean, ax.get_ylim()[1] * 0.2, f'μ`: {new_mean:.2f}', ha='right', va='center', color='red')
+                plt.axvline(max1, color='green', linestyle='--', ymin=0.35)
+                plt.axvline(max1, color='green', linestyle='--', ymax=0.27)
+                ax.text(max1, ax.get_ylim()[1] * 0.3, f'{(1 - removeX) * 100}th pctl: {max1:.2f}', ha='center', va='center', color='green')
 
             # Add labels and title
             ax.set_xlabel(title)
@@ -83,14 +83,18 @@ class Graphs:
             colors = ['#7fc97f', '#beaed4', '#fdc086', '#ffff99', '#386cb0', '#f0027f']
 
             # Create a figure and axis object
-            fig, ax = plt.subplots(figsize=(3, 3))
+            fig, ax = plt.subplots(figsize=(4, 3))
 
             ax.set_facecolor(guiColors['background'])
             fig.set_facecolor(guiColors['background'])
 
             # Create the pie chart with custom colors and explode values
             wedges, labels, _ = ax.pie(data.values(), colors=colors, explode=[0.05] * len(data), autopct='%1.1f%%',
-                                       textprops={'fontsize': 10})
+                                       textprops={'fontsize': 10}, center=(-1, 0))
+
+            # Adjust the center position of the pie chart
+            ax.set_xlim(-1.5, 1.5)
+            ax.set_ylim(-1.5, 1.5)
 
             # Add a shadow effect to the wedges
             for wedge in wedges:
@@ -100,7 +104,7 @@ class Graphs:
 
             # Set the font size for the labels and legend
             plt.setp(labels, fontsize=10)
-            plt.legend(data.keys(), loc=1, fontsize=10)
+            plt.legend(data.keys(), loc='center left', bbox_to_anchor=(0.5, 0.5), fontsize=9, framealpha=0.5)
 
             return fig
         except Exception as e:
@@ -247,7 +251,7 @@ class Graphs:
                 for i2 in range(len(values[i1])):
                     color = 'black'
                     if i2 == 1:
-                        color = '#8c8c8c'
+                        color = '#5c5c5c'
                     colors[i1].append(color)
 
             fig = go.Figure(data=[go.Table(
@@ -377,12 +381,17 @@ class Graphs:
             colors = ['#7fc97f', '#beaed4', '#fdc086', '#ffff99', '#386cb0', '#f0027f']
 
             # Create a figure and axis object
-            fig, ax = plt.subplots(figsize=(3, 3))
+            fig, ax = plt.subplots(figsize=(4, 3))
             ax.set_facecolor(guiColors['background'])
             fig.set_facecolor(guiColors['background'])
 
             # Create the pie chart with custom colors and explode values
-            wedges, labels, _ = ax.pie(data.values(), colors=colors, explode=[0.05] * len(data), autopct='%1.1f%%', textprops={'fontsize': 10})
+            wedges, labels, _ = ax.pie(data.values(), colors=colors, explode=[0.05] * len(data), autopct='%1.1f%%',
+                                       textprops={'fontsize': 10}, center=(-1, 0))
+
+            # Adjust the center position of the pie chart
+            ax.set_xlim(-1.5, 1.5)
+            ax.set_ylim(-1.5, 1.5)
 
             # Add a shadow effect to the wedges
             for wedge in wedges:
@@ -392,7 +401,7 @@ class Graphs:
 
             # Set the font size for the labels and legend
             plt.setp(labels, fontsize=10)
-            plt.legend(data.keys(), loc=1, fontsize=10)
+            plt.legend(data.keys(), loc='center left', bbox_to_anchor=(0.5, 0.5), fontsize=9, framealpha=0.5)
 
             return fig
         except Exception as e:

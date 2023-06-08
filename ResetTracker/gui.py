@@ -1812,7 +1812,7 @@ class MainView(Frame):
             return None
 
     def updateCSGraphs(self, run):
-        self.pages[2].updateTables(run)
+        self.pages['Current Session'].updateTables(run)
 
     def errorPoppup(self, text):
         top = Toplevel()
@@ -1860,7 +1860,7 @@ class MainView(Frame):
                     value = entry.get()
                     currentSessionMarker = value.replace('$', '')
                 top1.destroy()
-                self.pages[0].set_button_color(False)
+                self.pages['Control'].set_button_color(False)
                 self.startResetTracker()
                 return value
 
@@ -1873,16 +1873,27 @@ class MainView(Frame):
     def __init__(self, *args, **kwargs):
         global selectedSession
         Frame.__init__(self, *args, **kwargs)
-        pageTitles = ['Control', 'Settings', 'Current Session', 'Summary', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
-        self.pages = [ControlPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
+        self.pages = {
+            'Control': ControlPage(self),
+            'Settings': SettingsPage(self),
+            'Current Session': CurrentSessionPage(self),
+            'Summary': SummaryPage(self),
+            'General': GeneralPage(self),
+            'Splits': SplitsPage(self),
+            'Entry Breakdown': EntryBreakdownPage(self),
+            'Comparison': ComparisonPage(self),
+            'Feedback': FeedbackPage(self),
+            'Experiment': ExperimentPage(self)
+        }
 
         buttonframeMain = Frame(self)
         buttonframe1 = Frame(buttonframeMain)
         container = Frame(self)
 
         for i in range(len(self.pages)):
-            self.pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
-            button = Button(buttonframe1, text=pageTitles[i], command=self.pages[i].show, foreground=guiColors['text'], background=guiColors['primary'])
+            pageName = list(self.pages.keys())[i]
+            self.pages[pageName].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
+            button = Button(buttonframe1, text=pageName, command=self.pages[pageName].show, foreground=guiColors['text'], background=guiColors['primary'])
             button.grid(row=0, column=i, sticky="nsew")
 
         selectedSession = tk.StringVar()
@@ -1892,14 +1903,14 @@ class MainView(Frame):
         selectedSession.set(sessionStrings[0])
         self.drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
         self.drop.configure(background=guiColors['tertiary'], foreground=guiColors['text'])
-        self.trackingLabel = Label(buttonframeMain, text='Currently Tracking', foreground=guiColors['black'], font=("Arial Bold", 10), pady=3, padx=10, )
+        self.trackingLabel = Label(buttonframeMain, text='Currently Tracking', foreground=guiColors['background'], font=("Arial Bold", 10), pady=3, padx=10, )
         self.trackingLabel.pack(side="right", expand=True)
         self.drop.pack(side="right")
         buttonframe1.pack(side="left", fill="x", expand=False)
         buttonframeMain.pack(side="top")
         container.pack(side="top", fill="both", expand=True)
 
-        self.pages[0].show()
+        self.pages['Control'].show()
 
 
 if __name__ == "__main__":
@@ -1908,6 +1919,5 @@ if __name__ == "__main__":
     main1 = MainView(root)
     main1.pack(side="top", fill="both", expand=True)
     root.wm_geometry("1000x700")
-    root.config(background=guiColors['background'])
     root.mainloop()
     gc_sheets_database = None

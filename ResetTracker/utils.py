@@ -2,7 +2,6 @@ import sys
 
 
 if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
-    import importlib
     try:
         from statistics import mean, stdev, median
         import scipy.stats as stats
@@ -36,7 +35,7 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         from plotly.colors import n_colors
         import matplotlib.patches as mpatches
     except Exception as e:
-        print("Run the following command in your terminal: pip install numpy Pillow plotly pygsheets requests seaborn watchdog wget statsmodels statistics scipy")
+        print("Run the following command in your terminal: pip install -r requirements.txt")
         sys.exit()
 
                 
