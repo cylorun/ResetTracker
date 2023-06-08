@@ -19,13 +19,18 @@ from guiUtils import *
 global variables
 """
 if True:
+    if os.path.exists('stats.csv'):
+        shutil.move('stats.csv', 'data/stats.csv')
+    if os.path.exists('temp.csv'):
+        shutil.move('temp.csv', 'data/temp.csv')
+
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
     lastRun = None
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
     try:
-        with open('stats.csv', 'x') as f:
+        with open('data/stats.csv', 'x') as f:
             pass
     except Exception as e:
         pass
@@ -522,7 +527,7 @@ class Sheets:
 
             def push_data():
                 global pushedLines
-                with open("temp.csv", newline="") as f:
+                with open("data/temp.csv", newline="") as f:
                     reader = csv.reader(f)
                     data = list(reader)
                     f.close()
@@ -537,7 +542,7 @@ class Sheets:
                         endColumn = chr(endColumn1) + chr(endColumn2)
                         # dataSheet.format("A2:" + endColumn + str(1 + len(data)),{"backgroundColor": {"red": color[0], "green": color[1], "blue": color[2]}})
                     pushedLines += len(data)
-                    f = open("temp.csv", "w+")
+                    f = open("data/temp.csv", "w+")
                     f.close()
 
 
@@ -706,15 +711,15 @@ class NewRecord(FileSystemEventHandler):
                  Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
         self.isFirstRun = ''
 
-        with open("stats.csv", "a", newline="") as outfile:
+        with open("data/stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
             writer.writerow(data)
 
         if settings['tracking']['use sheets'] == 1:
-            with open("temp.csv", "r") as infile:
+            with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
                 reader.insert(0, data)
-            with open("temp.csv", "w", newline="") as outfile:
+            with open("data/temp.csv", "w", newline="") as outfile:
                 writer = csv.writer(outfile)
                 for line in reader:
                     writer.writerow(line)
@@ -877,15 +882,15 @@ class OldRecord:
                  Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
         self.isFirstRun = ''
 
-        with open("stats.csv", "a", newline="") as outfile:
+        with open("data/stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
             writer.writerow(data)
 
         if settings['tracking']['use sheets'] == 1:
-            with open("temp.csv", "r") as infile:
+            with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
                 reader.insert(0, data)
-            with open("temp.csv", "w", newline="") as outfile:
+            with open("data/temp.csv", "w", newline="") as outfile:
                 writer = csv.writer(outfile)
                 for line in reader:
                     writer.writerow(line)
@@ -1052,8 +1057,8 @@ class Tracking:
         if settings['tracking']['use sheets'] == 1:
             Sheets.setup()
             # Create temp.csv if it doesn't exist
-            if not os.path.exists('temp.csv'):
-                with open('temp.csv', 'w') as f:
+            if not os.path.exists('data/temp.csv'):
+                with open('data/temp.csv', 'w') as f:
                     f.write('')
   
         while True:
@@ -1097,26 +1102,31 @@ class ControlPage(Page):
     def toggle_tracking(self):
         if isTracking:
             main1.stopResetTracker()
-            self.toggle_tracking_button.config(text='Start Tracking', background=guiColors['true'])
+            self.set_button_color(True)
         else:
             main1.promptUserForTracking()
+
+    def set_button_color(self, state):
+        if not state:
             self.toggle_tracking_button.config(text='Stop Tracking', background=guiColors['false'])
+        else:
+            self.toggle_tracking_button.config(text='Start Tracking', background=guiColors['true'])
 
             
     def populate(self):
         # Create the buttons
         self.grid_columnconfigure(0, weight=1)
 
-        self.toggle_tracking_button = tk.Button(self, text="Start Tracking", command=self.toggle_tracking, background=guiColors['true'], foreground=guiColors['text1'], font=('Arial', 48))
+        self.toggle_tracking_button = Button(self, text="Start Tracking", command=self.toggle_tracking, background=guiColors['true'], foreground=guiColors['text'], font=('Arial', 48))
         self.toggle_tracking_button.grid(row=0, column=0, padx=10, pady=(60, 10))
 
-        track_old_button = tk.Button(self, text="Track Old Records", command=Tracking.trackOldRecords, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
+        track_old_button = Button(self, text="Track Old Records", command=Tracking.trackOldRecords, background=guiColors['secondary'], foreground=guiColors['text'], font=('Arial', 24))
         track_old_button.grid(row=2, column=0, padx=10, pady=10)
 
         if Update.checkGithub():
-            update_button = tk.Button(self, text="Update", command=Update.update, background=guiColors['button1'], foreground=guiColors['text1'], font=('Arial', 24))
+            update_button = Button(self, text="Update", command=Update.update, background=guiColors['secondary'], foreground=guiColors['text'], font=('Arial', 24))
         else:
-            update_button = tk.Button(self, text="Update", state=tk.DISABLED, background=guiColors['button3'], foreground=guiColors['text3'], font=('Arial', 24))
+            update_button = Button(self, text="Update", state=tk.DISABLED, background=guiColors['secondary'], foreground=guiColors['text'], font=('Arial', 24))
         update_button.grid(row=3, column=0, padx=10, pady=10)
 
     def __init__(self, *args, **kwargs):
@@ -1195,31 +1205,35 @@ class SettingsPage(Page):
             main1.errorPoppup('did you move your settings file from where it originally was?')
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=3, padx=50)
         loadedSettings = FileLoader.getSettings()
         for i1 in range(len(self.varStrings)):
-            self.containers.append(tk.Frame(self, borderwidth=10))
+            self.containers.append(Frame(self, borderwidth=10))
             self.settingsVars.append([])
             self.labels.append([])
             self.widgets.append([])
             self.subcontainers.append([])
             for i2 in range(len(self.varStrings[i1])):
-                self.subcontainers[i1].append(tk.Frame(self.containers[i1]))
+                self.subcontainers[i1].append(Frame(self.containers[i1]))
                 if self.varTypes[i1][i2] == 'entry':
                     self.settingsVars[i1].append(tk.StringVar())
                 elif self.varTypes[i1][i2] == 'check':
                     self.settingsVars[i1].append(tk.IntVar())
                 self.settingsVars[i1][i2].set(loadedSettings[self.varGroups[i1]][self.varStrings[i1][i2]])
                 if self.varStrings[i1][i2] == 'vault directory':
-                    self.labels[i1].append(tk.Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2] + ' (irrelevant)'))
+                    self.labels[i1].append(Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2] + ' (irrelevant)'))
                 else:
-                    self.labels[i1].append(tk.Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2]))
+                    self.labels[i1].append(Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2]))
                 self.labels[i1][i2].pack(side="left")
                 if self.varTypes[i1][i2] == 'entry':
-                    self.widgets[i1].append(tk.Entry(self.subcontainers[i1][i2], textvariable=self.settingsVars[i1][i2], foreground=guiColors['black'], bg=guiColors['entry']))
+                    widget = Entry(self.subcontainers[i1][i2], textvariable=self.settingsVars[i1][i2])
+                    widget.config(bg=guiColors['white'])
                 elif self.varTypes[i1][i2] == 'check':
-                    self.widgets[i1].append(tk.Checkbutton(self.subcontainers[i1][i2], text='', variable=self.settingsVars[i1][i2], onvalue=1, offvalue=0))
+                    widget = Checkbutton(self.subcontainers[i1][i2], text='', variable=self.settingsVars[i1][i2], onvalue=1, offvalue=0)
+                self.widgets[i1].append(widget)
+
+
                 self.widgets[i1][i2].pack(side="left")
                 Tooltip.createToolTip(self.labels[i1][i2], self.varTooltips[i1][i2])
                 self.subcontainers[i1][i2].pack(side="top")
@@ -1229,7 +1243,7 @@ class SettingsPage(Page):
         self.containers[3].grid(row=2, column=2, sticky="nsew")
 
         cmd = partial(self.saveSettings)
-        save_Btn = tk.Button(self, text='Save', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        save_Btn = Button(self, text='Save', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         save_Btn.grid(row=3, column=1, sticky="nsew")
 
 
@@ -1290,7 +1304,7 @@ class CurrentSessionPage(Page):
             self.layer += 1
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, padx=50, columnspan=2)
         self.frame = ScrollableContainer(self)
         self.control_panel = Frame(self)
@@ -1341,7 +1355,7 @@ class SummaryPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1351,7 +1365,7 @@ class SummaryPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
@@ -1394,7 +1408,7 @@ class GeneralPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1411,8 +1425,8 @@ class GeneralPage(Page):
         label2 = Label(self.control_panel, text='rta maximum')
         Tooltip.createToolTip(label1, 'left side cutoff for RTA Distribution')
         Tooltip.createToolTip(label2, 'right side cutoff for RTA Distribution')
-        entry1 = Entry(self.control_panel, textvariable=self.rta_min, width=6, background=guiColors['entry'])
-        entry2 = Entry(self.control_panel, textvariable=self.rta_max, width=6, background=guiColors['entry'])
+        entry1 = Entry(self.control_panel, textvariable=self.rta_min, width=6, bg=guiColors['white'])
+        entry2 = Entry(self.control_panel, textvariable=self.rta_max, width=6, bg=guiColors['white'])
         label1.grid(row=1, column=0)
         label2.grid(row=2, column=0)
         entry1.grid(row=1, column=1)
@@ -1420,7 +1434,7 @@ class GeneralPage(Page):
 
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
@@ -1457,7 +1471,7 @@ class SplitsPage(Page):
             isGraphingSplit = False
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=3, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1469,7 +1483,7 @@ class SplitsPage(Page):
         self.selectedSplit = StringVar()
         self.selectedSplit.set("Nether")
         drop1 = OptionMenu(self.control_panel, self.selectedSplit, *self.splits)
-        drop1.configure(background=guiColors['button1'], foreground=guiColors['text1'])
+        drop1.configure(background=guiColors['tertiary'], foreground=guiColors['text'])
         drop1.grid(row=0, column=0)
 
         self.selectedAdjustment = DoubleVar()
@@ -1478,7 +1492,7 @@ class SplitsPage(Page):
         scale1.grid(row=1, column=0)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=2, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1515,7 +1529,7 @@ class EntryBreakdownPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1525,7 +1539,7 @@ class EntryBreakdownPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=1, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1552,7 +1566,7 @@ class ComparisonPage(Page):
             isGraphingComparison = False
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1562,7 +1576,7 @@ class ComparisonPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=0, column=0)
 
     def __init__(self, *args, **kwargs):
@@ -1600,7 +1614,7 @@ class FeedbackPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.container = ScrollableContainer(self)
@@ -1615,7 +1629,7 @@ class FeedbackPage(Page):
         self.panel2.grid(row=1, column=0, sticky="nsew")
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self, text='Generate Feedback', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self, text='Generate Feedback', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=1, column=0, sticky='n', pady=10)
 
     def __init__(self, *args, **kwargs):
@@ -1758,7 +1772,7 @@ class ExperimentPage(Page):
 
 
     def populate(self):
-        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text4'], font=("Arial", 14))
+        explanation = Label(self, text=self.explanationText, wraplength=800, foreground=guiColors['text'], font=("Arial", 14))
         explanation.grid(row=0, column=0, columnspan=2, padx=50)
 
         self.frame = ScrollableContainer(self)
@@ -1768,7 +1782,7 @@ class ExperimentPage(Page):
         self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
 
         cmd = partial(self.displayInfo)
-        graph_Btn = tk.Button(self.control_panel, text='Graph', command=cmd, background=guiColors['button1'], foreground=guiColors['text1'])
+        graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
         graph_Btn.grid(row=0, column=0, columnspan=2)
 
     def __init__(self, *args, **kwargs):
@@ -1777,7 +1791,7 @@ class ExperimentPage(Page):
 
 
 # gui
-class MainView(tk.Frame):
+class MainView(Frame):
     top2 = None
     sessionMarkerInput = None
     txtFileNameInput = None
@@ -1810,7 +1824,7 @@ class MainView(tk.Frame):
     def stopResetTracker(self):
         global isTracking
         isTracking = False
-        self.trackingLabel.config(text='Tracking: False', background=guiColors['false'])
+        self.trackingLabel.config(foreground=guiColors['background'])
 
     def startResetTracker(self):
         global isTracking
@@ -1819,7 +1833,7 @@ class MainView(tk.Frame):
         if not isinstance(wks1, int):
             isTracking = True
             CurrentSession.resetCurrentSession()
-            self.trackingLabel.config(text='Tracking: True', background=guiColors['true'])
+            self.trackingLabel.config(foreground=guiColors['black'])
             t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
             t1.daemon = True
             t1.start()
@@ -1837,7 +1851,7 @@ class MainView(tk.Frame):
             label = Label(top1, text="Enter a Session Marker")
             label.pack()
 
-            entry = Entry(top1, background=guiColors['entry'])
+            entry = Entry(top1, bg=guiColors['white'])
             entry.pack()
 
             def get_value():
@@ -1846,10 +1860,11 @@ class MainView(tk.Frame):
                     value = entry.get()
                     currentSessionMarker = value.replace('$', '')
                 top1.destroy()
+                self.pages[0].set_button_color(False)
                 self.startResetTracker()
                 return value
 
-            startTrackingButton = Button(top1, text="Start Tracking", command=get_value, background=guiColors['button1'], foreground=guiColors['text1'])
+            startTrackingButton = Button(top1, text="Start Tracking", command=get_value, background=guiColors['secondary'], foreground=guiColors['text'])
             startTrackingButton.pack()
         else:
             self.errorPoppup('Already Tracking')
@@ -1857,17 +1872,17 @@ class MainView(tk.Frame):
 
     def __init__(self, *args, **kwargs):
         global selectedSession
-        tk.Frame.__init__(self, *args, **kwargs)
+        Frame.__init__(self, *args, **kwargs)
         pageTitles = ['Control', 'Settings', 'Current Session', 'Summary', 'General', 'Splits', 'Entry Breakdown', 'Comparison', 'Feedback', 'Experiment']
         self.pages = [ControlPage(self), SettingsPage(self), CurrentSessionPage(self), SummaryPage(self), GeneralPage(self), SplitsPage(self), EntryBreakdownPage(self), ComparisonPage(self), FeedbackPage(self), ExperimentPage(self)]
 
-        buttonframeMain = tk.Frame(self)
-        buttonframe1 = tk.Frame(buttonframeMain)
-        container = tk.Frame(self)
+        buttonframeMain = Frame(self)
+        buttonframe1 = Frame(buttonframeMain)
+        container = Frame(self)
 
         for i in range(len(self.pages)):
             self.pages[i].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
-            button = tk.Button(buttonframe1, text=pageTitles[i], command=self.pages[i].show, foreground=guiColors['text2'], background=guiColors['button2'])
+            button = Button(buttonframe1, text=pageTitles[i], command=self.pages[i].show, foreground=guiColors['text'], background=guiColors['primary'])
             button.grid(row=0, column=i, sticky="nsew")
 
         selectedSession = tk.StringVar()
@@ -1876,8 +1891,8 @@ class MainView(tk.Frame):
             sessionStrings.append(session['string'])
         selectedSession.set(sessionStrings[0])
         self.drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
-        self.drop.configure(background=guiColors['button1'], foreground=guiColors['text1'])
-        self.trackingLabel = Label(buttonframeMain, text='Tracking: False', foreground=guiColors['false'], font=("Arial Bold", 10), pady=3, padx=10, )
+        self.drop.configure(background=guiColors['tertiary'], foreground=guiColors['text'])
+        self.trackingLabel = Label(buttonframeMain, text='Currently Tracking', foreground=guiColors['black'], font=("Arial Bold", 10), pady=3, padx=10, )
         self.trackingLabel.pack(side="right", expand=True)
         self.drop.pack(side="right")
         buttonframe1.pack(side="left", fill="x", expand=False)
@@ -1891,9 +1906,8 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.title('Reset Tracker')
     main1 = MainView(root)
-    root.tk_setPalette(background=guiColors['background'])
     main1.pack(side="top", fill="both", expand=True)
     root.wm_geometry("1000x700")
-
+    root.config(background=guiColors['background'])
     root.mainloop()
     gc_sheets_database = None

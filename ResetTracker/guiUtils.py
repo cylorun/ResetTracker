@@ -8,20 +8,53 @@ except:
 
 from graphs import *
 
+class Toplevel(tk.Toplevel):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
+
+
+class Label(tk.Label):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
+
+class Canvas(tk.Canvas):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
+
+
+class Scrollbar(tk.Scrollbar):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
+
+
+class Frame(tk.Frame):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
+
+
+class Checkbutton(tk.Checkbutton):
+    def __init__(self, master=None, **kwargs):
+        kwargs['background'] = guiColors['background']
+        super().__init__(master, **kwargs)
 
 # gui
-class Page(tk.Frame):
+class Page(Frame):
     def __init__(self, *args, **kwargs):
-        tk.Frame.__init__(self, *args, **kwargs)
+        Frame.__init__(self, *args, **kwargs)
 
     def show(self):
         self.lift()
 
 
 # gui
-class PlotFrame(tk.Frame):
+class PlotFrame(Frame):
     def __init__(self, parent, fig=None, **kwargs):
-        tk.Frame.__init__(self, parent, **kwargs)
+        Frame.__init__(self, parent, **kwargs)
         self.fig = fig
         self.canvas = None
         self.plot_widget = None
@@ -96,7 +129,7 @@ class Tooltip:
 
 
 # gui
-class ScrollableTextFrame(tk.Frame):
+class ScrollableTextFrame(Frame):
     def __init__(self, master, header_text='', **kwargs):
         super().__init__(master, **kwargs)
 
@@ -105,15 +138,15 @@ class ScrollableTextFrame(tk.Frame):
         self.header_label.pack(side=tk.TOP, fill=tk.X)
 
         # Create a vertical scrollbar
-        vscrollbar = tk.Scrollbar(self, orient=tk.VERTICAL, background=guiColors['scrollbar'])
+        vscrollbar = Scrollbar(self, orient=tk.VERTICAL, background=guiColors['secondary'])
         vscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Create a horizontal scrollbar
-        hscrollbar = tk.Scrollbar(self, orient=tk.HORIZONTAL, background=guiColors['scrollbar'])
+        hscrollbar = Scrollbar(self, orient=tk.HORIZONTAL, background=guiColors['secondary'])
         hscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Create a text widget with scrollbars
-        self.text = tk.Text(self, wrap=tk.NONE, xscrollcommand=hscrollbar.set, yscrollcommand=vscrollbar.set,
+        self.text = Text(self, wrap=tk.NONE, xscrollcommand=hscrollbar.set, yscrollcommand=vscrollbar.set,
                             state='disabled', font=("Arial", 10), background=guiColors['background'])
         self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -132,22 +165,22 @@ class ScrollableTextFrame(tk.Frame):
         self.text.config(state='disabled')
 
 
-class ScrollableContainer(tk.Frame):
+class ScrollableContainer(Frame):
     def __init__(self, parent, yScroll=True, xScroll=True, width=850, height=550):
         super().__init__(parent, background=guiColors['background'], highlightcolor=guiColors['black'], highlightthickness=0)
 
         # Create a Frame widget with a canvas inside it
-        self.canvas = tk.Canvas(self, width=width, height=height, background=guiColors['background'])
+        self.canvas = Canvas(self, width=width, height=height, background=guiColors['background'])
         self.canvas.configure(background=guiColors['background'])
 
-        self.container = tk.Frame(self.canvas, background=guiColors['background'])
+        self.container = Frame(self.canvas, background=guiColors['background'])
 
         # Create a scrollbar and bind it to the canvas
         if xScroll:
-            self.xscrollbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview, background=guiColors['scrollbar'])
+            self.xscrollbar = Scrollbar(self, orient='horizontal', command=self.canvas.xview, background=guiColors['secondary'])
             self.canvas.configure(xscrollcommand=self.xscrollbar.set)
         if yScroll:
-            self.yscrollbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview, background=guiColors['scrollbar'])
+            self.yscrollbar = Scrollbar(self, orient='vertical', command=self.canvas.yview, background=guiColors['secondary'])
             self.canvas.configure(yscrollcommand=self.yscrollbar.set)
 
         # Pack the widgets into the window

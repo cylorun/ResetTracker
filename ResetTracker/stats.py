@@ -12,7 +12,7 @@ headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Sp
 class Stats:
     @classmethod
     def get_last_time(cls):
-        with open('stats.csv', 'r') as file:
+        with open('data/stats.csv', 'r') as file:
             csv_reader = csv.reader(file)
             last_line = None
             try:
@@ -38,7 +38,7 @@ class Stats:
 
     @classmethod
     def get_sessions(cls, settings):
-        with open('stats.csv', newline="") as f:
+        with open('data/stats.csv', newline="") as f:
             reader = csv.reader(f)
             data = list(reader)
             f.close()
@@ -87,7 +87,7 @@ class Stats:
 
     @classmethod
     def get_column_data(cls, column_name, session_element):
-        with open('stats.csv', newline="") as f:
+        with open('data/stats.csv', newline="") as f:
             reader = csv.reader(f)
             data = list(reader)
             f.close()
@@ -155,7 +155,7 @@ class Stats:
         rtaDist = []
         ironSourceDist = {}
 
-        with open('stats.csv', newline="") as f:
+        with open('data/stats.csv', newline="") as f:
             reader = csv.reader(f)
             allData = list(reader)
             f.close()
