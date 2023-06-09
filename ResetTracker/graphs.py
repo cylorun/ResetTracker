@@ -40,7 +40,7 @@ class Graphs:
             if kde:
                 sns.kdeplot(data=dist, ax=ax, bw_adjust=smoothness, color=guiColors['primary'])
             else:
-                n, bins, patches = plt.hist(dist, bins=30, range=rangeX, density=False)
+                n, bins, patches = plt.hist(dist, bins=30, range=rangeX, density=False, color=guiColors['secondary'])
                 maxN = max(n)
                 sns.despine()
 
@@ -112,50 +112,6 @@ class Graphs:
             print(e)
             return 1
 
-    # makes a table for relevant information of a split
-    @classmethod
-    def graph3(cls, splitStats):
-        try:
-            header = dict(values=['Count', 'Avg.', 'Avg. Split', 'Rate'],
-                          fill_color='#C2D4FF',
-                          align=['center'],
-                          font=dict(color='black', size=14),
-                          height=40
-                          )
-            cells = dict(values=[[Logistics.formatValue(splitStats['Count'])],
-                                 [Logistics.formatValue(splitStats['Cumulative Average'], moe=Logistics.t_int_moe(splitStats['Count'], splitStats['Cumulative Stdev'], 0.95), isTime=True)],
-                                 [Logistics.formatValue(splitStats['Relative Average'], moe=Logistics.t_int_moe(splitStats['Count'], splitStats['Relative Stdev'], 0.95), isTime=True)],
-                                 [Logistics.formatValue(splitStats['Relative Conversion'], moe=Logistics.z_int_moe(splitStats['Count']/splitStats['Relative Conversion'], splitStats['Count'], 0.95), isPercent=True)]
-                                 ],
-                         fill_color=guiColors['background'],
-                         align=['center'],
-                         font=dict(color='black', size=12),
-                         height=30
-                         )
-
-            fig = go.Figure(data=[go.Table(header=header, cells=cells)])
-
-            # Update layout with title and font
-            fig.update_layout(
-                title='Table Title',
-                font=dict(size=14, family='Arial'),
-                width=400,
-                height=400,
-                plot_bgcolor=guiColors['background'],
-                paper_bgcolor=guiColors['background']
-            )
-
-            # Update table properties
-            fig.update_traces(
-                columnwidth=[50, 70, 70, 70],
-                selector=dict(type='table')
-            )
-
-            return fig
-        except Exception as e:
-            print(3)
-            print(e)
-            return 1
 
     # makes a 2-way table showing the frequency of each combination of iron source and entry method
     @classmethod
@@ -257,12 +213,14 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color='#1f77b4',  # Use blue for header background color
+                    line_color='black',
+                    fill_color=guiColors['secondary'],  # Use blue for header background color
                     align='center',
                     font=dict(color='white', size=14)
                 ),
                 cells=dict(
                     values=values,
+                    line_color='black',
                     fill_color=guiColors['background'],
                     align='center',
                     font=dict(color=colors, size=12)
@@ -306,17 +264,17 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    line_color='#2E2E2E',
-                    fill_color='#2E2E2E',
+                    line_color='black',
+                    fill_color=guiColors['secondary'],
                     align='center',
                     font=dict(color='white', size=12)
                 ),
                 cells=dict(
                     values=values,
-                    line_color='#2E2E2E',
+                    line_color='black',
                     fill_color=guiColors['background'],
                     align='center',
-                    font=dict(color='#2E2E2E', size=11)
+                    font=dict(color=guiColors['secondary'], size=11)
                 ))
             ])
 
@@ -349,13 +307,15 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color=guiColors['primary'],  # Use blue for header background color
+                    fill_color=guiColors['secondary'],  # Use blue for header background color
+                    line_color='black',
                     align='center',
                     font=dict(color=guiColors['white'], size=14)
                 ),
                 cells=dict(
                     values=values,
                     fill_color=guiColors['background'],  # Use white for cell background color
+                    line_color='black',
                     align='center',
                     font=dict(color=guiColors['secondary'], size=12)
                 ))
@@ -457,17 +417,17 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=header,
-                    line_color='#2E2E2E',
-                    fill_color='#2E2E2E',
+                    line_color='black',
+                    fill_color=guiColors['secondary'],
                     align='center',
                     font=dict(color='white', size=12)
                 ),
                 cells=dict(
                     values=values,
-                    line_color='#2E2E2E',
+                    line_color='black',
                     fill_color=guiColors['background'],
                     align='center',
-                    font=dict(color='#2E2E2E', size=11)
+                    font=dict(color=guiColors['secondary'], size=11)
                 ))
             ])
 
@@ -499,12 +459,14 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color=guiColors['primary'],  # Use blue for header background color
+                    line_color='black',
+                    fill_color=guiColors['secondary'],  # Use blue for header background color
                     align='center',
                     font=dict(color='white', size=14)
                 ),
                 cells=dict(
                     values=values,
+                    line_color='black',
                     fill_color=guiColors['background'],
                     align='center',
                     font=dict(color=guiColors['secondary'], size=12)
@@ -536,12 +498,14 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    fill_color=guiColors['primary'],  # Use blue for header background color
+                    line_color='black',
+                    fill_color=guiColors['secondary'],  # Use blue for header background color
                     align='center',
                     font=dict(color='white', size=14)
                 ),
                 cells=dict(
                     values=values,
+                    line_color='black',
                     fill_color=guiColors['background'],  # Use white for cell background color
                     align='center',
                     font=dict(color=guiColors['secondary'], size=12)
@@ -650,17 +614,17 @@ class Graphs:
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
-                    line_color='#2E2E2E',
-                    fill_color='#2E2E2E',
+                    line_color='black',
+                    fill_color=guiColors['secondary'],
                     align='center',
                     font=dict(color='white', size=12)
                 ),
                 cells=dict(
                     values=values,
-                    line_color='#2E2E2E',
+                    line_color='black',
                     fill_color=guiColors['background'],
                     align='center',
-                    font=dict(color='#2E2E2E', size=11)
+                    font=dict(color=guiColors['secondary'], size=11)
                 ))
             ])
 

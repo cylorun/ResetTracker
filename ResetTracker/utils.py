@@ -38,10 +38,6 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         print("Run the following command in your terminal: pip install -r requirements.txt")
         sys.exit()
 
-                
-
-
-
 
 multiCheckSupported = True
 

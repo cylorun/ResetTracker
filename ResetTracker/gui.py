@@ -1,6 +1,8 @@
 
 import os
 import shutil
+import time
+
 """
     STARTUP:
     Recreate data folder if not exists, copying it from the default folder
@@ -601,6 +603,8 @@ class NewRecord(FileSystemEventHandler):
             except Exception as e:
                 print(24)
                 print(e)
+                time.sleep(1)
+                self.on_created(evt)
                 return
         if self.data is None:
             return
@@ -1902,9 +1906,12 @@ class MainView(Frame):
         selectedSession.set(sessionStrings[0])
         self.drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
         self.drop.configure(background=guiColors['tertiary'], foreground=guiColors['text'])
+        self.droplabel = Label(buttonframeMain, text='Session Selector: ', foreground=guiColors['tertiary'], font=("Arial Bold", 10))
         self.trackingLabel = Label(buttonframeMain, text='Currently Tracking', foreground=guiColors['background'], font=("Arial Bold", 10), pady=3, padx=10, )
         self.trackingLabel.pack(side="right", expand=True)
-        self.drop.pack(side="right")
+        self.droplabel.pack(side="left")
+        self.drop.pack(side="left")
+
         buttonframe1.pack(side="left", fill="x", expand=False)
         buttonframeMain.pack(side="top")
         container.pack(side="top", fill="both", expand=True)
