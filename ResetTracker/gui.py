@@ -1157,7 +1157,6 @@ class SettingsPage(Page):
     labels = []
     widgets = []
     containers = []
-    subcontainers = []
 
     def saveSettings(self):
         global settings
@@ -1216,30 +1215,25 @@ class SettingsPage(Page):
             self.settingsVars.append([])
             self.labels.append([])
             self.widgets.append([])
-            self.subcontainers.append([])
             for i2 in range(len(self.varStrings[i1])):
-                self.subcontainers[i1].append(Frame(self.containers[i1]))
                 if self.varTypes[i1][i2] == 'entry':
                     self.settingsVars[i1].append(tk.StringVar())
                 elif self.varTypes[i1][i2] == 'check':
                     self.settingsVars[i1].append(tk.IntVar())
                 self.settingsVars[i1][i2].set(loadedSettings[self.varGroups[i1]][self.varStrings[i1][i2]])
                 if self.varStrings[i1][i2] == 'vault directory':
-                    self.labels[i1].append(Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2] + ' (irrelevant)'))
+                    self.labels[i1].append(Label(self.containers[i1], text=self.varStrings[i1][i2] + ' (irrelevant)'))
                 else:
-                    self.labels[i1].append(Label(self.subcontainers[i1][i2], text=self.varStrings[i1][i2]))
-                self.labels[i1][i2].pack(side="left")
+                    self.labels[i1].append(Label(self.containers[i1], text=self.varStrings[i1][i2]))
+                self.labels[i1][i2].grid(row=i2, column=0)
                 if self.varTypes[i1][i2] == 'entry':
-                    widget = Entry(self.subcontainers[i1][i2], textvariable=self.settingsVars[i1][i2])
+                    widget = Entry(self.containers[i1], textvariable=self.settingsVars[i1][i2])
                     widget.config(bg=guiColors['white'])
                 elif self.varTypes[i1][i2] == 'check':
-                    widget = Checkbutton(self.subcontainers[i1][i2], text='', variable=self.settingsVars[i1][i2], onvalue=1, offvalue=0)
+                    widget = Checkbutton(self.containers[i1], text='', variable=self.settingsVars[i1][i2], onvalue=1, offvalue=0)
                 self.widgets[i1].append(widget)
-
-
-                self.widgets[i1][i2].pack(side="left")
+                self.widgets[i1][i2].grid(row=i2, column=1, sticky='e')
                 Tooltip.createToolTip(self.labels[i1][i2], self.varTooltips[i1][i2])
-                self.subcontainers[i1][i2].pack(side="top")
         self.containers[0].grid(row=1, column=0, sticky="nsew")
         self.containers[1].grid(row=2, column=0, sticky="nsew")
         self.containers[2].grid(row=1, column=2, sticky="nsew")
@@ -1804,6 +1798,7 @@ class MainView(Frame):
     pages = None
     trackingLabel = None
     drop = None
+    pageMarker = None
 
     def authenticateSheets(self):
         if settings['tracking']['use sheets'] == 1:
@@ -1822,7 +1817,7 @@ class MainView(Frame):
         top.geometry("300x200")
         top.title("Error")
         label = Label(top, text=text, wraplength=280)
-        label.pack()
+        label.grid(row=0, column=0)
 
     def stopResetTracker(self):
         global isTracking
@@ -1852,10 +1847,10 @@ class MainView(Frame):
             top1.title("Start Tracking")
 
             label = Label(top1, text="Enter a Session Marker")
-            label.pack()
+            label.grid(row=0, column=0)
 
             entry = Entry(top1, bg=guiColors['white'])
-            entry.pack()
+            entry.grid(row=1, column=0)
 
             def get_value():
                 global currentSessionMarker
@@ -1868,9 +1863,16 @@ class MainView(Frame):
                 return value
 
             startTrackingButton = Button(top1, text="Start Tracking", command=get_value, background=guiColors['secondary'], foreground=guiColors['text'])
-            startTrackingButton.pack()
+            startTrackingButton.grid(row=2, column=0)
         else:
             self.errorPoppup('Already Tracking')
+
+
+    def setPage(self, name):
+        self.pages[name].show()
+        self.pageMarker.grid_forget()
+        index = list(self.pages.keys()).index(name)
+        self.pageMarker.grid(row=1, column=index)
 
 
     def __init__(self, *args, **kwargs):
@@ -1889,14 +1891,17 @@ class MainView(Frame):
             'Experiment': ExperimentPage(self)
         }
 
-        buttonframeMain = Frame(self)
-        buttonframe1 = Frame(buttonframeMain)
-        container = Frame(self)
+        self.buttonframeMain = Frame(self)
+        self.buttonframe1 = Frame(self.buttonframeMain)
+        self.container = Frame(self)
+
+        self.pageMarker = Canvas(self.buttonframe1, width=30, height=3, background=guiColors['tertiary'])
 
         for i in range(len(self.pages)):
             pageName = list(self.pages.keys())[i]
-            self.pages[pageName].place(in_=container, x=0, y=0, relwidth=1, relheight=1)
-            button = Button(buttonframe1, text=pageName, command=self.pages[pageName].show, foreground=guiColors['text'], background=guiColors['primary'])
+            self.pages[pageName].place(in_=self.container, x=0, y=0, relwidth=1, relheight=1)
+            command = partial(self.setPage, pageName)
+            button = Button(self.buttonframe1, text=pageName, command=command, foreground=guiColors['text'], background=guiColors['primary'])
             button.grid(row=0, column=i, sticky="nsew")
 
         selectedSession = tk.StringVar()
@@ -1904,19 +1909,19 @@ class MainView(Frame):
         for session in sessions['sessions']:
             sessionStrings.append(session['string'])
         selectedSession.set(sessionStrings[0])
-        self.drop = OptionMenu(buttonframeMain, selectedSession, *sessionStrings)
+        self.drop = OptionMenu(self.buttonframeMain, selectedSession, *sessionStrings)
         self.drop.configure(background=guiColors['tertiary'], foreground=guiColors['text'])
-        self.droplabel = Label(buttonframeMain, text='Session Selector: ', foreground=guiColors['tertiary'], font=("Arial Bold", 10))
-        self.trackingLabel = Label(buttonframeMain, text='Currently Tracking', foreground=guiColors['background'], font=("Arial Bold", 10), pady=3, padx=10, )
-        self.trackingLabel.pack(side="right", expand=True)
-        self.droplabel.pack(side="left")
-        self.drop.pack(side="left")
+        self.droplabel = Label(self.buttonframeMain, text='Session Selector: ', foreground=guiColors['tertiary'], font=("Arial Bold", 10))
+        self.trackingLabel = Label(self.buttonframeMain, text='Currently Tracking', foreground=guiColors['background'], font=("Arial Bold", 10), pady=3, padx=10)
+        self.trackingLabel.grid(row=0, column=3)
+        self.droplabel.grid(row=0, column=0)
+        self.drop.grid(row=0, column=1, padx=(0, 10))
 
-        buttonframe1.pack(side="left", fill="x", expand=False)
-        buttonframeMain.pack(side="top")
-        container.pack(side="top", fill="both", expand=True)
+        self.buttonframe1.grid(row=0, column=2)
+        self.buttonframeMain.pack(side="top")
+        self.container.pack(side="top", fill="both", expand=True)
 
-        self.pages['Control'].show()
+        self.setPage("Control")
 
 
 if __name__ == "__main__":

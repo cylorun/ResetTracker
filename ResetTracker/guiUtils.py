@@ -11,42 +11,63 @@ from graphs import *
 
 class Scale(tk.Scale):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 
 class Toplevel(tk.Toplevel):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 
 class Label(tk.Label):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 class Canvas(tk.Canvas):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 
 class Scrollbar(tk.Scrollbar):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 
 class Frame(tk.Frame):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 
 class Checkbutton(tk.Checkbutton):
     def __init__(self, master=None, **kwargs):
-        kwargs['background'] = guiColors['background']
+        try:
+            temp = kwargs['background']
+        except Exception as e:
+            kwargs['background'] = guiColors['background']
         super().__init__(master, **kwargs)
 
 # gui
