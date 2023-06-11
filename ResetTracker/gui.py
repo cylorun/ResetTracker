@@ -1211,7 +1211,9 @@ class SettingsPage(Page):
         explanation.grid(row=0, column=0, columnspan=3, padx=50)
         loadedSettings = FileLoader.getSettings()
         for i1 in range(len(self.varStrings)):
-            self.containers.append(Frame(self, borderwidth=10))
+            container = Frame(self, borderwidth=10)
+            container.grid_columnconfigure(1, weight=1)
+            self.containers.append(container)
             self.settingsVars.append([])
             self.labels.append([])
             self.widgets.append([])
@@ -1225,14 +1227,14 @@ class SettingsPage(Page):
                     self.labels[i1].append(Label(self.containers[i1], text=self.varStrings[i1][i2] + ' (irrelevant)'))
                 else:
                     self.labels[i1].append(Label(self.containers[i1], text=self.varStrings[i1][i2]))
-                self.labels[i1][i2].grid(row=i2, column=0)
+                self.labels[i1][i2].grid(row=i2, column=0, sticky='w')
                 if self.varTypes[i1][i2] == 'entry':
                     widget = Entry(self.containers[i1], textvariable=self.settingsVars[i1][i2])
                     widget.config(bg=guiColors['white'])
                 elif self.varTypes[i1][i2] == 'check':
                     widget = Checkbutton(self.containers[i1], text='', variable=self.settingsVars[i1][i2], onvalue=1, offvalue=0)
                 self.widgets[i1].append(widget)
-                self.widgets[i1][i2].grid(row=i2, column=1, sticky='e')
+                self.widgets[i1][i2].grid(row=i2, column=2, sticky='e')
                 Tooltip.createToolTip(self.labels[i1][i2], self.varTooltips[i1][i2])
         self.containers[0].grid(row=1, column=0, sticky="nsew")
         self.containers[1].grid(row=2, column=0, sticky="nsew")
@@ -1325,7 +1327,7 @@ class CurrentSessionPage(Page):
         self.run_panel.add_title("Session Runs")
 
         self.frame.grid(row=1, column=1)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1359,7 +1361,7 @@ class SummaryPage(Page):
         self.frame.grid(row=1, column=1)
 
         self.control_panel = Frame(self)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
         cmd = partial(self.displayInfo)
         graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
@@ -1412,7 +1414,7 @@ class GeneralPage(Page):
         self.frame.grid(row=1, column=1)
 
         self.control_panel = Frame(self)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
         self.rta_min = tk.StringVar()
         self.rta_max = tk.StringVar()
@@ -1475,7 +1477,7 @@ class SplitsPage(Page):
         self.frame.grid(row=1, column=1, rowspan=4)
 
         self.control_panel = Frame(self)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
         self.selectedSplit = StringVar()
         self.selectedSplit.set("Nether")
@@ -1533,7 +1535,7 @@ class EntryBreakdownPage(Page):
         self.frame.grid(row=1, column=1)
 
         self.control_panel = Frame(self)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
         cmd = partial(self.displayInfo)
         graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
@@ -1570,7 +1572,7 @@ class ComparisonPage(Page):
         self.frame.grid(row=1, column=1)
 
         self.control_panel = Frame(self)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
         cmd = partial(self.displayInfo)
         graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
@@ -1627,7 +1629,7 @@ class FeedbackPage(Page):
 
         cmd = partial(self.displayInfo)
         graph_Btn = Button(self, text='Generate Feedback', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
-        graph_Btn.grid(row=1, column=0, sticky='n', pady=10)
+        graph_Btn.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1776,7 +1778,7 @@ class ExperimentPage(Page):
         self.frame.grid(row=1, column=1)
 
         self.control_panel = Frame(self)
-        self.control_panel.grid(row=1, column=0, sticky='n', pady=10)
+        self.control_panel.grid(row=1, column=0, sticky='n', padx=10, pady=10)
 
         cmd = partial(self.displayInfo)
         graph_Btn = Button(self.control_panel, text='Graph', command=cmd, background=guiColors['secondary'], foreground=guiColors['text'])
@@ -1817,6 +1819,7 @@ class MainView(Frame):
         top.geometry("300x200")
         top.title("Error")
         label = Label(top, text=text, wraplength=280)
+        top.grid_columnconfigure(0, weight=1)
         label.grid(row=0, column=0)
 
     def stopResetTracker(self):
@@ -1845,6 +1848,7 @@ class MainView(Frame):
             top1 = Toplevel()
             top1.geometry("180x100")
             top1.title("Start Tracking")
+            top1.grid_columnconfigure(0, weight=1)
 
             label = Label(top1, text="Enter a Session Marker")
             label.grid(row=0, column=0)
@@ -1929,6 +1933,6 @@ if __name__ == "__main__":
     root.title('Reset Tracker')
     main1 = MainView(root)
     main1.pack(side="top", fill="both", expand=True)
-    root.wm_geometry("1000x700")
+    root.wm_geometry("1100x750")
     root.mainloop()
     gc_sheets_database = None
