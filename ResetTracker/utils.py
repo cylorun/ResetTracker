@@ -34,6 +34,9 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         import plotly.graph_objects as go
         from plotly.colors import n_colors
         import matplotlib.patches as mpatches
+        import re
+        import tempfile
+        import shutil
     except Exception as e:
         print("Run the following command in your terminal: pip install -r requirements.txt")
         sys.exit()
@@ -157,7 +160,7 @@ class Logistics:
         if not timedelta(hours=0) < td < timedelta(hours=12):
             td = timedelta(days=1) - td
         t = datetime(1970, 1, 1) + td
-        return t.strftime("%H:%M:%S")
+        return t.strftime("%H:%M:%S.%f")
 
 
     @classmethod
@@ -199,7 +202,8 @@ class Logistics:
 
     @classmethod
     def stringToTimedelta(cls, TDString):
-        links = TDString.split(":")
+        parts = TDString.split(".")
+        links = parts[0].split(":") + [parts[1]]
         return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
     @classmethod

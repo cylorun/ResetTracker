@@ -11,6 +11,28 @@ headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Sp
 
 class Stats:
     @classmethod
+    def addMicroseconds(cls):
+        file_path = 'data/stats.csv'
+        temp_file_path = tempfile.NamedTemporaryFile(mode='w', delete=False).name
+        with open(file_path, 'r') as file, open(temp_file_path, 'w', newline='') as temp_file:
+            reader = csv.reader(file)
+            writer = csv.writer(temp_file)
+            for row in reader:
+                output_row = []
+                for value in row:
+                    if re.match(r'^\d{2}:\d{2}:\d{2}$', value):
+                        value += '.000000'
+                    elif re.match(r'^\d{2}:\d{2}:\d{2}\.\d{6}$', value):
+                        return
+                    output_row.append(value)
+                writer.writerow(output_row)
+
+        # Replace the original file with the modified one
+        shutil.move(temp_file_path, file_path)
+
+
+
+    @classmethod
     def get_last_time(cls):
         with open('data/stats.csv', 'r') as file:
             csv_reader = csv.reader(file)
@@ -188,10 +210,11 @@ class Stats:
                 for key in headerLabels:
                     cell = data[row_num][headerLabels.index(key)]
                     if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'IGT', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
-                        if len(cell) == 8:
-                            rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:])) / timedelta(seconds=1)
-                        else:
-                            rowCells[key] = timedelta(hours=int(cell[0]), minutes=int(cell[2:4]), seconds=int(cell[5:])) / timedelta(seconds=1)
+                        if len(cell) == 15:
+                            rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:8]), microseconds=int(cell[9:])) / timedelta(seconds=1)
+                        elif len(cell) == 14:
+                            rowCells[key] = timedelta(hours=int(cell[0]), minutes=int(cell[2:4]), seconds=int(cell[5:7]), microseconds=int(cell[8:])) / timedelta(seconds=1)
+                            print("length 14")
                     elif key == 'RTA Distribution':
                         if cell == '':
                             rowCells[key] = []

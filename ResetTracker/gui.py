@@ -1,6 +1,4 @@
-
 import os
-import shutil
 import time
 
 """
@@ -21,6 +19,8 @@ from guiUtils import *
 global variables
 """
 if True:
+    Stats.addMicroseconds()
+
     if os.path.exists('stats.csv'):
         shutil.move('stats.csv', 'data/stats.csv')
     if os.path.exists('temp.csv'):
@@ -1281,25 +1281,25 @@ class CurrentSessionPage(Page):
             time = run[split1]
             if split1 == 'Bastion':
                 try:
-                    bastion = datetime.strptime(time, '%H:%M:%S')
+                    bastion = datetime.strptime(time, '%H:%M:%S.%f')
                 except Exception as e:
                     print(27)
                     print(e)
             elif split1 == 'Fortress':
                 try:
-                    fortress = datetime.strptime(time, '%H:%M:%S')
+                    fortress = datetime.strptime(time, '%H:%M:%S.%f')
                 except Exception as e:
                     print(28)
                     print(e)
                 if bastion is not None and fortress is not None:
                     if self.splitVars[3].get() == 1:
-                        text += (min(bastion, fortress)).strftime('%H:%M:%S') + ' Structure 1    '
+                        text += (min(bastion, fortress)).strftime('%H:%M:%S.%f') + ' Structure 1    '
                     if self.splitVars[4].get() == 1:
-                        text += (max(bastion, fortress)).strftime('%H:%M:%S') + ' Structure 2    '
+                        text += (max(bastion, fortress)).strftime('%H:%M:%S.%f') + ' Structure 2    '
                 elif bastion is not None and self.splitVars[3].get() == 1:
-                    text += bastion.strftime('%H:%M:%S') + ' Structure 1    '
+                    text += bastion.strftime('%H:%M:%S.%f') + ' Structure 1    '
                 elif fortress is not None and self.splitVars[3].get() == 1:
-                    text += fortress.strftime('%H:%M:%S') + ' Structure 1    '
+                    text += fortress.strftime('%H:%M:%S.%f') + ' Structure 1    '
             elif time is not None and time != '' and self.splitVars[i].get() == 1:
                 text += str(time) + ' ' + self.splitList1[i] + '    '
         if text != '':
