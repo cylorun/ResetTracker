@@ -594,7 +594,6 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt, dt1=None):
-        print('a')
         self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
