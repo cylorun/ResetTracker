@@ -28,6 +28,11 @@ def updateSource():
     items = os.listdir('temp/update')
     directories = [item for item in items if os.path.isdir(os.path.join('temp/update', item))]
 
+    if os.path.exists('default'):
+        os.remove('default')
+    shutil.copytree('temp/update/' + directories[0] + '/ResetTracker/default', 'default')
+    os.rename('temp/update/' + directories[0] + '/ResetTracker/default', 'temp/update/' + directories[0] + '/ResetTracker/data')
+
     oldSettingsFile = open('data/settings.json')
     oldSettings = json.load(oldSettingsFile)
     newSettingsFile = open('temp/update/' + directories[0] + '/ResetTracker/data/settings.json')
