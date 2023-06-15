@@ -19,7 +19,8 @@ from guiUtils import *
 global variables
 """
 if True:
-    Stats.addMicroseconds()
+
+    Stats.fixCSV()
 
     if os.path.exists('stats.csv'):
         shutil.move('stats.csv', 'data/stats.csv')
@@ -27,7 +28,7 @@ if True:
         shutil.move('temp.csv', 'data/temp.csv')
 
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution']
+    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution', 'seed']
     lastRun = None
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
@@ -702,6 +703,20 @@ class NewRecord(FileSystemEventHandler):
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
+        if settings['tracking']['track seed'] == 1:
+            try:
+                save_path = os.path.dirname(os.path.dirname(Logistics.find_file(settings['tracking']['MultiMC directory'], self.path)))
+                nbtfile = nbt.load(save_path + "\\level.dat")
+                seed = nbtfile.root["Data"]["WorldGenSettings"]["seed"]
+                seed = re.sub(r'[^0-9]', '', str(seed))
+            except:
+                print("Failed to get seed")
+                seed = ""
+
+        else:
+            seed = ""
+        print(seed)
+
         print(blocks_mined)
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
@@ -710,7 +725,7 @@ class NewRecord(FileSystemEventHandler):
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
         data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run + [blocks_mined] +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed])
         self.isFirstRun = ''
 
         with open("data/stats.csv", "a", newline="") as outfile:
@@ -1139,15 +1154,15 @@ class ControlPage(Page):
 # gui
 class SettingsPage(Page):
     explanationText = 'This is the page where you adjust your settings. Your settings are saved in the data folder. Remember to press save to save and apply the adjustments!'
-    varStrings = [['sheet link', 'records path', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats', 'detect RSG'],
+    varStrings = [['sheet link', 'records path', 'MultiMC directory', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats', 'detect RSG', 'track seed'],
                   ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity', 'use KDE'],
                   ['instance count', 'target time', 'rd', 'ed'],
                   ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'entry', 'check', 'check', 'check', 'check'],
+    varTypes = [['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry'],
                 ['check', 'check', 'check', 'check', 'check']]
-    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches', 'Only track random seed runs. Disable for other categories.'],
+    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'path to multimc', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches', 'Only track random seed runs. Disable for other categories.', ''],
                    ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet', 'if checked, histograms will display as kdeplots'],
                    ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
                    ['', '', '', '', '']]
@@ -1188,6 +1203,10 @@ class SettingsPage(Page):
                         except Exception as e:
                             main1.errorPoppup(f'{self.varStrings[i1][i2]} must be a valid integer. it should be your target time IN SECONDS')
                             return
+                    elif self.varStrings[i1][i2] == 'MultiMC directory':
+                        if (self.settingsVars[i1][i2].get() == "" or not os.path.exists(self.settingsVars[i1][i2].get())) and self.settingsVars[self.varGroups.index('tracking')][self.varStrings[self.varGroups.index('track seed')]].get() == 1:
+                            main1.errorPoppup('track seed is checked but MultiMC directory is not valid or does not exist.')
+
                     else:
                         try:
                             temp = int(self.settingsVars[i1][i2].get())

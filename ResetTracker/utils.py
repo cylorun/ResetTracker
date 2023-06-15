@@ -37,6 +37,8 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         import re
         import tempfile
         import shutil
+        import filecmp
+        from nbtlib import nbt
     except Exception as e:
         print("Run the following command in your terminal: pip install -r requirements.txt")
         sys.exit()
@@ -105,6 +107,24 @@ class FileLoader:
 
 
 class Logistics:
+    @classmethod
+    def find_file(cls, directory, name):
+        start_time = time.time()
+
+        for root, dirs, files in os.walk(directory):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                if filecmp.cmp(file_path, name):
+                    elapsed_time = time.time() - start_time
+                    print("Equivalent file found at:", file_path)
+                    print("Elapsed time:", elapsed_time, "seconds")
+                    return file_path
+
+        elapsed_time = time.time() - start_time
+        print("Equivalent file not found.")
+        print("Elapsed time:", elapsed_time, "seconds")
+        return None
+
     @classmethod
     def get_previous_item(cls, lst, item):
         index = lst.index(item)

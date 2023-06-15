@@ -2,11 +2,13 @@
     "tracking": {
         "sheet link": "",
         "records path": "",
+        "MultiMC directory": "",
         "break threshold": "30",
         "use sheets": 0,
         "delete-old-records": 1,
         "autoupdate stats": 0,
         "detect RSG": 1,
+        "track seed": 0,
         "addToGlobalDatabase": 0
     },
     "display": {

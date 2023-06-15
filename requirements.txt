@@ -14,3 +14,4 @@ wget==3.2
 statistics==1.0.3.5
 scipy==1.10.1
 numpy==1.24.3
+nbtlib==2.0.4

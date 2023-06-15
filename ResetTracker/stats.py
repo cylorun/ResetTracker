@@ -6,25 +6,31 @@ headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Sp
                 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
                 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev',
                 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker',
-                'RTA Distribution']
+                'RTA Distribution', 'seed']
 
 
 class Stats:
     @classmethod
-    def addMicroseconds(cls):
+    def fixCSV(cls):
         file_path = 'data/stats.csv'
         temp_file_path = tempfile.NamedTemporaryFile(mode='w', delete=False).name
         with open(file_path, 'r') as file, open(temp_file_path, 'w', newline='') as temp_file:
             reader = csv.reader(file)
             writer = csv.writer(temp_file)
+            flag = False
             for row in reader:
                 output_row = []
-                for value in row:
-                    if re.match(r'^\d{2}:\d{2}:\d{2}$', value):
-                        value += '.000000'
-                    elif re.match(r'^\d{2}:\d{2}:\d{2}\.\d{6}$', value):
-                        return
-                    output_row.append(value)
+                if not flag:
+                    for value in row:
+                        if re.match(r'^\d{2}:\d{2}:\d{2}$', value):
+                            value += '.000000'
+                        elif re.match(r'^\d{2}:\d{2}:\d{2}\.\d{6}$', value):
+                            flag = True
+                        output_row.append(value)
+                else:
+                    output_row = row
+                for i in range(len(headerLabels)-len(row)):
+                    output_row.append("")
                 writer.writerow(output_row)
 
         # Replace the original file with the modified one
