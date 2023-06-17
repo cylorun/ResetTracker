@@ -108,20 +108,20 @@ class FileLoader:
 
 class Logistics:
     @classmethod
-    def find_file(cls, directory, name):
+    def find_save(cls, directory, record_path, save_name):
         start_time = time.time()
 
-        for root, dirs, files in os.walk(directory):
-            for file_name in files:
-                file_path = os.path.join(root, file_name)
-                if filecmp.cmp(file_path, name):
-                    elapsed_time = time.time() - start_time
-                    print("Equivalent file found at:", file_path)
-                    print("Elapsed time:", elapsed_time, "seconds")
-                    return file_path
-
+        for dir in os.listdir(os.path.join(directory, "instances")):
+            try:
+                save_path = os.path.join(dir, "saves", save_name)
+            except:
+                continue
+            if filecmp.cmp(os.path.join(save_path, "speedrunigt/record.json"), record_path):
+                elapsed_time = time.time() - start_time
+                print("Elapsed time:", elapsed_time, "seconds")
+                return save_path
         elapsed_time = time.time() - start_time
-        print("Equivalent file not found.")
+        print("Save file not found.")
         print("Elapsed time:", elapsed_time, "seconds")
         return None
 

@@ -705,7 +705,7 @@ class NewRecord(FileSystemEventHandler):
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
         if settings['tracking']['track seed'] == 1:
             try:
-                save_path = os.path.dirname(os.path.dirname(Logistics.find_file(settings['tracking']['MultiMC directory'], self.path)))
+                save_path = os.path.dirname(os.path.dirname(Logistics.find_save(settings['tracking']['MultiMC directory'], self.path)))
                 nbtfile = nbt.load(save_path + "\\level.dat")
                 seed = nbtfile.root["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
