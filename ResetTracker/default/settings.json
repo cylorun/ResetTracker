@@ -9,6 +9,7 @@
         "autoupdate stats": 0,
         "detect RSG": 1,
         "track seed": 0,
+        "track on launch": 0,
         "addToGlobalDatabase": 0
     },
     "display": {

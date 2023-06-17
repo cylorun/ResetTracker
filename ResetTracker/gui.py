@@ -1154,15 +1154,15 @@ class ControlPage(Page):
 # gui
 class SettingsPage(Page):
     explanationText = 'This is the page where you adjust your settings. Your settings are saved in the data folder. Remember to press save to save and apply the adjustments!'
-    varStrings = [['sheet link', 'records path', 'MultiMC directory', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats', 'detect RSG', 'track seed'],
+    varStrings = [['sheet link', 'records path', 'MultiMC directory', 'break threshold', 'use sheets', 'delete-old-records', 'autoupdate stats', 'detect RSG', 'track seed', 'track on launch'],
                   ['vault directory', 'twitch username', 'latest x sessions', 'comparison threshold', 'use local timezone', 'upload anonymity', 'use KDE'],
                   ['instance count', 'target time', 'rd', 'ed'],
                   ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']]
-    varTypes = [['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check', 'check', 'check'],
+    varTypes = [['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry', 'check', 'check', 'check'],
                 ['entry', 'entry', 'entry', 'entry'],
                 ['check', 'check', 'check', 'check', 'check']]
-    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'path to multimc', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches', 'Only track random seed runs. Disable for other categories.', ''],
+    varTooltips = [['', 'path to your records file, by default C:/Users/<user>/speedrunigt/records', 'path to multimc', 'after not having any resets while on wall for this many seconds, the tracker pauses until you reset again', 'if checked, data will be stored both locally and virtually via google sheets', '', 'if checked, the program will update and analyze your stats every time it launches', 'Only track random seed runs. Disable for other categories.', '', ''],
                    ['currently not used', 'currently not used', 'when selecting a session, you can also select latest x sessions, which would depend on the integer for this setting', 'when generating feedback, the program compares you to players with in this number of seconds of your target time', 'if checked, the program will calculate session starts/ends in your timezone instead of utc', 'if checked, your twitch username will not be shown on the global sheet', 'if checked, histograms will display as kdeplots'],
                    ['', 'in seconds', '', 'numerical value from 0.5 to 5.0'],
                    ['', '', '', '', '']]
@@ -1853,6 +1853,7 @@ class MainView(Frame):
             isTracking = True
             CurrentSession.resetCurrentSession()
             self.trackingLabel.config(foreground=guiColors['black'])
+            self.pages['Control'].set_button_color(False)
             t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
             t1.daemon = True
             t1.start()
@@ -1880,7 +1881,6 @@ class MainView(Frame):
                     value = entry.get()
                     currentSessionMarker = value.replace('$', '')
                 top1.destroy()
-                self.pages['Control'].set_button_color(False)
                 self.startResetTracker()
                 return value
 
@@ -1946,11 +1946,14 @@ class MainView(Frame):
         self.setPage("Control")
 
 
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title('Reset Tracker')
     main1 = MainView(root)
     main1.pack(side="top", fill="both", expand=True)
+    if settings['tracking']['track on launch'] == 1:
+        main1.startResetTracker()
     root.wm_geometry("1100x750")
     root.mainloop()
-    gc_sheets_database = None
