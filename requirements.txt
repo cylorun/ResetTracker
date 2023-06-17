@@ -1,6 +1,6 @@
 watchdog==2.0.2
 gspread==3.7.0
-pywin32==300; platform_system == "Windows"
+pywin32==302; platform_system == "Windows"
 AppKit==0.2.8; platform_system == "Darwin"
 statsmodels==0.14.0
 kaleido==0.2.1

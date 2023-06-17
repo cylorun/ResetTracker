@@ -151,8 +151,6 @@ ResetTracker/nbt.py
 ResetTracker/region.py
 ResetTracker/world.py
 ResetTracker/seed.py
-ResetTracker/settings.json
-ResetTracker/seed.py
 ResetTracker/.vscode/launch.json
 ResetTracker/stats.csv
 ResetTracker/temp.csv
