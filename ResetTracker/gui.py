@@ -1,5 +1,4 @@
 import os
-import time
 
 """
     STARTUP:
@@ -306,7 +305,8 @@ class CurrentSession:
             print(e)
             pass
 
-        main1.updateCSGraphs(row)
+        if __name__ == "__main__":
+            main1.updateCSGraphs(row)
         CurrentSession.updateObsTxts()
 
 
@@ -580,7 +580,10 @@ class NewRecord(FileSystemEventHandler):
     def __init__(self):
         self.path = None
         self.data = None
-        with main1.currentSessionMarkerLock:
+        if __name__ == "__main__":
+            with main1.currentSessionMarkerLock:
+                self.isFirstRun = currentSessionMarker + '$' + config['version']
+        else:
             self.isFirstRun = currentSessionMarker + '$' + config['version']
 
     def ensure_run(self):
@@ -770,8 +773,12 @@ class OldRecord:
     def __init__(self):
         self.path = None
         self.data = None
-        with main1.currentSessionMarkerLock:
+        if __name__ == "__main__":
+            with main1.currentSessionMarkerLock:
+                self.isFirstRun = currentSessionMarker + '$' + config['version']
+        else:
             self.isFirstRun = currentSessionMarker + '$' + config['version']
+
 
     def ensure_run(self):
         if settings['tracking']['detect RSG'] == 0:
@@ -1086,7 +1093,10 @@ class Tracking:
                     event_handler, settings['tracking']["records path"], recursive=False)
                 newRecordObserver.start()
             except Exception as e:
-                main1.errorPoppup("Records directory could not be found")
+                if __name__ == "__main__":
+                    main1.errorPoppup("Records directory could not be found")
+                else:
+                    print("Records directory could not be found")
             else:
                 break
         if settings['tracking']["delete-old-records"] == 1:
@@ -1103,8 +1113,9 @@ class Tracking:
 
         try:
             while live:
-                if not isTracking:
-                    live = False
+                if __name__ == "__main__":
+                    if not isTracking:
+                        live = False
                 time.sleep(3)
         except Exception as e:
             print(26)
@@ -1411,6 +1422,7 @@ class GeneralPage(Page):
                 if 0 < max1 < min1:
                     raise ValueError
             except Exception as e:
+
                 main1.errorPoppup('Make sure min and max are integers (they are in seconds)')
                 return
 
