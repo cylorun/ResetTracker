@@ -1,4 +1,5 @@
 import os
+import shutil
 
 """
     STARTUP:
@@ -19,12 +20,13 @@ global variables
 """
 if True:
 
-    Stats.fixCSV()
-
     if os.path.exists('stats.csv'):
         shutil.move('stats.csv', 'data/stats.csv')
     if os.path.exists('temp.csv'):
         shutil.move('temp.csv', 'data/temp.csv')
+
+    if os.path.exists('data/stats.csv'):
+        Stats.fixCSV()
 
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
     headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution', 'seed']

@@ -6,7 +6,7 @@
         "break threshold": "30",
         "use sheets": 0,
         "delete-old-records": 1,
-        "autoupdate stats": 0,
+        "autoupdate stats": 1,
         "detect RSG": 1,
         "track seed": 0,
         "track on launch": 0,

@@ -42,6 +42,43 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
     except Exception as e:
         print("Run the following command in your terminal: pip install -r requirements.txt")
         sys.exit()
+else:
+    from statistics import mean, stdev, median
+    import scipy.stats as stats
+    import numpy as np
+    import datetime
+    from datetime import datetime, timedelta
+    import json
+    from datetime import time
+    import sys
+    import time
+    import math
+    import statsmodels.api as sm
+    import pygsheets
+    import glob
+    import os
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
+    import requests
+    import webbrowser
+    import csv
+    import threading
+    from functools import partial
+    import tkinter as tk
+    from tkinter import *
+    from PIL import Image
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    import io
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import plotly.graph_objects as go
+    from plotly.colors import n_colors
+    import matplotlib.patches as mpatches
+    import re
+    import tempfile
+    import shutil
+    import filecmp
+    from nbtlib import nbt
 
 
 multiCheckSupported = True
