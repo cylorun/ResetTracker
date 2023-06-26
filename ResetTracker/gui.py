@@ -710,19 +710,16 @@ class NewRecord(FileSystemEventHandler):
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
         if settings['tracking']['track seed'] == 1:
             try:
-                save_path = os.path.dirname(os.path.dirname(Logistics.find_save(settings['tracking']['MultiMC directory'], self.path)))
+                save_path = Logistics.find_save(settings['tracking']['MultiMC directory'], self.path, self.data["world_name"])
                 nbtfile = nbt.load(save_path + "\\level.dat")
-                seed = nbtfile.root["Data"]["WorldGenSettings"]["seed"]
+                seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
-            except:
-                print("Failed to get seed")
+            except Exception as e:
+                print(e)
                 seed = ""
 
         else:
             seed = ""
-        print(seed)
-
-        print(blocks_mined)
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 

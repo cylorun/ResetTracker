@@ -150,13 +150,14 @@ class Logistics:
 
         for dir in os.listdir(os.path.join(directory, "instances")):
             try:
-                save_path = os.path.join(dir, "saves", save_name)
+                save_path = os.path.join(directory, "instances", dir, ".minecraft/saves", save_name)
+                if not os.path.exists(os.path.join(save_path, "speedrunigt/record.json")):
+                    raise Exception
             except:
-                continue
-            if filecmp.cmp(os.path.join(save_path, "speedrunigt/record.json"), record_path):
-                elapsed_time = time.time() - start_time
-                print("Elapsed time:", elapsed_time, "seconds")
-                return save_path
+                pass
+            else:
+                if filecmp.cmp(os.path.join(save_path, "speedrunigt/record.json"), record_path):
+                    return save_path
         elapsed_time = time.time() - start_time
         print("Save file not found.")
         print("Elapsed time:", elapsed_time, "seconds")
