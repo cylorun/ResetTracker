@@ -273,7 +273,7 @@ class Stats:
                 if rowCells['Nether'] != '':
                     latestSplit = 'Nether'
                     cumulativeSplitDists['Nether'].append(rowCells['Nether'])
-                    total_owTime += rowCells['Nether']
+                    total_owTime += rowCells['Nether'] + rowCells['RTA Since Prev']
                     entry_labels.append(rowCells['Iron Source'])
                     enters.append({'time': rowCells['Nether'], 'method': rowCells['Enter Type'], 'type': rowCells['Iron Source']})
                     if rowCells['Iron Source'] in exitSuccess.keys():
@@ -343,7 +343,7 @@ class Stats:
                         cumulativeSplitDists['Structure 1'].append(rowCells['Fortress'])
                         relativeSplitDists['Structure 1'].append(rowCells['Fortress'] - rowCells['Nether'])
                 else:
-                    total_owTime += rowCells['RTA']
+                    total_owTime += rowCells['RTA'] + rowCells['RTA Since Prev']
 
 
                 rtaDist += (rowCells['RTA Distribution'])

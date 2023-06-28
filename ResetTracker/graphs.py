@@ -303,7 +303,7 @@ class Graphs:
                         [Logistics.formatValue(currentSession['general stats']['% played'], isPercent=True)],
                         [Logistics.formatValue(currentSession['general stats']['rpe'])],
                         [Logistics.formatValue(currentSession['general stats']['total wall resets'] + currentSession['general stats']['total played'])],
-                        [Logistics.formatValue(currentSession['general stats']['total RTA'] + currentSession['general stats']['total wall time'], isTime=True, includeHours=True)]]
+                        [Logistics.formatValue(currentSession['general stats']['total RTA'], isTime=True, includeHours=True)]]
             fig = go.Figure(data=[go.Table(
                 header=dict(
                     values=headers,
@@ -490,7 +490,7 @@ class Graphs:
     def graph12(cls, generalData):
         try:
             values = [Logistics.formatValue(generalData['total resets']),
-                      Logistics.formatValue(generalData['total RTA'] + generalData['total wall time'], isTime=True, includeHours=True),
+                      Logistics.formatValue(generalData['total RTA'], isTime=True, includeHours=True),
                       Logistics.formatValue(generalData['% played'], isPercent=True),
                       Logistics.formatValue(generalData['rpe'])]
             headers = ['Resets', 'Playtime', '% played', 'rpe']
