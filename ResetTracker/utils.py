@@ -262,7 +262,7 @@ class Logistics:
     def stringToTimedelta(cls, TDString):
         parts = TDString.split(".")
         links = parts[0].split(":") + [parts[1]]
-        return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
+        return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]), microseconds=int(links[3]))
 
     @classmethod
     def formatValue(cls, value, moe=None, dp=1, isNPH=False, isTime=False, isPercent=False, includeHours=False):
