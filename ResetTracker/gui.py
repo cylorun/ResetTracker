@@ -29,7 +29,6 @@ if True:
         Stats.fixCSV()
 
     databaseLink = "https://docs.google.com/spreadsheets/d/1ky0mgYjsDE14xccw6JjmsKPrEIDHpt4TFnD2vr4Qmcc"
-    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT', 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths', 'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev', 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker', 'RTA Distribution', 'seed']
     lastRun = None
     config = FileLoader.getConfig()
     settings = FileLoader.getSettings()
@@ -725,26 +724,33 @@ class NewRecord(FileSystemEventHandler):
 
         # Push to csv
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
-        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run + [blocks_mined] +
+        data1 = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run[:-5] + [''] * 6 +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed])
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined])
+        data2 = []
+        for item in data1:
+            if type(item) == str and ":" in item and item.count("-") < 2:
+                data2.append("*" + item[:-3])
+            else:
+                data2.append(item)
+
         self.isFirstRun = ''
 
         with open("data/stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
-            writer.writerow(data)
+            writer.writerow(data1)
 
         if settings['tracking']['use sheets'] == 1:
             with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
-                reader.insert(0, data)
+                reader.insert(0, data2)
             with open("data/temp.csv", "w", newline="") as outfile:
                 writer = csv.writer(outfile)
                 for line in reader:
                     writer.writerow(line)
 
         # updates displayed stats
-        CurrentSession.updateCurrentSession(data)
+        CurrentSession.updateCurrentSession(data1)
 
 
         # Reset all counters/sums
@@ -1966,5 +1972,7 @@ if __name__ == "__main__":
     main1.pack(side="top", fill="both", expand=True)
     if settings['tracking']['track on launch'] == 1:
         main1.startResetTracker()
+    if settings['tracking']['use sheets'] == 1:
+        Stats.fixSheet(Sheets.authenticate())
     root.wm_geometry("1100x750")
     root.mainloop()

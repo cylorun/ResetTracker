@@ -55,6 +55,7 @@ else:
     import math
     import statsmodels.api as sm
     import pygsheets
+    import gspread
     import glob
     import os
     from watchdog.events import FileSystemEventHandler

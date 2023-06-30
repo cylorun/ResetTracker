@@ -3,10 +3,10 @@ from utils import *
 
 headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
                 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT',
-                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
-                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined', 'Iron', 'Wall Resets Since Prev',
+                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', '', '', '', '', '', '', 'Iron', 'Wall Resets Since Prev',
                 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev', 'Session Marker',
-                'RTA Distribution', 'seed']
+                'RTA Distribution', 'seed', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
+                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined']
 
 
 class Stats:
@@ -29,13 +29,31 @@ class Stats:
                         output_row.append(value)
                 else:
                     output_row = row
-                for i in range(len(headerLabels)-len(row)):
-                    output_row.append("")
+                if len(output_row) == 34:
+                    output_row = output_row[:19] + [""] * 6 + output_row[25:] + output_row[19:25]
                 writer.writerow(output_row)
 
         # Replace the original file with the modified one
         shutil.move(temp_file_path, file_path)
 
+    @classmethod
+    def fixSheet(cls, wks):
+        try:
+            length = wks.cols
+            extra_cols = []
+            if length == 33:
+                extra_cols.append(['seed'] + [""] * (wks.rows - 1))
+            if 33 <= length <= 34:
+                for i in range(20, 26):
+                    extra_cols.append(wks.get_col(i))
+                    wks.update_col(i, [""] * wks.rows)
+            print(len(extra_cols))
+            for i in range(length, length + len(extra_cols)):
+                print(extra_cols[i - length])
+                wks.insert_cols(col=i, number=1, values=[extra_cols[i - length]], inherit=True)
+        except Exception as e:
+            print(e)
+            return
 
 
     @classmethod
@@ -216,11 +234,10 @@ class Stats:
                 for key in headerLabels:
                     cell = data[row_num][headerLabels.index(key)]
                     if key in ['RTA', 'Wood', 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Iron', 'IGT', 'RTA Since Prev', 'Wall Time Since Prev', 'Break RTA Since Prev'] and cell != "":
-                        if len(cell) == 15:
-                            rowCells[key] = timedelta(hours=int(cell[0:2]), minutes=int(cell[3:5]), seconds=int(cell[6:8]), microseconds=int(cell[9:])) / timedelta(seconds=1)
-                        elif len(cell) == 14:
-                            rowCells[key] = timedelta(hours=int(cell[0]), minutes=int(cell[2:4]), seconds=int(cell[5:7]), microseconds=int(cell[8:])) / timedelta(seconds=1)
-                            print("length 14")
+                        if '*' in cell:
+                            rowCells[key] = (datetime.strptime(cell, "*%H:%M:%S.%f") - datetime(1900, 1, 1)) / timedelta(seconds=1)
+                        else:
+                            rowCells[key] = (datetime.strptime(cell, "%H:%M:%S.%f") - datetime(1900, 1, 1)) / timedelta(seconds=1)
                     elif key == 'RTA Distribution':
                         if cell == '':
                             rowCells[key] = []
