@@ -47,9 +47,7 @@ class Stats:
                 for i in range(20, 26):
                     extra_cols.append(wks.get_col(i))
                     wks.update_col(i, [""] * wks.rows)
-            print(len(extra_cols))
             for i in range(length, length + len(extra_cols)):
-                print(extra_cols[i - length])
                 wks.insert_cols(col=i, number=1, values=[extra_cols[i - length]], inherit=True)
         except Exception as e:
             print(e)

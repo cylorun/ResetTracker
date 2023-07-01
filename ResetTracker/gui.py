@@ -668,14 +668,15 @@ class NewRecord(FileSystemEventHandler):
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
-                if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]):
-                    if "has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
-                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
-                        has_done_something = True
-                elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]):
-                    if "has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
-                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
-                        has_done_something = True
+                print('a')
+                if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]) and ("has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"])):
+                    self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
+                    has_done_something = True
+                    print('c')
+                elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and ("has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"])):
+                    self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
+                    has_done_something = True
+                    print('e')
 
         if "minecraft:story/smelt_iron" in adv:
             has_done_something = True
@@ -861,14 +862,15 @@ class OldRecord:
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
-                if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]):
-                    if "has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"]):
-                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
-                        has_done_something = True
-                elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]):
-                    if "has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"]):
-                        self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
-                        has_done_something = True
+                print('a')
+                if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]) and ("has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"])):
+                    self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
+                    has_done_something = True
+                    print('c')
+                elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and ("has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"])):
+                    self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
+                    has_done_something = True
+                    print('e')
 
         if "minecraft:story/smelt_iron" in adv:
             has_done_something = True
@@ -900,25 +902,43 @@ class OldRecord:
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
-        print(blocks_mined)
+        if settings['tracking']['track seed'] == 1:
+            try:
+                save_path = Logistics.find_save(settings['tracking']['MultiMC directory'], self.path, self.data["world_name"])
+                nbtfile = nbt.load(save_path + "\\level.dat")
+                seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
+                seed = re.sub(r'[^0-9]', '', str(seed))
+            except Exception as e:
+                print(e)
+                seed = ""
+
+        else:
+            seed = ""
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 
         # Push to csv
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
-        data = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run + [blocks_mined] +
+        data1 = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run[:-5] + [''] * 6 +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString])
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined])
+        data2 = []
+        for item in data1:
+            if type(item) == str and ":" in item and item.count("-") < 2:
+                data2.append("*" + item[:-3])
+            else:
+                data2.append(item)
+
         self.isFirstRun = ''
 
         with open("data/stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
-            writer.writerow(data)
+            writer.writerow(data1)
 
         if settings['tracking']['use sheets'] == 1:
             with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
-                reader.insert(0, data)
+                reader.insert(0, data2)
             with open("data/temp.csv", "w", newline="") as outfile:
                 writer = csv.writer(outfile)
                 for line in reader:
