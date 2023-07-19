@@ -668,15 +668,12 @@ class NewRecord(FileSystemEventHandler):
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
-                print('a')
                 if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]) and ("has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"])):
                     self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
                     has_done_something = True
-                    print('c')
                 elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and ("has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"])):
                     self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
                     has_done_something = True
-                    print('e')
 
         if "minecraft:story/smelt_iron" in adv:
             has_done_something = True
@@ -751,7 +748,8 @@ class NewRecord(FileSystemEventHandler):
                     writer.writerow(line)
 
         # updates displayed stats
-        CurrentSession.updateCurrentSession(data1)
+        if __name__ == "__main__":
+            CurrentSession.updateCurrentSession(data1)
 
 
         # Reset all counters/sums
@@ -862,15 +860,12 @@ class OldRecord:
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
-                print('a')
                 if ("minecraft:recipes/misc/gold_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["complete"]) and ("has_gold_axe" in adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["rta"])):
                     self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/gold_nugget_from_smelting"]["criteria"]["has_gold_axe"]["igt"])
                     has_done_something = True
-                    print('c')
                 elif ("minecraft:recipes/misc/iron_nugget_from_smelting" in adv and adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["complete"]) and ("has_iron_axe" in adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"] and lan > int(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["rta"])):
                     self.this_run[idx + 1] = Logistics.ms_to_string(adv["minecraft:recipes/misc/iron_nugget_from_smelting"]["criteria"]["has_iron_axe"]["igt"])
                     has_done_something = True
-                    print('e')
 
         if "minecraft:story/smelt_iron" in adv:
             has_done_something = True
@@ -1857,11 +1852,12 @@ class MainView(Frame):
     drop = None
     pageMarker = None
 
-    def authenticateSheets(self):
+    @classmethod
+    def authenticateSheets(cls):
         if settings['tracking']['use sheets'] == 1:
             wks = Sheets.authenticate()
             if isinstance(wks, int):
-                self.errorPoppup('sheet link might not be correct, also make sure credentials.json is in the same folder as exe')
+                print('sheet link might not be correct, also make sure credentials.json is in the same folder as exe')
             return wks
         else:
             return None
@@ -1885,13 +1881,23 @@ class MainView(Frame):
     def startResetTracker(self):
         global isTracking
         global wks1
-        wks1 = self.authenticateSheets()
+        wks1 = MainView.authenticateSheets()
         if not isinstance(wks1, int):
             isTracking = True
             CurrentSession.resetCurrentSession()
             self.trackingLabel.config(foreground=guiColors['black'])
             self.pages['Control'].set_button_color(False)
             t1 = threading.Thread(target=Tracking.trackResets, name="tracker")
+            t1.daemon = True
+            t1.start()
+
+    @classmethod
+    def startResetTracker2(cls):
+        global isTracking
+        global wks1
+        wks1 = MainView.authenticateSheets()
+        if not isinstance(wks1, int):
+            t1 = threading.Thread(target=Tracking.trackResets, name="tracker2")
             t1.daemon = True
             t1.start()
 

@@ -459,6 +459,7 @@ class Stats:
 
     @classmethod
     def get_efficiencyScore(cls, nph, enters, settings):
+        return 0
         sum = 0
         validEnterTypes = ['other']
         enterTypes = ['Buried Treasure w/ tnt', 'Buried Treasure', 'Full Shipwreck', 'Half Shipwreck', 'Village']
