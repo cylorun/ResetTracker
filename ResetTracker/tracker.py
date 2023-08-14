@@ -12,7 +12,7 @@ for file in os.listdir("default"):
     if not os.path.exists(os.path.join("data", file)):
         shutil.copyfile(os.path.join("default", file), os.path.join("data", file))
 
-from stats import *
+from utils import *
 
 
 """
@@ -701,9 +701,7 @@ class Tracking:
         global wks1
         wks1 = Sheets.authenticate()
         if wks1 is not None:
-            t1 = threading.Thread(target=Tracking.trackResets, name="tracker2")
-            t1.daemon = True
-            t1.start()
+            Tracking.trackResets()
 
 
     @classmethod
