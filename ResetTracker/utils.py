@@ -4,8 +4,6 @@ import sys
 if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
     try:
         from statistics import mean, stdev, median
-        import scipy.stats as stats
-        import numpy as np
         import datetime
         from datetime import datetime, timedelta
         import json
@@ -19,11 +17,9 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         from watchdog.events import FileSystemEventHandler
         from watchdog.observers import Observer
         import requests
-        import webbrowser
         import csv
         import threading
         from functools import partial
-        import io
         import re
         import tempfile
         import shutil
@@ -34,8 +30,6 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         sys.exit()
 else:
     from statistics import mean, stdev, median
-    import scipy.stats as stats
-    import numpy as np
     import datetime
     from datetime import datetime, timedelta
     import json
@@ -49,11 +43,9 @@ else:
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
     import requests
-    import webbrowser
     import csv
     import threading
     from functools import partial
-    import io
     import re
     import tempfile
     import shutil

@@ -256,7 +256,7 @@ class CurrentSession:
                 txtFile.close()
         for stat in statDict.keys():
             with open('obs/' + stat + '.txt', 'w') as obsTxtFile:
-                obsTxtFile.write(statDict[stat])
+                obsTxtFile.write(str(statDict[stat]))
 
 # tracking
 class Sheets:
@@ -896,5 +896,6 @@ class Tracking:
 
 
 if __name__ == "__main__":
+    CurrentSession.resetCurrentSession()
     Tracking.startResetTracker()
 
