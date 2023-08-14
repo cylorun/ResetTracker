@@ -20,6 +20,7 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         import csv
         import threading
         from functools import partial
+        import webbrowser
         import re
         import tempfile
         import shutil
@@ -39,6 +40,7 @@ else:
     import math
     import pygsheets
     import glob
+    import webbrowser
     import os
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
@@ -229,14 +231,6 @@ class Logistics:
             td = timedelta(days=1) - td
         t = datetime(1970, 1, 1) + td
         return t.strftime("%H:%M:%S.%f")
-
-
-    @classmethod
-    def getTimezoneOffset(cls, settings):
-        if settings['display']['use local timezone'] == 1:
-            return timedelta(seconds=-(time.timezone if (time.localtime().tm_isdst == 0) else time.altzone))
-        else:
-            return timedelta(seconds=0)
 
 
     @classmethod

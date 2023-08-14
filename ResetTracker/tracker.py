@@ -252,7 +252,7 @@ class CurrentSession:
         if not os.path.exists('obs'):
             os.mkdir('obs')
             for stat in statDict.keys():
-                txtFile = open('obs/' + stat+ '.txt', 'x')
+                txtFile = open('obs/' + stat + '.txt', 'x')
                 txtFile.close()
         for stat in statDict.keys():
             with open('obs/' + stat + '.txt', 'w') as obsTxtFile:
@@ -264,7 +264,7 @@ class Sheets:
     def authenticate(cls):
         try:
             gc_sheets = pygsheets.authorize(service_file="credentials.json")
-            sh = gc_sheets.open_by_url(settings['tracking']['sheet link'])
+            sh = gc_sheets.open_by_url(settings['sheet link'])
             wks = sh.worksheet_by_title('Raw Data')
         except Exception as e:
             print('sheet link might not be correct, also make sure credentials.json is in the same folder as exe')
@@ -276,45 +276,22 @@ class Sheets:
         wks1.update_row(index=1, values=headerLabels, col_offset=0)
 
     @classmethod
-    def sheets(cls):
+    def push_data(cls):
+        with open("data/temp.csv", newline="") as f:
+            reader = csv.reader(f)
+            data = list(reader)
+            f.close()
         try:
-            # Setting up constants and verifying
-            color = (15.0, 15.0, 15.0)
-            global pushedLines
-            pushedLines = 1
+            if len(data) == 0:
+                return
+            wks1.insert_rows(values=data, row=1, number=1, inherit=False)
+            f = open("data/temp.csv", "w+")
+            f.close()
 
-            def push_data():
-                global pushedLines
-                with open("data/temp.csv", newline="") as f:
-                    reader = csv.reader(f)
-                    data = list(reader)
-                    f.close()
-                try:
-                    if len(data) == 0:
-                        return
-                    wks1.insert_rows(values=data, row=1, number=1, inherit=False)
-                    if pushedLines == 1:
-                        endColumn = ord("A") + len(data)
-                        endColumn1 = ord("A") + (endColumn // ord("A")) - 1
-                        endColumn2 = ord("A") + ((endColumn - ord("A")) % 26)
-                        endColumn = chr(endColumn1) + chr(endColumn2)
-                        # dataSheet.format("A2:" + endColumn + str(1 + len(data)),{"backgroundColor": {"red": color[0], "green": color[1], "blue": color[2]}})
-                    pushedLines += len(data)
-                    f = open("data/temp.csv", "w+")
-                    f.close()
+        except Exception as e2:
+            print(23)
+            print(e2)
 
-
-
-                except Exception as e2:
-                    print(23)
-                    print(e2)
-
-            live = True
-            while live:
-                push_data()
-                time.sleep(3)
-        except Exception as e:
-            input("")
 
 
 # tracking
@@ -339,7 +316,7 @@ class NewRecord(FileSystemEventHandler):
         self.isFirstRun = '$' + config['version']
 
     def ensure_run(self):
-        if settings['tracking']['detect RSG'] == 0:
+        if settings['detect RSG'] == 0:
             return True, ""
         if self.path is None:
             return False, "Path error"
@@ -376,8 +353,8 @@ class NewRecord(FileSystemEventHandler):
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            if Logistics.isOnWallScreen() or settings['playstyle']["instance count"] == "1":
-                if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
+            if Logistics.isOnWallScreen() or settings['multi instance']:
+                if run_differ > timedelta(seconds=int(settings["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
                     self.wall_time += run_differ.total_seconds() * 1000
@@ -509,6 +486,8 @@ class NewRecord(FileSystemEventHandler):
         self.wall_time = 0
         self.break_time = 0
         self.rtaString = ''
+
+        print("run tracked")
 
 
 
@@ -875,17 +854,13 @@ class Tracking:
             for f in files:
                 os.remove(f)
 
-        if settings['tracking']['use sheets'] == 1:
-            t = threading.Thread(target=Sheets.sheets, name="sheets")
-            t.daemon = True
-            t.start()
-
         live = True
+
+        print("tracking")
 
         try:
             while live:
-                if not live:
-                    live = False
+                Sheets.push_data()
                 time.sleep(3)
         except Exception as e:
             print(26)
