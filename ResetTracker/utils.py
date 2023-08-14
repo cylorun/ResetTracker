@@ -18,7 +18,6 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         from watchdog.observers import Observer
         import requests
         import csv
-        import threading
         from functools import partial
         import webbrowser
         import re
@@ -46,7 +45,6 @@ else:
     from watchdog.observers import Observer
     import requests
     import csv
-    import threading
     from functools import partial
     import re
     import tempfile
