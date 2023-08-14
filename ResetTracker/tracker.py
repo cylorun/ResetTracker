@@ -316,7 +316,7 @@ class NewRecord(FileSystemEventHandler):
         self.isFirstRun = '$' + config['version']
 
     def ensure_run(self):
-        if settings['detect RSG'] == 0:
+        if not settings['detect RSG']:
             return True, ""
         if self.path is None:
             return False, "Path error"
@@ -433,9 +433,9 @@ class NewRecord(FileSystemEventHandler):
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
-        if settings['tracking']['track seed'] == 1:
+        if settings['track seed']:
             try:
-                save_path = Logistics.find_save(settings['tracking']['MultiMC directory'], self.path, self.data["world_name"])
+                save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
                 nbtfile = nbt.load(save_path + "\\level.dat")
                 seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
@@ -466,7 +466,7 @@ class NewRecord(FileSystemEventHandler):
             writer = csv.writer(outfile)
             writer.writerow(data1)
 
-        if settings['tracking']['use sheets'] == 1:
+        if settings['use sheets']:
             with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
                 reader.insert(0, data2)
@@ -510,7 +510,7 @@ class OldRecord:
 
 
     def ensure_run(self):
-        if settings['tracking']['detect RSG'] == 0:
+        if not settings['detect RSG']:
             return True, ""
         if self.path is None:
             return False, "Path error"
@@ -542,8 +542,8 @@ class OldRecord:
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            if Logistics.isOnWallScreen() or settings['playstyle']["instance count"] == "1":
-                if run_differ > timedelta(seconds=int(settings["tracking"]["break threshold"])):
+            if Logistics.isOnWallScreen() or settings['multi instance']:
+                if run_differ > timedelta(seconds=int(settings["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
                     self.wall_time += run_differ.total_seconds() * 1000
@@ -622,9 +622,9 @@ class OldRecord:
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
-        if settings['tracking']['track seed'] == 1:
+        if settings['track seed']:
             try:
-                save_path = Logistics.find_save(settings['tracking']['MultiMC directory'], self.path, self.data["world_name"])
+                save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
                 nbtfile = nbt.load(save_path + "\\level.dat")
                 seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
@@ -655,7 +655,7 @@ class OldRecord:
             writer = csv.writer(outfile)
             writer.writerow(data1)
 
-        if settings['tracking']['use sheets'] == 1:
+        if settings['use sheets']:
             with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
                 reader.insert(0, data2)
@@ -831,7 +831,7 @@ class Tracking:
 
     @classmethod
     def trackResets(cls):
-        if settings['tracking']['use sheets'] == 1:
+        if settings['use sheets']:
             Sheets.setup()
             # Create temp.csv if it doesn't exist
             if not os.path.exists('data/temp.csv'):
@@ -843,14 +843,14 @@ class Tracking:
                 newRecordObserver = Observer()
                 event_handler = NewRecord()
                 newRecordObserver.schedule(
-                    event_handler, settings['tracking']["records path"], recursive=False)
+                    event_handler, settings["records path"], recursive=False)
                 newRecordObserver.start()
             except Exception as e:
                 print("Records directory could not be found")
             else:
                 break
-        if settings['tracking']["delete-old-records"] == 1:
-            files = glob.glob(f'{settings["tracking"]["records path"]}\\*.json')
+        if settings["delete-old-records"]:
+            files = glob.glob(f'{settings["records path"]}\\*.json')
             for f in files:
                 os.remove(f)
 
