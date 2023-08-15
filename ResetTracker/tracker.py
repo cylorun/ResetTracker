@@ -243,6 +243,80 @@ class Stats:
 
 class Logistics:
     @classmethod
+    def verify_settings(cls):
+        if settings["use sheets"]:
+            global wks1
+            try:
+                gc_sheets = pygsheets.authorize(service_file="credentials.json")
+                sh = gc_sheets.open_by_url(settings['sheet link'])
+                wks1 = sh.worksheet_by_title('Raw Data')
+            except FileNotFoundError as e:
+                input("Put credentials.json in the same directory as the executable. Press enter when you have done this.")
+                Logistics.verify_settings()
+                return
+            except pygsheets.AuthenticationError as e:
+                input("Credentials.json is not valid. Press enter when you have fixed this.")
+                Logistics.verify_settings()
+                return
+            except pygsheets.SpreadsheetNotFound as e:
+                if settings["sheet link"] == "":
+                    settings["sheet link"] = input("Paste the link to your spreadsheet: ")
+                    Logistics.verify_settings()
+                    return
+                else:
+                    try:
+                        response = requests.get(settings["sheet link"])
+                        if response.status_code != 200:
+                            raise Exception
+                    except Exception as e:
+                        print("Invalid link")
+                        settings["sheet link"] = input("Paste the link to your spreadsheet: ")
+                        Logistics.verify_settings()
+                        return
+            except pygsheets.WorksheetNotFound as e:
+                input("The spreadsheet must have a subsheet named 'Raw Data'. Press enter when you have fixed this.")
+                Logistics.verify_settings()
+                return
+        if settings["track seed"]:
+            try:
+                if not os.path.exists(os.path.join(settings["MultiMC directory"], "instances")):
+                    raise Exception
+            except Exception as e:
+                settings["MultiMC directory"] = input("seed tracking requires you to input your MultiMC directory. Paste it here: ")
+                Logistics.verify_settings()
+                return
+        try:
+            if not os.path.exists(settings["records path"]):
+                raise Exception
+        except Exception as e:
+            settings["records path"] = input("Records path is nonexistent. Please enter your records path here: ")
+            Logistics.verify_settings()
+            return
+
+        for setting in ["use sheets", "delete-old-records", "detect RSG", "track seed", "multi instance"]:
+            if type(settings[setting]) != bool:
+                new_setting = ""
+                while new_setting not in ['y' 'Y', 'Yes', 'yes', 'n', 'N', 'No', 'no']:
+                    new_setting = input(f"Choose yes or no for the'{setting}' setting (y/n): ")
+                if new_setting in ['y' 'Y', 'Yes', 'yes']:
+                    settings[setting] = True
+                else:
+                    settings[setting] = False
+                Logistics.verify_settings()
+                return
+        if type(settings['break threshold']) not in [float, int] or settings['break threshold'] < 1:
+            new_threshold = 0
+            while type(new_threshold) not in [float, int] or new_threshold < 1:
+                try:
+                    new_threshold = int(input("Enter a positive integer for 'break threshold': "))
+                except Exception as e:
+                    pass
+            Logistics.verify_settings()
+            return
+
+
+
+    @classmethod
     def find_save(cls, directory, record_path, save_name):
         start_time = time.time()
 
