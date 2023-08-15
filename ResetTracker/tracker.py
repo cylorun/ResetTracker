@@ -250,15 +250,15 @@ class Logistics:
                 gc_sheets = pygsheets.authorize(service_file="credentials.json")
                 sh = gc_sheets.open_by_url(settings['sheet link'])
                 wks1 = sh.worksheet_by_title('Raw Data')
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 input("Put credentials.json in the same directory as the executable. Press enter when you have done this.")
                 Logistics.verify_settings()
                 return
-            except pygsheets.AuthenticationError as e:
+            except pygsheets.AuthenticationError:
                 input("Credentials.json is not valid. Press enter when you have fixed this.")
                 Logistics.verify_settings()
                 return
-            except pygsheets.SpreadsheetNotFound as e:
+            except (pygsheets.SpreadsheetNotFound, pygsheets.NoValidUrlKeyFound):
                 if settings["sheet link"] == "":
                     settings["sheet link"] = input("Paste the link to your spreadsheet: ")
                     Logistics.verify_settings()
@@ -268,12 +268,12 @@ class Logistics:
                         response = requests.get(settings["sheet link"])
                         if response.status_code != 200:
                             raise Exception
-                    except Exception as e:
+                    except Exception:
                         print("Invalid link")
                         settings["sheet link"] = input("Paste the link to your spreadsheet: ")
                         Logistics.verify_settings()
                         return
-            except pygsheets.WorksheetNotFound as e:
+            except pygsheets.WorksheetNotFound:
                 input("The spreadsheet must have a subsheet named 'Raw Data'. Press enter when you have fixed this.")
                 Logistics.verify_settings()
                 return
@@ -281,14 +281,14 @@ class Logistics:
             try:
                 if not os.path.exists(os.path.join(settings["MultiMC directory"], "instances")):
                     raise Exception
-            except Exception as e:
+            except Exception:
                 settings["MultiMC directory"] = input("seed tracking requires you to input your MultiMC directory. Paste it here: ")
                 Logistics.verify_settings()
                 return
         try:
             if not os.path.exists(settings["records path"]):
                 raise Exception
-        except Exception as e:
+        except Exception:
             settings["records path"] = input("Records path is nonexistent. Please enter your records path here: ")
             Logistics.verify_settings()
             return
@@ -309,7 +309,7 @@ class Logistics:
             while type(new_threshold) not in [float, int] or new_threshold < 1:
                 try:
                     new_threshold = int(input("Enter a positive integer for 'break threshold': "))
-                except Exception as e:
+                except Exception:
                     pass
             Logistics.verify_settings()
             return
