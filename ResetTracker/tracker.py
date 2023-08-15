@@ -569,16 +569,6 @@ class CurrentSession:
 
 # tracking
 class Sheets:
-    @classmethod
-    def authenticate(cls):
-        try:
-            gc_sheets = pygsheets.authorize(service_file="credentials.json")
-            sh = gc_sheets.open_by_url(settings['sheet link'])
-            wks = sh.worksheet_by_title('Raw Data')
-        except Exception as e:
-            print('sheet link might not be correct, also make sure credentials.json is in the same folder as exe')
-            return None
-        return wks
 
     @classmethod
     def setup(cls):
@@ -986,11 +976,9 @@ class OldRecord:
 class Tracking:
     @classmethod
     def startResetTracker(cls):
-        global wks1
+        Logistics.verify_settings()
         CurrentSession.resetCurrentSession()
-        wks1 = Sheets.authenticate()
-        if wks1 is not None:
-            Tracking.trackResets()
+        Tracking.trackResets()
 
 
     @classmethod
