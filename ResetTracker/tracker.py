@@ -313,6 +313,8 @@ class Logistics:
                     pass
             Logistics.verify_settings()
             return
+        with open("data/settings.json", "w") as settings_file:
+            json.dump(settings, settings_file)
 
 
 
