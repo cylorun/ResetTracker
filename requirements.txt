@@ -1,5 +1,4 @@
 watchdog==2.0.2
-gspread==3.7.0
 pywin32==302; platform_system == "Windows"
 AppKit==0.2.8; platform_system == "Darwin"
 pygsheets==2.0.6
@@ -7,6 +6,4 @@ requests==2.31.0
 watchdog==2.0.2
 wget==3.2
 statistics==1.0.3.5
-scipy==1.10.1
-numpy==1.24.3
 nbtlib==2.0.4

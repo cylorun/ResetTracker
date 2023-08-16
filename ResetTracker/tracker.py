@@ -1,3 +1,5 @@
+__version__ = "2.0.12"
+
 import sys
 
 if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
@@ -436,7 +438,7 @@ class Update:
             latest_tag = release_data["tag_name"]
         else:
             return False
-        if latest_tag == config['version']:
+        if latest_tag == __version__:
             return False
         else:
             return True
@@ -614,7 +616,7 @@ class NewRecord(FileSystemEventHandler):
     def __init__(self):
         self.path = None
         self.data = None
-        self.isFirstRun = '$' + config['version']
+        self.isFirstRun = '$' + __version__
 
     def ensure_run(self):
         if not settings['detect RSG']:
@@ -807,7 +809,7 @@ class OldRecord:
     def __init__(self):
         self.path = None
         self.data = None
-        self.isFirstRun = '$' + config['version']
+        self.isFirstRun = '$' + __version__
 
 
     def ensure_run(self):
