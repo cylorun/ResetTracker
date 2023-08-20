@@ -4,10 +4,40 @@ from zipfile import ZipFile
 import wget
 import requests
 import json
-import time
-import tkinter as tk
-import threading
 import sys
+
+import tracker
+
+
+def compare_versions(current_version, latest_version):
+    print(current_version)
+    print(latest_version)
+    current_parts = [int(x) for x in current_version.split('.')]
+    latest_parts = [int(x) for x in latest_version.split('.')]
+    for i in range(3):
+        if latest_parts[i] > current_parts[i]:
+            return True
+        elif latest_parts[i] < current_parts[i]:
+            return False
+    if current_version == latest_version:
+        return False
+    print("error in version parsing")
+    raise Exception
+
+
+def checkUpdateAvailable():
+    response = requests.get("https://api.github.com/repos/pncakespoon1/ResetTracker/releases/latest")
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Get the JSON data from the response
+        release_data = response.json()
+
+        # Extract the tag name from the release data
+        latest_tag = release_data["tag_name"]
+    else:
+        return False
+    return compare_versions(tracker.__version__, latest_tag)
+
 
 def unzip(path):
     with ZipFile(path) as zfile:
@@ -37,29 +67,17 @@ def updateSource():
     oldSettings = json.load(oldSettingsFile)
     newSettingsFile = open('temp/update/' + directories[0] + '/ResetTracker/data/settings.json')
     newSettings = json.load(newSettingsFile)
-    for key1 in oldSettings.keys():
-        for key2 in oldSettings[key1].keys():
-            newSettings[key1][key2] = oldSettings[key1][key2]
+    for key in oldSettings.keys():
+        newSettings[key] = oldSettings[key]
     oldSettingsFile.close()
     newSettingsFile.close()
     json.dump(newSettings, open('temp/update/' + directories[0] + '/ResetTracker/data/settings.json', 'w'))
-
-    oldConfigFile = open('data/config.json')
-    oldConfig = json.load(oldConfigFile)
-    newConfigFile = open('temp/update/' + directories[0] + '/ResetTracker/data/config.json')
-    newConfig = json.load(newConfigFile)
-    for key in oldConfig.keys():
-        if key != 'version':
-            newConfig[key] = oldConfig[key]
-    oldConfigFile.close()
-    newConfigFile.close()
-    json.dump(newConfig, open('temp/update/' + directories[0] + '/ResetTracker/data/config.json', 'w'))
 
     shutil.rmtree('data')
 
     files = os.listdir(".")
     for file in files:
-        if file not in ["databaseCredentials.json", 'temp', 'assets', 'obs']:
+        if file not in ['temp', 'obs']:
             os.remove(file)
 
     shutil.move('temp/update/' + directories[0] + '/ResetTracker/data', '.')
@@ -91,23 +109,11 @@ def updateExe():
     oldSettings = json.load(oldSettingsFile)
     newSettingsFile = open('temp/update/ResetTracker2/data/settings.json')
     newSettings = json.load(newSettingsFile)
-    for key1 in oldSettings.keys():
-        for key2 in oldSettings[key1].keys():
-            newSettings[key1][key2] = oldSettings[key1][key2]
+    for key in oldSettings.keys():
+        newSettings[key] = oldSettings[key]
     oldSettingsFile.close()
     newSettingsFile.close()
     json.dump(newSettings, open('temp/update/ResetTracker2/data/settings.json', 'w'))
-
-    oldConfigFile = open('data/config.json')
-    oldConfig = json.load(oldConfigFile)
-    newConfigFile = open('temp/update/ResetTracker2/data/config.json')
-    newConfig = json.load(newConfigFile)
-    for key in oldConfig.keys():
-        if key != 'version':
-            newConfig[key] = oldConfig[key]
-    oldConfigFile.close()
-    newConfigFile.close()
-    json.dump(newConfig, open('temp/update/ResetTracker2/data/config.json', 'w'))
 
     shutil.rmtree('data')
     os.remove('gui.exe')
@@ -121,22 +127,14 @@ def updateExe():
 
 
 def update():
-    if getattr(sys, 'frozen', False):  # if running in a PyInstaller bundle
-        updateExe()
+    if checkUpdateAvailable():
+        if getattr(sys, 'frozen', False):  # if running in a PyInstaller bundle
+            updateExe()
+        else:
+            updateSource()
     else:
-        updateSource()
-    root.quit()
-    print(4)
+        print("no update available")
 
 
 if __name__ == "__main__":
-    time.sleep(3)
-    root = tk.Tk()
-    root.wm_geometry("250x100")
-    label = tk.Label(root, text='Updating...')
-    label.pack(side="top", fill="both", expand=True)
-    t = threading.Thread(target=update, name="updateGithub")
-    t.daemon = True
-    t.start()
-    root.mainloop()
-
+    update()
