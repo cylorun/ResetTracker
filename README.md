@@ -12,16 +12,12 @@
  - Download the source code
  - Make sure you have python and pip installed
  - Open the terminal and set the directory to the `ResetTracker` folder using `cd filepath`
- - Run the program using `python3 gui.py`
+ - Run the program using `python3 tracker.py`
  - The program will guide you through the rest of the process
 
 #### Settings
 
- - Configure your settings in the settings tab and save them. When saving, the program will let you know if you have any invalid values. If you're unsure about the purpose or meaning of a setting, hover over its label for a tooltip to pop up.
-
 #### Updating
-
-If an update is available, the update button on the Control page will be clickable. Pressing it will close the tracker and automatically update it.
 
 #### Sheets
 
@@ -42,11 +38,6 @@ The tracker requires the speedrunigt mod, as it creates records files. These rec
  - Cumulating stats: stats that record how many resets and how much time since the last run with a split
  - Session Marker: marks the start of the session and the strategy associated with it
 
-## Analysis
-
-IMPORTANT: this tracker is still compatible with specnr's website
-Check out each of the pages on the gui; they all do different things. They all have a button that you press to present the analysis, and a description of the page at the top. All graphs and tables have headers above them. If you hover over those headers, a brief explanation of the graph or table may appear. Choose which session you want to be analyzed by clicking on the black drop-down next to the tabs.
-
 ## Credits
 
 #### Developers
@@ -64,12 +55,5 @@ Thanks to Weakforced for his countless ideas and help with making decisions and 
 ## Suggestions/Help
 
 If you have any suggestions, bug reports, or need help setting it up, DM me on discord pncakespoon#4895 or join [EAR](https://discord.gg/jnjrbysy)
-
-## Features Coming Soon (or Later)
-
- - More Graphs, data, analysis, and feedback :)
- - Spawn Image Analysis
- - vod runs analysis
- - Comparing stats with your freinds!
  
 
