@@ -104,7 +104,6 @@ if True:
     if os.path.exists('temp.csv'):
         shutil.move('temp.csv', 'data/temp.csv')
 
-    config = json.load(open("data/config.json", "r"))
     settings = json.load(open("data/settings.json", "r"))
     try:
         with open('data/stats.csv', 'x') as f:
