@@ -5,8 +5,9 @@ import wget
 import requests
 import json
 import sys
+import importlib
 
-import tracker
+tracker = importlib.import_module("tracker")
 
 
 def compare_versions(current_version, latest_version):
