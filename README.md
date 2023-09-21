@@ -21,7 +21,7 @@
 
 #### Sheets
 
-Using sheets is NOT necessary, however if you wish to use google sheets in addition to local storage to store your stats, follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q)
+Using sheets is more or less necessary if you want to view your reset analytics on the website, however if you wish to use google sheets in addition to local storage to store your stats, follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q)
 
 ## Tracking
 
