@@ -163,7 +163,7 @@ ResetTracker/dist/
 ResetTracker/records/
 ResetTracker/temp/
 ResetTracker/matplotlib/
-ResetTracker/test1.py
+ResetTracker/gen_table.py
 ResetTracker/test2.py
 ResetTracker/credentials.json
 ResetTracker/databaseCredentials.json
