@@ -117,7 +117,7 @@ def updateExe():
     json.dump(newSettings, open('temp/update/ResetTracker2/data/settings.json', 'w'))
 
     shutil.rmtree('data')
-    os.remove('gui.exe')
+    os.remove('ResetTracker2.exe')
 
     relativeDir = os.path.abspath('temp')
     relativeDir = relativeDir[:len(relativeDir) - 5]
