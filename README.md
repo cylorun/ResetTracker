@@ -36,7 +36,7 @@ Instead of repeating the google sheets setup:
 
 #### Website
 
- - The [Reset Analytics Website](https://reset-analytics-dev.vercel.app), developed by Specnr, Boyenn, and myself, is how you will access detailed analysis of your stats
+ - The [Reset Analytics Website](https://reset-analytics.vercel.app), developed by Specnr, Boyenn, and myself, is how you will access detailed analysis of your stats
  - It will not work if your spreadsheet isn't publicly viewable, or if there is no data on the spreadsheet
  - The [Github Repo](https://github.com/Specnr/ResetAnalytics) has additional information
 
