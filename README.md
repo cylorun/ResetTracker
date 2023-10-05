@@ -32,6 +32,9 @@ Instead of repeating the google sheets setup:
  - Run the program using `python3 tracker.py`
  - The program will guide you through the rest of the process
 
+## Updating
+update.exe has not been confirmed stable yet. For now, just manually update.
+
 ## Viewing your stats
 
 #### Website

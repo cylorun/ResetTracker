@@ -738,7 +738,7 @@ class NewRecord(FileSystemEventHandler):
         if settings['track seed']:
             try:
                 save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
-                nbtfile = nbt.load(save_path + "\\level.dat")
+                nbtfile = nbt.load(save_path + "/level.dat")
                 seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
             except Exception as e:
@@ -928,7 +928,7 @@ class OldRecord:
         if settings['track seed']:
             try:
                 save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
-                nbtfile = nbt.load(save_path + "\\level.dat")
+                nbtfile = nbt.load(save_path + "/level.dat")
                 seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
             except Exception as e:
@@ -1152,7 +1152,7 @@ class Tracking:
             else:
                 break
         if settings["delete-old-records"]:
-            files = glob.glob(f'{settings["records path"]}\\*.json')
+            files = glob.glob(f'{settings["records path"]}/*.json')
             for f in files:
                 os.remove(f)
 
