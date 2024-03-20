@@ -1170,6 +1170,13 @@ class Tracking:
                 if piglin_barters[i] in stats["minecraft:picked_up"]:
                     trades_list[i] = str(stats["minecraft:picked_up"][piglin_barters[i]])
 
+        if 'minecraft:dropped' in stats:
+            for k, v in stats['minecraft:dropped']:
+                if k in piglin_barters:
+                    if trades_list[piglin_barters.index(k)]*2 >= v:
+                        trades_list[piglin_barters.index(k)] -= v
+
+        trades = '$'.join(trades_list)
         if 'minecraft:killed' in stats:
             killed_mobs = stats['minecraft:killed']
         
@@ -1178,7 +1185,7 @@ class Tracking:
             for k, v in stats['minecraft:used'].items():
                 if k in foods:
                     food_eaten += int(v)
-        trades = '$'.join(trades_list)
+                    
         r = enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, food_eaten
         print(r)
         return r
