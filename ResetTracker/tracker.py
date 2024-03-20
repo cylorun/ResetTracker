@@ -104,9 +104,9 @@ if True:
     if os.path.exists('temp.csv'):
         shutil.move('temp.csv', 'data/temp.csv')
 
-    settings = json.load(open("data/settings.json", "r"))
+    settings = json.load(open(os.path.join(os.getcwd(),'data','settings.json'), "r"))
     try:
-        with open('data/stats.csv', 'x') as f:
+        with open(os.path.join(os.getcwd(),'data','stats.csv'), 'x') as f:
             pass
     except Exception as e:
         pass
@@ -126,7 +126,7 @@ if True:
                     'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev',
                     'Session Marker',
                     'RTA Distribution', 'seed', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
-                    'Obsidian Placed', 'Diamond Sword', 'Blocks Mined']
+                    'Obsidian Placed', 'Diamond Sword', 'Blocks Mined','Piglin Barters','Food eaten']
 
     advChecks = [
         ("minecraft:recipes/misc/charcoal", "has_log"),
@@ -192,6 +192,65 @@ if True:
              'minecraft:acacia_leaves',
              'minecraft:dark_oak_leaves'
              ]
+    
+    piglin_barters = [
+        'minecraft:enchanted_book',
+        'minecraft:iron_boots',
+        'minecraft:potion',
+        'minecraft:splash_potion',
+        'minecraft:iron_nugget',
+        'minecraft:ender_pearl',
+        'minecraft:string',
+        'minecraft:quartz',
+        'minecraft:obsidian',
+        'minecraft:crying_obsidian',
+        'minecraft:fire_charge',
+        'minecraft:leather',
+        'minecraft:soul_sand',
+        'minecraft:nether_brick',
+        'minecraft:glowstone_dust',
+        'minecraft:gravel',
+        'minecraft:magma_cream'
+    ]
+foods = [
+    'minecraft:apple',
+    'minecraft:baked_potato',
+    'minecraft:beetroot',
+    'minecraft:beetroot_soup',
+    'minecraft:bread',
+    'minecraft:cake',
+    'minecraft:carrot',
+    'minecraft:chorus_fruit',
+    'minecraft:cooked_beef',
+    'minecraft:cooked_chicken',
+    'minecraft:cooked_cod',
+    'minecraft:cooked_mutton',
+    'minecraft:cooked_porkchop',
+    'minecraft:cooked_rabbit',
+    'minecraft:cooked_salmon',
+    'minecraft:cookie',
+    'minecraft:dried_kelp',
+    'minecraft:enchanted_golden_apple',
+    'minecraft:golden_apple',
+    'minecraft:golden_carrot',
+    'minecraft:honey_bottle',
+    'minecraft:mushroom_stew',
+    'minecraft:poisonous_potato',
+    'minecraft:pumpkin_pie',
+    'minecraft:rabbit_stew',
+    'minecraft:raw_beef',
+    'minecraft:raw_chicken',
+    'minecraft:raw_cod',
+    'minecraft:raw_mutton',
+    'minecraft:raw_porkchop',
+    'minecraft:raw_rabbit',
+    'minecraft:raw_salmon',
+    'minecraft:rotten_flesh',
+    'minecraft:spider_eye',
+    'minecraft:sweet_berries',
+    'minecraft:tropical_fish'
+]
+
 """
 global variables
 """
@@ -734,7 +793,7 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
-        enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
+        enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, eaten = Tracking.getMiscData(stats, adv)
         if settings['track seed']:
             try:
                 save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
@@ -754,7 +813,7 @@ class NewRecord(FileSystemEventHandler):
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
         data1 = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run[:-5] + [''] * 6 +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined])
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined, trades, str(eaten)])
         data2 = []
         for item in data1:
             if type(item) == str and ":" in item and item.count("-") < 2:
@@ -1105,7 +1164,24 @@ class Tracking:
 
         blocks_mined = '$'.join(blocks_mined_list)
 
-        return enter_type, gold_source, spawn_biome, iron_source, blocks_mined
+        trades_list = ['0']*len(piglin_barters)
+        if "minecraft:picked_up" in stats:
+            for i in range(len(piglin_barters)):
+                if piglin_barters[i] in stats["minecraft:picked_up"]:
+                    trades_list[i] = str(stats["minecraft:picked_up"][piglin_barters[i]])
+
+        if 'minecraft:killed' in stats:
+            killed_mobs = stats['minecraft:killed']
+        
+        food_eaten = 0
+        if 'minecraft:used' in stats:
+            for k, v in stats['minecraft:used'].items():
+                if k in foods:
+                    food_eaten += int(v)
+        trades = '$'.join(trades_list)
+        r = enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, food_eaten
+        print(r)
+        return r
 
     @classmethod
     def trackOldRecords(cls):
