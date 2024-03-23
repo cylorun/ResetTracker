@@ -207,114 +207,38 @@ piglin_barters = [
 ]
 
 foods = [
-    'minecraft:apple',
-    'minecraft:baked_potato',
-    'minecraft:beetroot',
-    'minecraft:beetroot_soup',
     'minecraft:bread',
-    'minecraft:cake',
-    'minecraft:carrot',
-    'minecraft:chorus_fruit',
     'minecraft:cooked_beef',
     'minecraft:cooked_chicken',
     'minecraft:cooked_cod',
     'minecraft:cooked_mutton',
     'minecraft:cooked_porkchop',
-    'minecraft:cooked_rabbit',
     'minecraft:cooked_salmon',
-    'minecraft:cookie',
-    'minecraft:dried_kelp',
     'minecraft:enchanted_golden_apple',
     'minecraft:golden_apple',
     'minecraft:golden_carrot',
-    'minecraft:honey_bottle',
     'minecraft:mushroom_stew',
-    'minecraft:poisonous_potato',
-    'minecraft:pumpkin_pie',
-    'minecraft:rabbit_stew',
-    'minecraft:raw_beef',
-    'minecraft:raw_chicken',
-    'minecraft:raw_cod',
-    'minecraft:raw_mutton',
-    'minecraft:raw_porkchop',
-    'minecraft:raw_rabbit',
-    'minecraft:raw_salmon',
-    'minecraft:rotten_flesh',
-    'minecraft:spider_eye',
-    'minecraft:sweet_berries',
-    'minecraft:tropical_fish'
 ]
 mobs = [
-    'minecraft:bat',
-    'minecraft:bee',
     'minecraft:blaze',
-    'minecraft:cat',
-    'minecraft:cave_spider',
     'minecraft:chicken',
     'minecraft:cod',
     'minecraft:cow',
     'minecraft:creeper',
-    'minecraft:dolphin',
-    'minecraft:donkey',
-    'minecraft:drowned',
-    'minecraft:elder_guardian',
-    'minecraft:ender_dragon',
     'minecraft:enderman',
     'minecraft:endermite',
-    'minecraft:evoker',
-    'minecraft:fox',
     'minecraft:ghast',
-    'minecraft:giant',
-    'minecraft:glow_squid',
-    'minecraft:goat',
-    'minecraft:guardian',
     'minecraft:hoglin',
-    'minecraft:horse',
-    'minecraft:husk',
     'minecraft:iron_golem',
-    'minecraft:llama',
-    'minecraft:magma_cube',
-    'minecraft:mooshroom',
-    'minecraft:mule',
-    'minecraft:ocelot',
-    'minecraft:panda',
-    'minecraft:parrot',
-    'minecraft:phantom',
     'minecraft:pig',
     'minecraft:piglin',
-    'minecraft:pillager',
-    'minecraft:polar_bear',
-    'minecraft:pufferfish',
-    'minecraft:rabbit',
-    'minecraft:ravager',
     'minecraft:salmon',
     'minecraft:sheep',
-    'minecraft:shulker',
-    'minecraft:silverfish',
     'minecraft:skeleton',
-    'minecraft:skeleton_horse',
-    'minecraft:slime',
-    'minecraft:snow_golem',
     'minecraft:spider',
-    'minecraft:squid',
-    'minecraft:stray',
-    'minecraft:strider',
-    'minecraft:trader_llama',
-    'minecraft:tropical_fish',
-    'minecraft:turtle',
-    'minecraft:vex',
-    'minecraft:villager',
-    'minecraft:vindicator',
-    'minecraft:wandering_trader',
     'minecraft:witch',
-    'minecraft:wither',
     'minecraft:wither_skeleton',
-    'minecraft:wolf',
-    'minecraft:zoglin',
     'minecraft:zombie',
-    'minecraft:zombie_horse',
-    'minecraft:zombie_villager',
-    'minecraft:zombified_piglin'
 ]
 
 
@@ -325,7 +249,7 @@ headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Sp
                 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev',
                 'Session Marker',
                 'RTA Distribution', 'seed', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
-                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined']+[i.split(':')[1].capitalize() for i in piglin_barters]+[i.split(':')[1].capitalize() for i in mobs]+[i.split(':')[1].capitalize() for i in foods]
+                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined'] + [i.split(':')[1] for i in piglin_barters] + [i.split(':')[1]for i in mobs] + [i.split(':')[1] for i in foods]
 
 """
 global variables
@@ -590,6 +514,7 @@ class CurrentSession:
                 row[i] = None
         rowCells = {}
         for i in range(len(headerLabels)):
+            # print(f'{row[i]} : {type(row[i])} : {headerLabels[i]}')
             if row[i] is not None and '-' in row[i] and ':' in row[i]:
                 rowCells[headerLabels[i]] = row[i]
             elif row[i] is not None and ':' in row[i]:
@@ -1241,7 +1166,7 @@ class Tracking:
                             iron_source = "Half Shipwreck"
                         else:
                             iron_source = "Buried Treasure"
-        flint, gravel_mined, deaths, eyes_thrown = 0, 0, 0, 0
+        flint, gravel_mined, deaths, eyes_thrown = "0", "0", "0", "0"
         trades_list = [0]*len(piglin_barters)
         if "minecraft:picked_up" in stats:
             if 'minecraft:flint' in stats['minecraft:picked_up']:
