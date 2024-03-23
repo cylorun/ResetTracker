@@ -452,7 +452,7 @@ class Logistics:
         with open("data/settings.json", "w") as settings_file:
             json.dump(settings, settings_file)
 
-
+    
 
     @classmethod
     def find_save(cls, directory, record_path, save_name):
@@ -711,6 +711,14 @@ class Sheets:
     def setup(cls):
         wks1.update_row(index=1, values=headerLabels, col_offset=0)
 
+    @staticmethod
+    def find_first_empty_row(worksheet):
+        rows = worksheet.get_all_values(returnas='matrix')
+        for idx, row in enumerate(rows, start=1):
+            if all(cell == '' for cell in row):
+                return idx
+        return len(rows) 
+    
     @classmethod
     def push_data(cls):
         with open("data/temp.csv", newline="") as f:
@@ -720,7 +728,8 @@ class Sheets:
         try:
             if len(data) == 0:
                 return
-            wks1.insert_rows(values=data, row=1, number=1, inherit=False)
+            row = Sheets.find_first_empty_row(wks1) # used so it won't override other rows
+            wks1.insert_rows(values=data, row=row-1, number=1, inherit=False)
             f = open("data/temp.csv", "w+")
             f.close()
 
@@ -898,7 +907,7 @@ class NewRecord(FileSystemEventHandler):
                 data2.append(item)
 
         self.isFirstRun = ''
-        print(data1)
+        # print(data1)
 
         with open("data/stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
