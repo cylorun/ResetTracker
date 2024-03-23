@@ -320,7 +320,7 @@ mobs = [
 
 headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
                 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT',
-                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', '', '', '', '', '', '', 'Iron',
+                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel','Deaths','','', 'Eyes Thrown','Iron time',
                 'Wall Resets Since Prev',
                 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev',
                 'Session Marker',
@@ -609,7 +609,7 @@ class CurrentSession:
         currentSession['general stats']['total wall time'] += rowCells['Wall Time Since Prev']
 
         # overworld
-        for split in ['Wood', 'Iron Pickaxe', 'Iron']:
+        for split in ['Wood', 'Iron Pickaxe', 'Iron time']:
             if rowCells[split] is not None:
                 currentSession['splits stats'][split]['Cumulative Sum'] += rowCells[split]
                 currentSession['splits stats'][split]['Relative Sum'] += rowCells[split]
@@ -877,7 +877,7 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
-        enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, mobs_killed, food_eaten = Tracking.getMiscData(stats, adv)
+        enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, mobs_killed, food_eaten, flint, gravel_mined, deaths, eyes_thrown = Tracking.getMiscData(stats, adv)
         if settings['track seed']:
             try:
                 save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
@@ -893,9 +893,11 @@ class NewRecord(FileSystemEventHandler):
 
         iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
 
-        # Push to csv
+        # Push to csv 
+        #        'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel', 'Eyes Thrown', 'Iron',
+
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
-        data1 = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run[:-5] + [''] * 6 +
+        data1 = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run[:-5] + [flint, gravel_mined, deaths,'','', eyes_thrown] +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
                  Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined]+trades+mobs_killed+food_eaten)
         
@@ -1239,12 +1241,15 @@ class Tracking:
                             iron_source = "Half Shipwreck"
                         else:
                             iron_source = "Buried Treasure"
-
-        trades_list = ['0']*len(piglin_barters)
+        flint, gravel_mined, deaths, eyes_thrown = 0, 0, 0, 0
+        trades_list = [0]*len(piglin_barters)
         if "minecraft:picked_up" in stats:
+            if 'minecraft:flint' in stats['minecraft:picked_up']:
+                flint = str(stats['minecraft:picked_up']['minecraft:flint'])
+
             for i in range(len(piglin_barters)):
                 if piglin_barters[i] in stats["minecraft:picked_up"]:
-                    trades_list[i] = str(stats["minecraft:picked_up"][piglin_barters[i]])
+                    trades_list[i] = int(stats["minecraft:picked_up"][piglin_barters[i]])
 
         # corrects for accedentally dropping shit, todo: account for mining gravel for example
         if 'minecraft:dropped' in stats:
@@ -1271,11 +1276,20 @@ class Tracking:
         
         food_list = ['0']*len(foods)
         if 'minecraft:used' in stats:
+            if 'minecraft:ender_eye' in stats['minecraft:used']:
+                eyes_thrown = str(stats['minecraft:used']['minecraft:ender_eye'])
             for i in range(len(foods)):
                 food_list[i] = str(stats['minecraft:used'].get(foods[i],0))
 
+        if 'minecraft:custom' in stats:
+            if 'minecraft:deaths' in stats['minecraft:custom']:
+                deaths = str(stats['minecraft:custom']['minecraft:deaths'])
 
-        return enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades_list, killed_list, food_list
+        gravel_mined = blocks_mined_list[blocks.index('minecraft:gravel')]
+        #   flint, gravel_mined, deaths, eyes_thrown
+        trades_list=  list(map(str, trades_list))
+        print(trades_list)
+        return enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades_list, killed_list, food_list, flint, gravel_mined, deaths, eyes_thrown
 
     @classmethod
     def trackOldRecords(cls):
