@@ -97,121 +97,115 @@ for file in os.listdir("default"):
 """
 global variables
 """
-if True:
 
-    if os.path.exists('stats.csv'):
-        shutil.move('stats.csv', 'data/stats.csv')
-    if os.path.exists('temp.csv'):
-        shutil.move('temp.csv', 'data/temp.csv')
 
-    settings = json.load(open(os.path.join(os.getcwd(),'data','settings.json'), "r"))
-    try:
-        with open(os.path.join(os.getcwd(),'data','stats.csv'), 'x') as f:
-            pass
-    except Exception as e:
+if os.path.exists('stats.csv'):
+    shutil.move('stats.csv', 'data/stats.csv')
+if os.path.exists('temp.csv'):
+    shutil.move('temp.csv', 'data/temp.csv')
+
+settings = json.load(open(os.path.join(os.getcwd(),'data','settings.json'), "r"))
+try:
+    with open(os.path.join(os.getcwd(),'data','stats.csv'), 'x') as f:
         pass
-    wks1 = None
-    if getattr(sys, 'frozen', False):  # if running in a PyInstaller bundle
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.abspath(".")
-    second = timedelta(seconds=1)
-    currentSession = {'splits stats': {}, 'general stats': {}}
-    currentSessionMarker = 'X'
+except Exception as e:
+    pass
+wks1 = None
+if getattr(sys, 'frozen', False):  # if running in a PyInstaller bundle
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.abspath(".")
+second = timedelta(seconds=1)
+currentSession = {'splits stats': {}, 'general stats': {}}
+currentSessionMarker = 'X'
 
-    headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
-                    'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT',
-                    'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', '', '', '', '', '', '', 'Iron',
-                    'Wall Resets Since Prev',
-                    'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev',
-                    'Session Marker',
-                    'RTA Distribution', 'seed', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
-                    'Obsidian Placed', 'Diamond Sword', 'Blocks Mined','Piglin Barters','Food eaten']
 
-    advChecks = [
-        ("minecraft:recipes/misc/charcoal", "has_log"),
-        ("minecraft:story/iron_tools", "iron_pickaxe"),
-        ("timelines", "enter_nether"),
-        ("timelines", "enter_bastion"),
-        ("timelines", "enter_fortress"),
-        ("timelines", "nether_travel"),
-        ("timelines", "enter_stronghold"),
-        ("timelines", "enter_end"),
-    ]
 
-    statsChecks = [
-        "nothing lol",
-        ("minecraft:dropped", "minecraft:gold_ingot"),
-        ("minecraft:picked_up", "minecraft:blaze_rod"),
-        ("minecraft:killed", "minecraft:blaze"),
-        ("minecraft:crafted", "minecraft:diamond_pickaxe"),
-        ("minecraft:used", "minecraft:ender_pearl"),
-        ("minecraft:custom", "minecraft:deaths"),
-        ("minecraft:used", "minecraft:obsidian"),
-        ("minecraft:crafted", "minecraft:diamond_sword")
-    ]
+advChecks = [
+    ("minecraft:recipes/misc/charcoal", "has_log"),
+    ("minecraft:story/iron_tools", "iron_pickaxe"),
+    ("timelines", "enter_nether"),
+    ("timelines", "enter_bastion"),
+    ("timelines", "enter_fortress"),
+    ("timelines", "nether_travel"),
+    ("timelines", "enter_stronghold"),
+    ("timelines", "enter_end"),
+]
 
-    blocks = ['minecraft:gravel',
-             'minecraft:dirt',
-             'minecraft:sand',
-             'minecraft:soul_sand',
-             'minecraft:soul_soil',
-             'minecraft:stone',
-             'minecraft:andesite',
-             'minecraft:diorite',
-             'minecraft:granite',
-             'minecraft:gold_block',
-             'minecraft:basalt',
-             'minecraft:netherack',
-             'minecraft:nether_bricks',
-             'minecraft:blackstone',
-             'minecraft:blackstone_wall',
-             'minecraft:blackstone_slab',
-             'minecraft:blackstone_stairs',
-             'minecraft:gilded_blackstone',
-             'minecraft:blackstone',
-             'minecraft:polished_blackstone_bricks',
-             'minecraft:chiseled_polished_blackstone',
-             'minecraft:polished_blackstone_brick_wall',
-             'minecraft:polished_blackstone_brick_slab',
-             'minecraft:polished_blackstone_brick_stairs',
-             'minecraft:cracked_polished_blackstone_bricks',
-             'minecraft:crafting_table',
-             'minecraft:oak_log',
-             'minecraft:birch_log',
-             'minecraft:spruce_log',
-             'minecraft:jungle_log',
-             'minecraft:acacia_log',
-             'minecraft:dark_oak_log',
-             'minecraft:warped_stem',
-             'minecraft:crimson_stem',
-             'minecraft:oak_leaves',
-             'minecraft:birch_leaves',
-             'minecraft:spruce_leaves',
-             'minecraft:jungle_leaves',
-             'minecraft:acacia_leaves',
-             'minecraft:dark_oak_leaves'
-             ]
-    
-    piglin_barters = [
-        'minecraft:enchanted_book',
-        'minecraft:iron_boots',
-        'minecraft:potion',
-        'minecraft:splash_potion',
-        'minecraft:iron_nugget',
-        'minecraft:ender_pearl',
-        'minecraft:string',
-        'minecraft:quartz',
-        'minecraft:obsidian',
-        'minecraft:crying_obsidian',
-        'minecraft:fire_charge',
-        'minecraft:leather',
-        'minecraft:soul_sand',
-        'minecraft:nether_brick',
-        'minecraft:glowstone_dust',
-        'minecraft:gravel',
-        'minecraft:magma_cream'
-    ]
+statsChecks = [
+    "nothing lol",
+    ("minecraft:dropped", "minecraft:gold_ingot"),
+    ("minecraft:picked_up", "minecraft:blaze_rod"),
+    ("minecraft:killed", "minecraft:blaze"),
+    ("minecraft:crafted", "minecraft:diamond_pickaxe"),
+    ("minecraft:used", "minecraft:ender_pearl"),
+    ("minecraft:custom", "minecraft:deaths"),
+    ("minecraft:used", "minecraft:obsidian"),
+    ("minecraft:crafted", "minecraft:diamond_sword")
+]
+
+blocks = ['minecraft:gravel',
+            'minecraft:dirt',
+            'minecraft:sand',
+            'minecraft:soul_sand',
+            'minecraft:soul_soil',
+            'minecraft:stone',
+            'minecraft:andesite',
+            'minecraft:diorite',
+            'minecraft:granite',
+            'minecraft:gold_block',
+            'minecraft:basalt',
+            'minecraft:netherack',
+            'minecraft:nether_bricks',
+            'minecraft:blackstone',
+            'minecraft:blackstone_wall',
+            'minecraft:blackstone_slab',
+            'minecraft:blackstone_stairs',
+            'minecraft:gilded_blackstone',
+            'minecraft:blackstone',
+            'minecraft:polished_blackstone_bricks',
+            'minecraft:chiseled_polished_blackstone',
+            'minecraft:polished_blackstone_brick_wall',
+            'minecraft:polished_blackstone_brick_slab',
+            'minecraft:polished_blackstone_brick_stairs',
+            'minecraft:cracked_polished_blackstone_bricks',
+            'minecraft:crafting_table',
+            'minecraft:oak_log',
+            'minecraft:birch_log',
+            'minecraft:spruce_log',
+            'minecraft:jungle_log',
+            'minecraft:acacia_log',
+            'minecraft:dark_oak_log',
+            'minecraft:warped_stem',
+            'minecraft:crimson_stem',
+            'minecraft:oak_leaves',
+            'minecraft:birch_leaves',
+            'minecraft:spruce_leaves',
+            'minecraft:jungle_leaves',
+            'minecraft:acacia_leaves',
+            'minecraft:dark_oak_leaves'
+]
+
+piglin_barters = [
+    'minecraft:enchanted_book',
+    'minecraft:iron_boots',
+    'minecraft:potion',
+    'minecraft:splash_potion',
+    'minecraft:iron_nugget',
+    'minecraft:ender_pearl',
+    'minecraft:string',
+    'minecraft:quartz',
+    'minecraft:obsidian',
+    'minecraft:crying_obsidian',
+    'minecraft:fire_charge',
+    'minecraft:leather',
+    'minecraft:soul_sand',
+    'minecraft:nether_brick',
+    'minecraft:glowstone_dust',
+    'minecraft:gravel',
+    'minecraft:magma_cream'
+]
+
 foods = [
     'minecraft:apple',
     'minecraft:baked_potato',
@@ -250,6 +244,88 @@ foods = [
     'minecraft:sweet_berries',
     'minecraft:tropical_fish'
 ]
+mobs = [
+    'minecraft:bat',
+    'minecraft:bee',
+    'minecraft:blaze',
+    'minecraft:cat',
+    'minecraft:cave_spider',
+    'minecraft:chicken',
+    'minecraft:cod',
+    'minecraft:cow',
+    'minecraft:creeper',
+    'minecraft:dolphin',
+    'minecraft:donkey',
+    'minecraft:drowned',
+    'minecraft:elder_guardian',
+    'minecraft:ender_dragon',
+    'minecraft:enderman',
+    'minecraft:endermite',
+    'minecraft:evoker',
+    'minecraft:fox',
+    'minecraft:ghast',
+    'minecraft:giant',
+    'minecraft:glow_squid',
+    'minecraft:goat',
+    'minecraft:guardian',
+    'minecraft:hoglin',
+    'minecraft:horse',
+    'minecraft:husk',
+    'minecraft:iron_golem',
+    'minecraft:llama',
+    'minecraft:magma_cube',
+    'minecraft:mooshroom',
+    'minecraft:mule',
+    'minecraft:ocelot',
+    'minecraft:panda',
+    'minecraft:parrot',
+    'minecraft:phantom',
+    'minecraft:pig',
+    'minecraft:piglin',
+    'minecraft:pillager',
+    'minecraft:polar_bear',
+    'minecraft:pufferfish',
+    'minecraft:rabbit',
+    'minecraft:ravager',
+    'minecraft:salmon',
+    'minecraft:sheep',
+    'minecraft:shulker',
+    'minecraft:silverfish',
+    'minecraft:skeleton',
+    'minecraft:skeleton_horse',
+    'minecraft:slime',
+    'minecraft:snow_golem',
+    'minecraft:spider',
+    'minecraft:squid',
+    'minecraft:stray',
+    'minecraft:strider',
+    'minecraft:trader_llama',
+    'minecraft:tropical_fish',
+    'minecraft:turtle',
+    'minecraft:vex',
+    'minecraft:villager',
+    'minecraft:vindicator',
+    'minecraft:wandering_trader',
+    'minecraft:witch',
+    'minecraft:wither',
+    'minecraft:wither_skeleton',
+    'minecraft:wolf',
+    'minecraft:zoglin',
+    'minecraft:zombie',
+    'minecraft:zombie_horse',
+    'minecraft:zombie_villager',
+    'minecraft:zombified_piglin'
+]
+
+
+headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
+                'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT',
+                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', '', '', '', '', '', '', 'Iron',
+                'Wall Resets Since Prev',
+                'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev',
+                'Session Marker',
+                'RTA Distribution', 'seed', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
+                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined']+[i.split(':')[1].capitalize() for i in piglin_barters]+[i.split(':')[1].capitalize() for i in mobs]+[i.split(':')[1].capitalize() for i in foods]
 
 """
 global variables
@@ -496,10 +572,9 @@ class Update:
             latest_tag = release_data["tag_name"]
         else:
             return False
-        if latest_tag == __version__:
-            return False
-        else:
-            return True
+        
+        return not latest_tag == __version__
+
 
     @classmethod
     def openGithub(cls):
@@ -793,7 +868,7 @@ class NewRecord(FileSystemEventHandler):
                 )
 
         # Generate other stuff
-        enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, eaten = Tracking.getMiscData(stats, adv)
+        enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, mobs_killed, food_eaten = Tracking.getMiscData(stats, adv)
         if settings['track seed']:
             try:
                 save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
@@ -813,7 +888,8 @@ class NewRecord(FileSystemEventHandler):
         d = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
         data1 = ([str(d), iron_source, enter_type, gold_source, spawn_biome] + self.this_run[:-5] + [''] * 6 +
                 [Logistics.ms_to_string(iron_time), str(self.wall_resets), str(self.splitless_count),
-                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined, trades, str(eaten)])
+                 Logistics.ms_to_string(self.rta_spent), Logistics.ms_to_string(self.break_time), Logistics.ms_to_string(self.wall_time), self.isFirstRun, self.rtaString, seed] + self.this_run[-5:] + [blocks_mined]+trades+mobs_killed+food_eaten)
+        
         data2 = []
         for item in data1:
             if type(item) == str and ":" in item and item.count("-") < 2:
@@ -1043,7 +1119,7 @@ class Tracking:
         CurrentSession.resetCurrentSession()
         Tracking.trackResets()
 
-
+    
     @classmethod
     def getMiscData(cls, stats, adv):
         enter_type = "None"
@@ -1155,6 +1231,19 @@ class Tracking:
                         else:
                             iron_source = "Buried Treasure"
 
+        trades_list = ['0']*len(piglin_barters)
+        if "minecraft:picked_up" in stats:
+            for i in range(len(piglin_barters)):
+                if piglin_barters[i] in stats["minecraft:picked_up"]:
+                    trades_list[i] = str(stats["minecraft:picked_up"][piglin_barters[i]])
+
+        # corrects for accedentally dropping shit, todo: account for mining gravel for example
+        if 'minecraft:dropped' in stats:
+            for k, v in stats['minecraft:dropped'].items():
+                if k in piglin_barters:
+                    if trades_list[piglin_barters.index(k)]*2 >= v:
+                        trades_list[piglin_barters.index(k)] -= v
+
         blocks_mined_list = ['0'] * len(blocks)
 
         if "minecraft:mined" in stats:
@@ -1162,33 +1251,22 @@ class Tracking:
                 if blocks[i] in stats["minecraft:mined"]:
                     blocks_mined_list[i] = str(stats["minecraft:mined"][blocks[i]])
 
+
         blocks_mined = '$'.join(blocks_mined_list)
 
-        trades_list = ['0']*len(piglin_barters)
-        if "minecraft:picked_up" in stats:
-            for i in range(len(piglin_barters)):
-                if piglin_barters[i] in stats["minecraft:picked_up"]:
-                    trades_list[i] = str(stats["minecraft:picked_up"][piglin_barters[i]])
-
-        if 'minecraft:dropped' in stats:
-            for k, v in stats['minecraft:dropped']:
-                if k in piglin_barters:
-                    if trades_list[piglin_barters.index(k)]*2 >= v:
-                        trades_list[piglin_barters.index(k)] -= v
-
-        trades = '$'.join(trades_list)
+        killed_list = ['0']*len(mobs)
         if 'minecraft:killed' in stats:
-            killed_mobs = stats['minecraft:killed']
+            for i in range(len(mobs)):
+                if mobs[i] in stats["minecraft:killed"]:
+                    killed_list[i] = str(stats["minecraft:killed"][mobs[i]])
         
-        food_eaten = 0
+        food_list = ['0']*len(foods)
         if 'minecraft:used' in stats:
-            for k, v in stats['minecraft:used'].items():
-                if k in foods:
-                    food_eaten += int(v)
-                    
-        r = enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, food_eaten
-        print(r)
-        return r
+            for i in range(len(foods)):
+                food_list[i] = str(stats['minecraft:used'].get(foods[i],0))
+
+
+        return enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades_list, killed_list, food_list
 
     @classmethod
     def trackOldRecords(cls):
