@@ -104,7 +104,7 @@ if os.path.exists('stats.csv'):
 if os.path.exists('temp.csv'):
     shutil.move('temp.csv', 'data/temp.csv')
 
-settings = json.load(open(os.path.join(os.getcwd(),'data','settings.json'), "r"))
+SETTINGS_JSON = json.load(open(os.path.join(os.getcwd(),'data','settings.json'), "r"))
 try:
     with open(os.path.join(os.getcwd(),'data','stats.csv'), 'x') as f:
         pass
@@ -121,7 +121,7 @@ currentSessionMarker = 'X'
 
 
 
-advChecks = [
+ADV_CHECKS = [
     ("minecraft:recipes/misc/charcoal", "has_log"),
     ("minecraft:story/iron_tools", "iron_pickaxe"),
     ("timelines", "enter_nether"),
@@ -132,7 +132,7 @@ advChecks = [
     ("timelines", "enter_end"),
 ]
 
-statsChecks = [
+STAT_CHECKS = [
     "nothing lol",
     ("minecraft:dropped", "minecraft:gold_ingot"),
     ("minecraft:picked_up", "minecraft:blaze_rod"),
@@ -144,7 +144,7 @@ statsChecks = [
     ("minecraft:crafted", "minecraft:diamond_sword")
 ]
 
-blocks = ['minecraft:gravel',
+TRACKED_BLOCKS = ['minecraft:gravel',
             'minecraft:dirt',
             'minecraft:sand',
             'minecraft:soul_sand',
@@ -186,7 +186,7 @@ blocks = ['minecraft:gravel',
             'minecraft:dark_oak_leaves'
 ]
 
-piglin_barters = [
+TRACKED_BARTERS = [
     'minecraft:enchanted_book',
     'minecraft:iron_boots',
     'minecraft:potion',
@@ -206,7 +206,7 @@ piglin_barters = [
     'minecraft:magma_cream'
 ]
 
-foods = [
+TRACKED_FOODS = [
     'minecraft:bread',
     'minecraft:cooked_beef',
     'minecraft:cooked_chicken',
@@ -219,7 +219,7 @@ foods = [
     'minecraft:golden_carrot',
     'minecraft:mushroom_stew',
 ]
-mobs = [
+TRACKED_MOBS = [
     'minecraft:blaze',
     'minecraft:chicken',
     'minecraft:cod',
@@ -241,21 +241,22 @@ mobs = [
     'minecraft:zombie',
 ]
 
-travel_methods = [
+TRAVEL_METHODS = [
     'minecraft:walk_on_water_one_cm',
     'minecraft:walk_one_cm',
     'minecraft:walk_under_water_one_cm',
     'minecraft:swim_one_cm',
     'minecraft:boat_one_cm'
 ]
-headerLabels = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
+
+HEADER_LABELS = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
                 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End', 'Retimed IGT',
                 'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel','Deaths','Jumps','', 'Eyes Thrown','Iron time',
                 'Wall Resets Since Prev',
                 'Played Since Prev', 'RTA Since Prev', 'Break RTA Since Prev', 'Wall Time Since Prev',
                 'Session Marker',
                 'RTA Distribution', 'seed', 'Diamond Pick', 'Pearls Thrown', 'Deaths',
-                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined'] + [i.split(':')[1] for i in piglin_barters] + [i.split(':')[1]for i in mobs] + [i.split(':')[1] for i in foods]+ [i.split(':')[1].replace('_one_cm','') for i in travel_methods]
+                'Obsidian Placed', 'Diamond Sword', 'Blocks Mined'] + [i.split(':')[1] for i in TRACKED_BARTERS] + [i.split(':')[1]for i in TRACKED_MOBS] + [i.split(':')[1] for i in TRACKED_FOODS]+ [i.split(':')[1].replace('_one_cm','') for i in TRAVEL_METHODS]
 
 """
 global variables
@@ -310,11 +311,11 @@ class Stats:
 class Logistics:
     @classmethod
     def verify_settings(cls):
-        if settings["use sheets"]:
+        if SETTINGS_JSON["use sheets"]:
             global wks1
             try:
                 gc_sheets = pygsheets.authorize(service_file="credentials.json")
-                sh = gc_sheets.open_by_url(settings['sheet link'])
+                sh = gc_sheets.open_by_url(SETTINGS_JSON['sheet link'])
                 wks1 = sh.worksheet_by_title('Raw Data')
             except FileNotFoundError:
                 input("Put credentials.json in the same directory as the executable. Press enter when you have done this.")
@@ -325,52 +326,52 @@ class Logistics:
                 Logistics.verify_settings()
                 return
             except (pygsheets.SpreadsheetNotFound, pygsheets.NoValidUrlKeyFound):
-                if settings["sheet link"] == "":
-                    settings["sheet link"] = input("Paste the link to your spreadsheet: ")
+                if SETTINGS_JSON["sheet link"] == "":
+                    SETTINGS_JSON["sheet link"] = input("Paste the link to your spreadsheet: ")
                     Logistics.verify_settings()
                     return
                 else:
                     try:
-                        response = requests.get(settings["sheet link"])
+                        response = requests.get(SETTINGS_JSON["sheet link"])
                         if response.status_code != 200:
                             raise Exception
                     except Exception:
                         print("Invalid link")
-                        settings["sheet link"] = input("Paste the link to your spreadsheet: ")
+                        SETTINGS_JSON["sheet link"] = input("Paste the link to your spreadsheet: ")
                         Logistics.verify_settings()
                         return
             except pygsheets.WorksheetNotFound:
                 input("The spreadsheet must have a subsheet named 'Raw Data'. Press enter when you have fixed this.")
                 Logistics.verify_settings()
                 return
-        if settings["track seed"]:
+        if SETTINGS_JSON["track seed"]:
             try:
-                if not os.path.exists(os.path.join(settings["MultiMC directory"], "instances")):
+                if not os.path.exists(os.path.join(SETTINGS_JSON["MultiMC directory"], "instances")):
                     raise Exception
             except Exception:
-                settings["MultiMC directory"] = input("seed tracking requires you to input your MultiMC directory. Paste it here: ").replace("\\", "/")
+                SETTINGS_JSON["MultiMC directory"] = input("seed tracking requires you to input your MultiMC directory. Paste it here: ").replace("\\", "/")
                 Logistics.verify_settings()
                 return
         try:
-            if not os.path.exists(settings["records path"]):
+            if not os.path.exists(SETTINGS_JSON["records path"]):
                 raise Exception
         except Exception:
-            settings["records path"] = input("Records path is nonexistent. Please enter your records path here: ").replace("\\", "/")
+            SETTINGS_JSON["records path"] = input("Records path is nonexistent. Please enter your records path here: ").replace("\\", "/")
             Logistics.verify_settings()
             return
 
         for setting in ["use sheets", "delete-old-records", "detect RSG", "track seed", "multi instance"]:
-            if type(settings[setting]) != bool:
+            if type(SETTINGS_JSON[setting]) != bool:
                 new_setting = ""
                 while new_setting not in ['y' 'Y', 'Yes', 'yes', 'n', 'N', 'No', 'no']:
                     new_setting = input(f"Choose yes or no for the'{setting}' setting (y/n): ")
                 if new_setting in ['y' 'Y', 'Yes', 'yes']:
-                    settings[setting] = True
+                    SETTINGS_JSON[setting] = True
                 else:
-                    settings[setting] = False
+                    SETTINGS_JSON[setting] = False
                 Logistics.verify_settings()
                 return
-        if type(settings['break threshold']) not in [float, int] or settings['break threshold'] < 1:
+        if type(SETTINGS_JSON['break threshold']) not in [float, int] or SETTINGS_JSON['break threshold'] < 1:
             new_threshold = 0
             while type(new_threshold) not in [float, int] or new_threshold < 1:
                 try:
@@ -380,7 +381,7 @@ class Logistics:
             Logistics.verify_settings()
             return
         with open("data/settings.json", "w") as settings_file:
-            json.dump(settings, settings_file)
+            json.dump(SETTINGS_JSON, settings_file)
 
     
 
@@ -450,7 +451,7 @@ class Logistics:
         if not timedelta(hours=0) < td < timedelta(hours=12):
             td = timedelta(days=1) - td
         t = datetime(1970, 1, 1) + td
-        return t.strftime("%H:%M:%S.%f")
+        return t.strftime("%H:%M:%S")
 
     @classmethod
     def getMean(cls, data):
@@ -485,8 +486,8 @@ class Logistics:
     @classmethod
     def stringToTimedelta(cls, TDString):
         parts = TDString.split(".")
-        links = parts[0].split(":") + [parts[1]]
-        return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]), microseconds=int(links[3]))
+        links = parts[0].split(":") 
+        return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
 
 class Update:
@@ -519,19 +520,19 @@ class CurrentSession:
             if row[i] == '':
                 row[i] = None
         rowCells = {}
-        for i in range(len(headerLabels)):
+        for i in range(len(HEADER_LABELS)):
             # print(f'{row[i]} : {type(row[i])} : {headerLabels[i]}')
             if row[i] is not None and '-' in row[i] and ':' in row[i]:
-                rowCells[headerLabels[i]] = row[i]
+                rowCells[HEADER_LABELS[i]] = row[i]
             elif row[i] is not None and ':' in row[i]:
-                rowCells[headerLabels[i]] = Logistics.stringToTimedelta(row[i])/second
+                rowCells[HEADER_LABELS[i]] = Logistics.stringToTimedelta(row[i])/second
             elif type(row[i]) == str:
                 try:
-                    rowCells[headerLabels[i]] = int(row[i])
+                    rowCells[HEADER_LABELS[i]] = int(row[i])
                 except Exception as e2:
-                    rowCells[headerLabels[i]] = row[i]
+                    rowCells[HEADER_LABELS[i]] = row[i]
             else:
-                rowCells[headerLabels[i]] = row[i]
+                rowCells[HEADER_LABELS[i]] = row[i]
 
         # resets/time
         currentSession['general stats']['total RTA'] += rowCells['RTA'] + rowCells['RTA Since Prev'] + rowCells['Wall Time Since Prev']
@@ -640,7 +641,7 @@ class Sheets:
 
     @classmethod
     def setup(cls):
-        wks1.update_row(index=1, values=headerLabels, col_offset=0)
+        wks1.update_row(index=1, values=HEADER_LABELS, col_offset=0)
 
     @staticmethod
     def find_first_empty_row(worksheet):
@@ -692,7 +693,7 @@ class NewRecord(FileSystemEventHandler):
         self.isFirstRun = '$' + __version__
 
     def ensure_run(self):
-        if not settings['detect RSG']:
+        if not SETTINGS_JSON['detect RSG']:
             return True, ""
         if self.path is None:
             return False, "Path error"
@@ -703,7 +704,7 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt, dt1=None):
-        self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
+        self.this_run = [''] * (len(ADV_CHECKS) + 2 + len(STAT_CHECKS))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
             try:
@@ -729,8 +730,8 @@ class NewRecord(FileSystemEventHandler):
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            if Logistics.isOnWallScreen() or settings['multi instance']:
-                if run_differ > timedelta(seconds=int(settings["break threshold"])):
+            if Logistics.isOnWallScreen() or SETTINGS_JSON['multi instance']:
+                if run_differ > timedelta(seconds=int(SETTINGS_JSON["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
                     self.wall_time += run_differ.total_seconds() * 1000
@@ -756,19 +757,19 @@ class NewRecord(FileSystemEventHandler):
         # Advancements
         has_done_something = False
         self.this_run[0] = Logistics.ms_to_string(self.data["final_rta"])
-        for idx in range(len(advChecks)):
+        for idx in range(len(ADV_CHECKS)):
             # Prefer to read from timelines
-            if advChecks[idx][0] == "timelines" and self.this_run[idx + 1] == '':
+            if ADV_CHECKS[idx][0] == "timelines" and self.this_run[idx + 1] == '':
                 for tl in self.data["timelines"]:
-                    if tl["name"] == advChecks[idx][1]:
+                    if tl["name"] == ADV_CHECKS[idx][1]:
                         if lan > int(tl["rta"]):
                             self.this_run[idx + 1] = Logistics.ms_to_string(tl["igt"])
                             has_done_something = True
             # Read other stuff from advancements
-            elif (advChecks[idx][0] in adv and adv[advChecks[idx][0]]["complete"] and self.this_run[idx + 1] == ''):
-                if lan > int(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["rta"]):
+            elif (ADV_CHECKS[idx][0] in adv and adv[ADV_CHECKS[idx][0]]["complete"] and self.this_run[idx + 1] == ''):
+                if lan > int(adv[ADV_CHECKS[idx][0]]["criteria"][ADV_CHECKS[idx][1]]["rta"]):
                     self.this_run[idx +
-                                  1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
+                                  1] = Logistics.ms_to_string(adv[ADV_CHECKS[idx][0]]["criteria"][ADV_CHECKS[idx][1]]["igt"])
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
@@ -794,24 +795,24 @@ class NewRecord(FileSystemEventHandler):
         self.rtaString += str(math.trunc(self.data["final_rta"]/1000))
 
         # Stats
-        self.this_run[len(advChecks) + 1] = Logistics.ms_to_string(
+        self.this_run[len(ADV_CHECKS) + 1] = Logistics.ms_to_string(
             self.data["final_igt"])
-        self.this_run[len(advChecks) + 2] = Logistics.ms_to_string(
+        self.this_run[len(ADV_CHECKS) + 2] = Logistics.ms_to_string(
             self.data["retimed_igt"])
-        for idx in range(1, len(statsChecks)):
+        for idx in range(1, len(STAT_CHECKS)):
             if (
-                statsChecks[idx][0] in stats
-                and statsChecks[idx][1] in stats[statsChecks[idx][0]]
+                STAT_CHECKS[idx][0] in stats
+                and STAT_CHECKS[idx][1] in stats[STAT_CHECKS[idx][0]]
             ):
-                self.this_run[len(advChecks) + 2 + idx] = str(
-                    stats[statsChecks[idx][0]][statsChecks[idx][1]]
+                self.this_run[len(ADV_CHECKS) + 2 + idx] = str(
+                    stats[STAT_CHECKS[idx][0]][STAT_CHECKS[idx][1]]
                 )
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades, mobs_killed, food_eaten, flint, gravel_mined, deaths, eyes_thrown, jumps, travel_list = Tracking.getMiscData(stats, adv)
-        if settings['track seed']:
+        if SETTINGS_JSON['track seed']:
             try:
-                save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
+                save_path = Logistics.find_save(SETTINGS_JSON['MultiMC directory'], self.path, self.data["world_name"])
                 nbtfile = nbt.load(save_path + "/level.dat")
                 seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
@@ -834,19 +835,19 @@ class NewRecord(FileSystemEventHandler):
         
         data2 = []
         for item in data1:
+            # print(item)
             if type(item) == str and ":" in item and item.count("-") < 2:
-                data2.append("*" + item[:-3])
+                data2.append(item)
             else:
                 data2.append(item)
 
         self.isFirstRun = ''
-        # print(data1)
 
         with open("data/stats.csv", "a", newline="") as outfile:
             writer = csv.writer(outfile)
             writer.writerow(data1)
-
-        if settings['use sheets']:
+        
+        if SETTINGS_JSON['use sheets']:
             with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
                 reader.insert(0, data2)
@@ -890,7 +891,7 @@ class OldRecord:
 
 
     def ensure_run(self):
-        if not settings['detect RSG']:
+        if not SETTINGS_JSON['detect RSG']:
             return True, ""
         if self.path is None:
             return False, "Path error"
@@ -901,7 +902,7 @@ class OldRecord:
         return True, ""
 
     def analyze_record(self, path):
-        self.this_run = [''] * (len(advChecks) + 2 + len(statsChecks))
+        self.this_run = [''] * (len(ADV_CHECKS) + 2 + len(STAT_CHECKS))
         self.path = path
         with open(self.path, "r") as record_file:
             try:
@@ -922,8 +923,8 @@ class OldRecord:
             if run_differ < timedelta(0):
                 self.data['final_rta'] = self.data["final_igt"]
                 run_differ = (now - self.prev_datetime) - timedelta(milliseconds=self.data["final_rta"])
-            if Logistics.isOnWallScreen() or settings['multi instance']:
-                if run_differ > timedelta(seconds=int(settings["break threshold"])):
+            if Logistics.isOnWallScreen() or SETTINGS_JSON['multi instance']:
+                if run_differ > timedelta(seconds=int(SETTINGS_JSON["break threshold"])):
                     self.break_time += run_differ.total_seconds() * 1000
                 else:
                     self.wall_time += run_differ.total_seconds() * 1000
@@ -949,19 +950,19 @@ class OldRecord:
         # Advancements
         has_done_something = False
         self.this_run[0] = Logistics.ms_to_string(self.data["final_rta"])
-        for idx in range(len(advChecks)):
+        for idx in range(len(ADV_CHECKS)):
             # Prefer to read from timelines
-            if advChecks[idx][0] == "timelines" and self.this_run[idx + 1] == '':
+            if ADV_CHECKS[idx][0] == "timelines" and self.this_run[idx + 1] == '':
                 for tl in self.data["timelines"]:
-                    if tl["name"] == advChecks[idx][1]:
+                    if tl["name"] == ADV_CHECKS[idx][1]:
                         if lan > int(tl["rta"]):
                             self.this_run[idx + 1] = Logistics.ms_to_string(tl["igt"])
                             has_done_something = True
             # Read other stuff from advancements
-            elif (advChecks[idx][0] in adv and adv[advChecks[idx][0]]["complete"] and self.this_run[idx + 1] == ''):
-                if lan > int(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["rta"]):
+            elif (ADV_CHECKS[idx][0] in adv and adv[ADV_CHECKS[idx][0]]["complete"] and self.this_run[idx + 1] == ''):
+                if lan > int(adv[ADV_CHECKS[idx][0]]["criteria"][ADV_CHECKS[idx][1]]["rta"]):
                     self.this_run[idx +
-                                  1] = Logistics.ms_to_string(adv[advChecks[idx][0]]["criteria"][advChecks[idx][1]]["igt"])
+                                  1] = Logistics.ms_to_string(adv[ADV_CHECKS[idx][0]]["criteria"][ADV_CHECKS[idx][1]]["igt"])
                     has_done_something = True
             # diamond pick
             elif (idx == 1) and ("minecraft:crafted" in stats and "minecraft:diamond_pickaxe" in stats["minecraft:crafted"]) and self.this_run[idx + 1] == '':
@@ -987,24 +988,24 @@ class OldRecord:
         self.rtaString += str(math.trunc(self.data["final_rta"]/1000))
 
         # Stats
-        self.this_run[len(advChecks) + 1] = Logistics.ms_to_string(
+        self.this_run[len(ADV_CHECKS) + 1] = Logistics.ms_to_string(
             self.data["final_igt"])
-        self.this_run[len(advChecks) + 2] = Logistics.ms_to_string(
+        self.this_run[len(ADV_CHECKS) + 2] = Logistics.ms_to_string(
             self.data["retimed_igt"])
-        for idx in range(1, len(statsChecks)):
+        for idx in range(1, len(STAT_CHECKS)):
             if (
-                statsChecks[idx][0] in stats
-                and statsChecks[idx][1] in stats[statsChecks[idx][0]]
+                STAT_CHECKS[idx][0] in stats
+                and STAT_CHECKS[idx][1] in stats[STAT_CHECKS[idx][0]]
             ):
-                self.this_run[len(advChecks) + 2 + idx] = str(
-                    stats[statsChecks[idx][0]][statsChecks[idx][1]]
+                self.this_run[len(ADV_CHECKS) + 2 + idx] = str(
+                    stats[STAT_CHECKS[idx][0]][STAT_CHECKS[idx][1]]
                 )
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, blocks_mined = Tracking.getMiscData(stats, adv)
-        if settings['track seed']:
+        if SETTINGS_JSON['track seed']:
             try:
-                save_path = Logistics.find_save(settings['MultiMC directory'], self.path, self.data["world_name"])
+                save_path = Logistics.find_save(SETTINGS_JSON['MultiMC directory'], self.path, self.data["world_name"])
                 nbtfile = nbt.load(save_path + "/level.dat")
                 seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
                 seed = re.sub(r'[^0-9]', '', str(seed))
@@ -1035,7 +1036,7 @@ class OldRecord:
             writer = csv.writer(outfile)
             writer.writerow(data1)
 
-        if settings['use sheets']:
+        if SETTINGS_JSON['use sheets']:
             with open("data/temp.csv", "r") as infile:
                 reader = list(csv.reader(infile))
                 reader.insert(0, data2)
@@ -1173,58 +1174,58 @@ class Tracking:
                         else:
                             iron_source = "Buried Treasure"
         flint, gravel_mined, deaths, jumps, eyes_thrown = "0", "0", "0", "0", "0"
-        trades_list = [0]*len(piglin_barters)
+        trades_list = [0]*len(TRACKED_BARTERS)
         if "minecraft:picked_up" in stats:
             if 'minecraft:flint' in stats['minecraft:picked_up']:
                 flint = str(stats['minecraft:picked_up']['minecraft:flint'])
 
-            for i in range(len(piglin_barters)):
-                if piglin_barters[i] in stats["minecraft:picked_up"]:
-                    trades_list[i] = int(stats["minecraft:picked_up"][piglin_barters[i]])
+            for i in range(len(TRACKED_BARTERS)):
+                if TRACKED_BARTERS[i] in stats["minecraft:picked_up"]:
+                    trades_list[i] = int(stats["minecraft:picked_up"][TRACKED_BARTERS[i]])
 
         # corrects for accedentally dropping shit, todo: account for mining gravel for example
         if 'minecraft:dropped' in stats:
             for k, v in stats['minecraft:dropped'].items():
-                if k in piglin_barters:
-                    if trades_list[piglin_barters.index(k)]*2 >= v:
-                        trades_list[piglin_barters.index(k)] -= v
+                if k in TRACKED_BARTERS:
+                    if trades_list[TRACKED_BARTERS.index(k)]*2 >= v:
+                        trades_list[TRACKED_BARTERS.index(k)] -= v
 
-        blocks_mined_list = ['0'] * len(blocks)
+        blocks_mined_list = ['0'] * len(TRACKED_BLOCKS)
 
         if "minecraft:mined" in stats:
-            for i in range(len(blocks)):
-                if blocks[i] in stats["minecraft:mined"]:
-                    blocks_mined_list[i] = str(stats["minecraft:mined"][blocks[i]])
+            for i in range(len(TRACKED_BLOCKS)):
+                if TRACKED_BLOCKS[i] in stats["minecraft:mined"]:
+                    blocks_mined_list[i] = str(stats["minecraft:mined"][TRACKED_BLOCKS[i]])
 
 
         blocks_mined = '$'.join(blocks_mined_list)
 
-        killed_list = ['0']*len(mobs)
+        killed_list = ['0']*len(TRACKED_MOBS)
         if 'minecraft:killed' in stats:
-            for i in range(len(mobs)):
-                if mobs[i] in stats["minecraft:killed"]:
-                    killed_list[i] = str(stats["minecraft:killed"][mobs[i]])
+            for i in range(len(TRACKED_MOBS)):
+                if TRACKED_MOBS[i] in stats["minecraft:killed"]:
+                    killed_list[i] = str(stats["minecraft:killed"][TRACKED_MOBS[i]])
         
-        food_list = ['0']*len(foods)
+        food_list = ['0']*len(TRACKED_FOODS)
         if 'minecraft:used' in stats:
             if 'minecraft:ender_eye' in stats['minecraft:used']:
                 eyes_thrown = str(stats['minecraft:used']['minecraft:ender_eye'])
-            for i in range(len(foods)):
-                food_list[i] = str(stats['minecraft:used'].get(foods[i],0))
+            for i in range(len(TRACKED_FOODS)):
+                food_list[i] = str(stats['minecraft:used'].get(TRACKED_FOODS[i],0))
 
-        dist_list = ['0']*len(travel_methods)
+        dist_list = ['0']*len(TRAVEL_METHODS)
         if 'minecraft:custom' in stats:
             if 'minecraft:deaths' in stats['minecraft:custom']:
                 deaths = str(stats['minecraft:custom']['minecraft:deaths'])
             if 'minecraft:jump' in stats['minecraft:custom']:
                 jumps = str(stats['minecraft:custom']['minecraft:jump'])
                 
-            for i, c in enumerate(travel_methods):
+            for i, c in enumerate(TRAVEL_METHODS):
                 try:
                     dist_list[i] = str(stats['minecraft:custom'][c]/100)
                 except KeyError:
                     pass
-        gravel_mined = blocks_mined_list[blocks.index('minecraft:gravel')]
+        gravel_mined = blocks_mined_list[TRACKED_BLOCKS.index('minecraft:gravel')]
         #   flint, gravel_mined, deaths, eyes_thrown
         trades_list=  list(map(str, trades_list))
         return enter_type, gold_source, spawn_biome, iron_source, blocks_mined, trades_list, killed_list, food_list, flint, gravel_mined, deaths, eyes_thrown, jumps, dist_list
@@ -1255,7 +1256,7 @@ class Tracking:
 
     @classmethod
     def trackResets(cls):
-        if settings['use sheets']:
+        if SETTINGS_JSON['use sheets']:
             Sheets.setup()
             # Create temp.csv if it doesn't exist
             if not os.path.exists('data/temp.csv'):
@@ -1267,14 +1268,14 @@ class Tracking:
                 newRecordObserver = Observer()
                 event_handler = NewRecord()
                 newRecordObserver.schedule(
-                    event_handler, settings["records path"], recursive=False)
+                    event_handler, SETTINGS_JSON["records path"], recursive=False)
                 newRecordObserver.start()
             except Exception as e:
                 print("Records directory could not be found")
             else:
                 break
-        if settings["delete-old-records"]:
-            files = glob.glob(f'{settings["records path"]}/*.json')
+        if SETTINGS_JSON["delete-old-records"]:
+            files = glob.glob(f'{SETTINGS_JSON["records path"]}/*.json')
             for f in files:
                 os.remove(f)
 
