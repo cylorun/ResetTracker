@@ -102,6 +102,8 @@ TRACKED_FOODS = [
     'minecraft:cooked_salmon',
     'minecraft:enchanted_golden_apple',
     'minecraft:golden_apple',
+    'minecraft:apple',
+    'minecraft:rotten_flesh',
     'minecraft:golden_carrot',
     'minecraft:mushroom_stew',
 ]

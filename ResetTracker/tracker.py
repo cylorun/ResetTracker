@@ -421,7 +421,6 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt, dt1=None):
-        self.this_run = [''] * (len(ADV_CHECKS) + 2 + len(STAT_CHECKS))
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
             try:
@@ -465,7 +464,7 @@ class NewRecord(FileSystemEventHandler):
         #     return
 
         # Generate other stuff
-        enter_type, gold_source, spawn_biome, iron_source, stone_mined, netherack_mined,gold_dropped, trades, mobs_killed, food_eaten, flint, gravel_mined, deaths, eyes_thrown, jumps, travel_list = Tracking.getMiscData(stats, adv)
+        enter_type, gold_source, spawn_biome, iron_source, gold_dropped, trades, mobs_killed, food_eaten, travel_list = Tracking.getMiscData(stats, adv)
         try:
             pythoncom.CoInitialize()
             curr_win_pid  = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())[1]
@@ -515,7 +514,7 @@ class NewRecord(FileSystemEventHandler):
         self.run.append(Logistics.ms_to_string(self.data['final_igt']))
         self.run.append(gold_dropped) # requires extra calculation
         for sub, stat in STAT_CHECKS:
-            if sub in stats and stat in sub:
+            if (sub in stats) and (stat in sub):
                 self.run.append(stats[sub][stat])
                 continue
             self.run.append('0')
@@ -664,7 +663,7 @@ class Tracking:
                                 "minecraft:story/iron_tools" in adv)):
                             if ("minecraft:custom" in stats and ("minecraft:open_chest" in stats[
                                 "minecraft:custom"] and stats["minecraft:custom"][
-                                                                     "minecraft:open_chest"] == 1)) or (
+                                                                    "minecraft:open_chest"] == 1)) or (
                                     "minecraft:nether/find_bastion" in adv):
                                 iron_source = "Half Shipwreck"
                             else:
@@ -686,11 +685,10 @@ class Tracking:
                             iron_source = "Half Shipwreck"
                         else:
                             iron_source = "Buried Treasure"
-        flint, gravel_mined, deaths, jumps, eyes_thrown, gold_dropped, gold_picked_up = "0", "0", "0", "0", "0", "0", "0"
+
+        gold_dropped, gold_picked_up = "0", "0"
         trades_list = [0]*len(TRACKED_BARTERS)
         if "minecraft:picked_up" in stats:
-            if 'minecraft:flint' in stats['minecraft:picked_up']:
-                flint = str(stats['minecraft:picked_up']['minecraft:flint'])
             if 'minecraft:gold_ingot' in stats['minecraft:picked_up']:
                 gold_picked_up = str(stats['minecraft:picked_up']['minecraft:gold_ingot'])
 
@@ -698,24 +696,22 @@ class Tracking:
                 if TRACKED_BARTERS[i] in stats["minecraft:picked_up"]:
                     trades_list[i] = int(stats["minecraft:picked_up"][TRACKED_BARTERS[i]])
 
-        # corrects for accedentally dropping shit, todo: account for mining gravel for example
+
         if 'minecraft:dropped' in stats:
             for k, v in stats['minecraft:dropped'].items():
-                # if k in TRACKED_BARTERS:
-                #     if trades_list[TRACKED_BARTERS.index(k)]*2 >= v:
-                #         trades_list[TRACKED_BARTERS.index(k)] -= v
                 if k == 'minecraft:gold_ingot':
                     gold_dropped = str(v)
-
+        
+        gold_dropped =  int(gold_dropped) - int(gold_picked_up) # accounts for picking up gold when bartering
+        
         blocks_mined_list = ['0'] * len(TRACKED_BLOCKS)
-        gold_dropped = int(gold_dropped) - int(gold_picked_up)
+
         if "minecraft:mined" in stats:
             for i in range(len(TRACKED_BLOCKS)):
                 if TRACKED_BLOCKS[i] in stats["minecraft:mined"]:
                     blocks_mined_list[i] = str(stats["minecraft:mined"][TRACKED_BLOCKS[i]])
 
 
-        blocks_mined = '$'.join(blocks_mined_list)
 
         killed_list = ['0']*len(TRACKED_MOBS)
         if 'minecraft:killed' in stats:
@@ -725,30 +721,18 @@ class Tracking:
         
         food_list = ['0']*len(TRACKED_FOODS)
         if 'minecraft:used' in stats:
-            if 'minecraft:ender_eye' in stats['minecraft:used']:
-                eyes_thrown = str(stats['minecraft:used']['minecraft:ender_eye'])
             for i in range(len(TRACKED_FOODS)):
                 food_list[i] = str(stats['minecraft:used'].get(TRACKED_FOODS[i],0))
 
         dist_list = ['0']*len(TRAVEL_METHODS)
-        if 'minecraft:custom' in stats:
-            if 'minecraft:deaths' in stats['minecraft:custom']:
-                deaths = str(stats['minecraft:custom']['minecraft:deaths'])
-            if 'minecraft:jump' in stats['minecraft:custom']:
-                jumps = str(stats['minecraft:custom']['minecraft:jump'])
-                
-            for i, c in enumerate(TRAVEL_METHODS):
-                try:
-                    dist_list[i] = str(stats['minecraft:custom'][c]/100)
-                except KeyError:
-                    pass
-        gravel_mined = blocks_mined_list[TRACKED_BLOCKS.index('minecraft:gravel')]
-        stone_mined = blocks_mined_list[TRACKED_BLOCKS.index('minecraft:stone')]
-        netherack_mined = blocks_mined_list[TRACKED_BLOCKS.index('minecraft:netherack')]
+        for i, c in enumerate(TRAVEL_METHODS):
+            try:
+                dist_list[i] = str(stats['minecraft:custom'][c]/100)
+            except KeyError:
+                pass
 
-        #   flint, gravel_mined, deaths, eyes_thrown
         trades_list=  list(map(str, trades_list))
-        return enter_type, gold_source, spawn_biome, iron_source, stone_mined, netherack_mined, gold_dropped, trades_list, killed_list, food_list, flint, gravel_mined, deaths, eyes_thrown, jumps, dist_list
+        return enter_type, gold_source, spawn_biome, iron_source, gold_dropped, trades_list, killed_list, food_list, dist_list
 
 
     @classmethod
@@ -759,7 +743,7 @@ class Tracking:
             if not os.path.exists('data/temp.csv'):
                 with open('data/temp.csv', 'w') as f:
                     f.write('')
-  
+
         while True:
             try:
                 newRecordObserver = Observer()
@@ -771,6 +755,7 @@ class Tracking:
                 print("Records directory could not be found")
             else:
                 break
+            
         if SETTINGS_JSON["delete-old-records"]:
             files = glob.glob(f'{SETTINGS_JSON["records path"]}/*.json')
             for f in files:
