@@ -26,6 +26,7 @@ if not getattr(sys, 'frozen', False):  # if not running in a PyInstaller bundle
         from nbtlib import nbt
         import wmi, win32process, win32gui, pythoncom
     except Exception as e:
+        print(e)
         print("Run the following command in your terminal: pip install -r requirements.txt")
         sys.exit()
 else:
@@ -338,30 +339,6 @@ class Logistics:
         links = parts[0].split(":") 
         return timedelta(hours=int(links[0]), minutes=int(links[1]), seconds=int(links[2]))
 
-
-class Update:
-    @classmethod
-    def checkGithub(cls):
-        response = requests.get("https://api.github.com/repos/pncakespoon1/ResetTracker/releases/latest")
-        # Check if the request was successful
-        if response.status_code == 200:
-            # Get the JSON data from the response
-            release_data = response.json()
-
-            # Extract the tag name from the release data
-            latest_tag = release_data["tag_name"]
-        else:
-            return False
-        
-        return not latest_tag == __version__
-
-
-    @classmethod
-    def openGithub(cls):
-        webbrowser.open_new_tab('https://github.com/pncakespoon1/ResetTracker')
-
-
-
 class Sheets:
 
     @classmethod
@@ -377,7 +354,7 @@ class Sheets:
         try:
             if len(data) == 0:
                 return
-            wks1.insert_rows(values=data, row=1, number=1, inherit=False)
+            wks1.insert_rows(values=data, row=2, number=1, inherit=False)
             f = open("data/temp.csv", "w+")
             f.close()
 
