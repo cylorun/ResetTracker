@@ -431,14 +431,14 @@ class NewRecord(FileSystemEventHandler):
             lan = math.inf
 
         run_date = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
-        has_done_something = False
+        # has_done_something = False
         
-        if "minecraft:story/smelt_iron" in adv:
-            has_done_something = True
+        # if "minecraft:story/smelt_iron" in adv:
+        #     has_done_something = True
 
-        # If nothing was done, just count as reset
-        if not has_done_something:
-            return
+        # # If nothing was done, just count as reset
+        # if not has_done_something:
+        #     return
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, gold_dropped, trades, mobs_killed, food_eaten, travel_list = Tracking.getMiscData(stats, adv)
