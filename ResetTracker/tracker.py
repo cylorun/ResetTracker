@@ -488,14 +488,14 @@ class NewRecord(FileSystemEventHandler):
             self.run.append('')
 
         self.run.append(Logistics.ms_to_string(self.data['final_igt']))
-        self.run.append(gold_dropped) # requires extra calculation
+        self.run.append(gold_dropped) 
         for sub, stat in STAT_CHECKS:
             if (sub in stats) and (stat in sub):
                 self.run.append(stats[sub][stat])
                 continue
             self.run.append('0')
 
-        self.run.append(Logistics.ms_to_string(iron_time) if iron_time else '')
+        # self.run.append(Logistics.ms_to_string(iron_time) if iron_time else '')
         str_run = list(map(str, self.run))
         print(str_run)
 

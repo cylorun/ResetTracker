@@ -137,6 +137,6 @@ TRAVEL_METHODS = [
 
 HEADER_LABELS = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
                 'Iron Pickaxe', 'Nether', 'Bastion', 'Fortress', 'Nether Exit', 'Stronghold', 'End',
-                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel','Deaths','Jumps', 'Eyes Thrown','Iron time'
+                'IGT', 'Gold Dropped', 'Blaze Rods', 'Blazes', 'Flint', 'Gravel','Deaths','Jumps', 'Eyes Thrown'
                 , 'Diamond Pick', 'Pearls Thrown',
                 'Obsidian Placed', 'Diamond Sword', 'Stone Mined','Netherack Mined'] + [i.split(':')[1] for i in TRACKED_BARTERS] + [i.split(':')[1]for i in TRACKED_MOBS] + [i.split(':')[1] for i in TRACKED_FOODS]+ [i.split(':')[1].replace('_one_cm','') for i in TRAVEL_METHODS]+['Seed']
