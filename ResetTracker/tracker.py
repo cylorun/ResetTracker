@@ -364,7 +364,6 @@ class Sheets:
 
 
 
-# tracking
 class NewRecord(FileSystemEventHandler):
     buffer = None
     sessionStart = None
@@ -384,7 +383,6 @@ class NewRecord(FileSystemEventHandler):
         self.path = None
         self.data = None
         self.isFirstRun = '$' + __version__
-        self.run = []
 
     def ensure_run(self):
         if not SETTINGS_JSON['detect RSG']:
@@ -398,18 +396,20 @@ class NewRecord(FileSystemEventHandler):
         return True, ""
 
     def on_created(self, evt, dt1=None):
+        self.run = []
         self.path = evt.src_path
         with open(self.path, "r") as record_file:
             try:
                 self.data = json.load(record_file)
             except Exception as e:
-                print(24)
-                print(e)
+                print('Failed to load record file, trying again\n',e)
                 time.sleep(1)
                 self.on_created(evt)
                 return
+        
         if self.data is None:
             return
+
         validation = self.ensure_run()
         if not validation[0]:
             return
@@ -455,9 +455,6 @@ class NewRecord(FileSystemEventHandler):
             seed = "Failed to get the seed"
         pythoncom.CoUninitialize()
 
-        iron_time = adv["minecraft:story/smelt_iron"]["igt"] if "minecraft:story/smelt_iron" in adv else None
-
-            
         self.run.append(run_date)
         self.run.append(iron_source)
         self.run.append(enter_type)
@@ -469,6 +466,7 @@ class NewRecord(FileSystemEventHandler):
             t = Logistics.ms_to_string(self.data['advancements']["minecraft:recipes/misc/charcoal"]['criteria']['has_logs']['igt'])
             self.run.append(t)
         except KeyError as e:
+            print(e)
             self.run.append('')
 
         try:
@@ -490,14 +488,14 @@ class NewRecord(FileSystemEventHandler):
         self.run.append(Logistics.ms_to_string(self.data['final_igt']))
         self.run.append(gold_dropped) 
         for sub, stat in STAT_CHECKS:
-            if (sub in stats) and (stat in sub):
+            try:
                 self.run.append(stats[sub][stat])
-                continue
-            self.run.append('0')
-
-        # self.run.append(Logistics.ms_to_string(iron_time) if iron_time else '')
+                print(f'{stat} : {stats[sub][stat]}')
+            except KeyError:
+                self.run.append('0')
+                pass
+        print(self.path,'\n')
         str_run = list(map(str, self.run))
-        print(str_run)
 
         data1 = (str_run + trades + mobs_killed + food_eaten + travel_list + [seed])
         # for i in range(len(HEADER_LABELS)):
@@ -538,19 +536,18 @@ class NewRecord(FileSystemEventHandler):
         self.wall_time = 0
         self.break_time = 0
         self.rtaString = ''
-
         print("run tracked")
 
 
 
 # tracking
 class Tracking:
+    
     @classmethod
     def startResetTracker(cls):
         Logistics.verify_settings()
         Tracking.trackResets()
 
-    
     @classmethod
     def getMiscData(cls, stats, adv):
         enter_type = "None"
