@@ -26,8 +26,6 @@ STAT_CHECKS = [
     ("minecraft:crafted", "minecraft:diamond_sword"),
     ("minecraft:mined", "minecraft:stone"),
     ("minecraft:mined", "minecraft:netherack")
-
-
 ]
 
 TRACKED_BLOCKS = ['minecraft:gravel',
