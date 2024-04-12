@@ -711,7 +711,8 @@ class Tracking:
     @classmethod
     def trackResets(cls):
         if SETTINGS_JSON['use sheets']:
-            Sheets.setup()
+            if SETTINGS_JSON['generate-labels']:
+                Sheets.setup()
             # Create temp.csv if it doesn't exist
             if not os.path.exists('data/temp.csv'):
                 with open('data/temp.csv', 'w') as f:

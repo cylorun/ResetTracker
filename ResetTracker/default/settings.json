@@ -5,5 +5,6 @@
     "delete-old-records": false,
     "detect RSG": true,
     "track seed": false,
-    "multi instance": true
+    "multi instance": true,
+    "generate-labels": false
 }
