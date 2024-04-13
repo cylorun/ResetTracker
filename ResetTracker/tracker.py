@@ -463,14 +463,13 @@ class NewRecord(FileSystemEventHandler):
         self.run.append(Logistics.ms_to_string(self.data['final_rta']))
 
         try:
-            t = Logistics.ms_to_string(self.data['advancements']["minecraft:recipes/misc/charcoal"]['criteria']['has_logs']['igt'])
+            t = Logistics.ms_to_string(adv["minecraft:recipes/misc/charcoal"]['criteria']['has_log']['igt'])
             self.run.append(t)
         except KeyError as e:
-            print(e)
             self.run.append('')
 
         try:
-            t = Logistics.ms_to_string(self.data['advancements']["minecraft:story/iron_tools"]['criteria']['iron_pickaxe']['igt'])
+            t = Logistics.ms_to_string(adv["minecraft:story/iron_tools"]['criteria']['iron_pickaxe']['igt'])
             self.run.append(t)
         except KeyError as e:
             self.run.append('')
@@ -490,20 +489,14 @@ class NewRecord(FileSystemEventHandler):
         for sub, stat in STAT_CHECKS:
             try:
                 self.run.append(stats[sub][stat])
-                print(f'{stat} : {stats[sub][stat]}')
+                # print(f'{stat} : {stats[sub][stat]}')
             except KeyError:
                 self.run.append('0')
                 pass
-        print(self.path,'\n')
+        print(self.path)
         str_run = list(map(str, self.run))
 
         data1 = (str_run + trades + mobs_killed + food_eaten + travel_list + [seed])
-        # for i in range(len(HEADER_LABELS)):
-        #     try:
-        #         print(f'{HEADER_LABELS[i]} : {data1[i]}')
-        #     except IndexError:
-        #         pass
-
         data2 = []
         for item in data1:
             if type(item) == str and ":" in item and item.count("-") < 2:
