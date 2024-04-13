@@ -1,10 +1,6 @@
 {
     "sheet link": "",
     "records path": "",
-    "use sheets": true,
-    "delete-old-records": false,
-    "detect RSG": true,
-    "track seed": false,
-    "multi instance": true,
+    "mmc_path":"C:\\MultiMC",
     "generate-labels": false
 }

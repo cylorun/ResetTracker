@@ -178,39 +178,39 @@ class Stats:
 class Logistics:
     @classmethod
     def verify_settings(cls):
-        if SETTINGS_JSON["use sheets"]:
-            global wks1
-            try:
-                gc_sheets = pygsheets.authorize(service_file="credentials.json")
-                sh = gc_sheets.open_by_url(SETTINGS_JSON['sheet link'])
-                wks1 = sh.worksheet_by_title('Raw Data')
-            except FileNotFoundError:
-                input("Put credentials.json in the same directory as the executable. Press enter when you have done this.")
+
+        global wks1
+        try:
+            gc_sheets = pygsheets.authorize(service_file="credentials.json")
+            sh = gc_sheets.open_by_url(SETTINGS_JSON['sheet link'])
+            wks1 = sh.worksheet_by_title('Raw Data')
+        except FileNotFoundError:
+            input("Put credentials.json in the same directory as the executable. Press enter when you have done this.")
+            Logistics.verify_settings()
+            return
+        except pygsheets.AuthenticationError:
+            input("Credentials.json is not valid. Press enter when you have fixed this.")
+            Logistics.verify_settings()
+            return
+        except (pygsheets.SpreadsheetNotFound, pygsheets.NoValidUrlKeyFound):
+            if SETTINGS_JSON["sheet link"] == "":
+                SETTINGS_JSON["sheet link"] = input("Paste the link to your spreadsheet: ")
                 Logistics.verify_settings()
                 return
-            except pygsheets.AuthenticationError:
-                input("Credentials.json is not valid. Press enter when you have fixed this.")
-                Logistics.verify_settings()
-                return
-            except (pygsheets.SpreadsheetNotFound, pygsheets.NoValidUrlKeyFound):
-                if SETTINGS_JSON["sheet link"] == "":
+            else:
+                try:
+                    response = requests.get(SETTINGS_JSON["sheet link"])
+                    if response.status_code != 200:
+                        raise Exception
+                except Exception:
+                    print("Invalid link")
                     SETTINGS_JSON["sheet link"] = input("Paste the link to your spreadsheet: ")
                     Logistics.verify_settings()
                     return
-                else:
-                    try:
-                        response = requests.get(SETTINGS_JSON["sheet link"])
-                        if response.status_code != 200:
-                            raise Exception
-                    except Exception:
-                        print("Invalid link")
-                        SETTINGS_JSON["sheet link"] = input("Paste the link to your spreadsheet: ")
-                        Logistics.verify_settings()
-                        return
-            except pygsheets.WorksheetNotFound:
-                input("The spreadsheet must have a subsheet named 'Raw Data'. Press enter when you have fixed this.")
-                Logistics.verify_settings()
-                return
+        except pygsheets.WorksheetNotFound:
+            input("The spreadsheet must have a subsheet named 'Raw Data'. Press enter when you have fixed this.")
+            Logistics.verify_settings()
+            return
         try:
             if not os.path.exists(SETTINGS_JSON["records path"]):
                 raise Exception
@@ -219,17 +219,6 @@ class Logistics:
             Logistics.verify_settings()
             return
 
-        for setting in ["use sheets", "delete-old-records", "detect RSG", "track seed", "multi instance"]:
-            if type(SETTINGS_JSON[setting]) != bool:
-                new_setting = ""
-                while new_setting not in ['y' 'Y', 'Yes', 'yes', 'n', 'N', 'No', 'no']:
-                    new_setting = input(f"Choose yes or no for the'{setting}' setting (y/n): ")
-                if new_setting in ['y' 'Y', 'Yes', 'yes']:
-                    SETTINGS_JSON[setting] = True
-                else:
-                    SETTINGS_JSON[setting] = False
-                Logistics.verify_settings()
-                return
         with open("data/settings.json", "w") as settings_file:
             json.dump(SETTINGS_JSON, settings_file)
 
@@ -385,8 +374,6 @@ class NewRecord(FileSystemEventHandler):
         self.isFirstRun = '$' + __version__
 
     def ensure_run(self):
-        if not SETTINGS_JSON['detect RSG']:
-            return True, ""
         if self.path is None:
             return False, "Path error"
         if self.data is None:
@@ -444,9 +431,7 @@ class NewRecord(FileSystemEventHandler):
         enter_type, gold_source, spawn_biome, iron_source, gold_dropped, trades, mobs_killed, food_eaten, travel_list = Tracking.getMiscData(stats, adv)
         try:
             pythoncom.CoInitialize()
-            curr_win_pid  = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())[1]
-            instance_path = str(wmi.WMI().Win32_Process(ProcessId=curr_win_pid)[0].CommandLine).split('.path=')[1].split()[0].replace('natives','.minecraft').replace('/','\\')
-            dat_path = os.path.join(instance_path,'saves',self.data['world_name'],'level.dat')
+            dat_path = os.path.join(Logistics.find_save(SETTINGS_JSON['mmc_path'], self.path, self.data['world_name']),'level.dat')
             nbtfile = nbt.load(dat_path)
             seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
             seed = re.sub(r'[^0-9]', '', str(seed))
@@ -510,14 +495,13 @@ class NewRecord(FileSystemEventHandler):
             writer = csv.writer(outfile)
             writer.writerow(data1)
         
-        if SETTINGS_JSON['use sheets']:
-            with open("data/temp.csv", "r") as infile:
-                reader = list(csv.reader(infile))
-                reader.insert(0, data2)
-            with open("data/temp.csv", "w", newline="") as outfile:
-                writer = csv.writer(outfile)
-                for line in reader:
-                    writer.writerow(line)
+        with open("data/temp.csv", "r") as infile:
+            reader = list(csv.reader(infile))
+            reader.insert(0, data2)
+        with open("data/temp.csv", "w", newline="") as outfile:
+            writer = csv.writer(outfile)
+            for line in reader:
+                writer.writerow(line)
 
         # updates displayed stats
 
@@ -703,13 +687,12 @@ class Tracking:
 
     @classmethod
     def trackResets(cls):
-        if SETTINGS_JSON['use sheets']:
-            if SETTINGS_JSON['generate-labels']:
-                Sheets.setup()
-            # Create temp.csv if it doesn't exist
-            if not os.path.exists('data/temp.csv'):
-                with open('data/temp.csv', 'w') as f:
-                    f.write('')
+        if SETTINGS_JSON['generate-labels']:
+            Sheets.setup()
+
+        if not os.path.exists('data/temp.csv'):
+            with open('data/temp.csv', 'w') as f:
+                f.write('')
 
         while True:
             try:
@@ -723,10 +706,6 @@ class Tracking:
             else:
                 break
             
-        if SETTINGS_JSON["delete-old-records"]:
-            files = glob.glob(f'{SETTINGS_JSON["records path"]}/*.json')
-            for f in files:
-                os.remove(f)
 
         live = True
 
