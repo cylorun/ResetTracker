@@ -378,8 +378,6 @@ class NewRecord(FileSystemEventHandler):
             return False, "Path error"
         if self.data is None:
             return False, "Empty data error"
-        if self.data['run_type'] != 'random_seed':
-            return False, "Set seed detected, will not track"
         return True, ""
 
     def on_created(self, evt, dt1=None):
@@ -400,8 +398,8 @@ class NewRecord(FileSystemEventHandler):
         validation = self.ensure_run()
         if not validation[0]:
             return
-
-
+        has_done_something = False
+        
         if self.data["final_rta"] == 0:
             self.wall_resets += 1
             return
@@ -418,14 +416,13 @@ class NewRecord(FileSystemEventHandler):
             lan = math.inf
 
         run_date = Logistics.ms_to_string(int(self.data["date"]), returnTime=True)
-        # has_done_something = False
-        
-        # if "minecraft:story/smelt_iron" in adv:
-        #     has_done_something = True
+        has_done_something = False
 
-        # # If nothing was done, just count as reset
-        # if not has_done_something:
-        #     return
+        if "minecraft:story/smelt_iron" in adv: # has to obtain iron in order for the run to be tracked
+            has_done_something = True
+
+        if not has_done_something:
+            return
 
         # Generate other stuff
         enter_type, gold_source, spawn_biome, iron_source, gold_dropped, trades, mobs_killed, food_eaten, travel_list = Tracking.getMiscData(stats, adv)
@@ -434,7 +431,7 @@ class NewRecord(FileSystemEventHandler):
             dat_path = os.path.join(Logistics.find_save(SETTINGS_JSON['mmc_path'], self.path, self.data['world_name']),'level.dat')
             nbtfile = nbt.load(dat_path)
             seed = nbtfile["Data"]["WorldGenSettings"]["seed"]
-            seed = re.sub(r'[^0-9]', '', str(seed))
+            seed = re.sub(r'[^0-9-]', '', str(seed))
         except Exception as e:
             print(e)
             seed = "Failed to get the seed"
