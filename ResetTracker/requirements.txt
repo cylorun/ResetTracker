@@ -1,9 +1,0 @@
-AppKit==0.2.8
-nbtlib==2.0.4
-pygsheets==2.0.6
-pywin32==306
-Quartz==0.0.1.dev0
-Requests==2.31.0
-watchdog==4.0.0
-wget==3.2
-WMI==1.5.1

@@ -1,9 +1,8 @@
-watchdog==2.0.2
-pywin32==302; platform_system == "Windows"
-AppKit==0.2.8; platform_system == "Darwin"
-pygsheets==2.0.6
-requests==2.31.0
-watchdog==2.0.2
-wget==3.2
-statistics==1.0.3.5
+AppKit==0.2.8
 nbtlib==2.0.4
+pygsheets==2.0.6
+pywin32==306
+Quartz==0.0.1.dev0
+Requests==2.31.0
+watchdog==3.0.0
+WMI==1.5.1
