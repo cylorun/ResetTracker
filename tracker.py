@@ -226,26 +226,32 @@ class Logistics:
 
     @classmethod
     def find_save(cls, directory, record_path, save_name):
-        start_time = time.time()
+        # start_time = time.time()
 
-        for dir in os.listdir(os.path.join(directory, "instances")):
-            try:
-                save_path = os.path.join(directory, "instances", dir, ".minecraft/saves", save_name)
-                if not os.path.exists(os.path.join(save_path, "speedrunigt/record.json")):
-                    raise Exception
-            except:
-                pass
-            else:
-                if filecmp.cmp(os.path.join(save_path, "speedrunigt/record.json"), record_path):
-                    return save_path
-        elapsed_time = time.time() - start_time
-        print("Save file not found.")
-        print("Elapsed time:", elapsed_time, "seconds")
-        return None
+        # for dir in os.listdir(os.path.join(directory, "instances")):
+        #     try:
+        #         save_path = os.path.join(directory, "instances", dir, ".minecraft/saves", save_name)
+        #         if not os.path.exists(os.path.join(save_path, "speedrunigt/record.json")):
+        #             raise Exception
+        #     except:
+        #         pass
+        #     else:
+        #         if filecmp.cmp(os.path.join(save_path, "speedrunigt/record.json"), record_path):
+        #             return save_path
+
+        # elapsed_time = time.time() - start_time
+        # print("Save file not found.")
+        # print("Elapsed time:", elapsed_time, "seconds")
+        # return None
+        home_dir = os.path.expanduser("~")
+        with open(os.path.join(home_dir, 'speedrunigt', 'latest_world.json')) as f:
+            j = json.load(f)
+
+
+        return j['world_path']
 
     @classmethod
     def isOnWallScreen(cls):
-        # if we can't check for multi, we assume that it isn't there
         if not multiCheckSupported:
             return False
 

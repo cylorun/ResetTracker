@@ -157,7 +157,7 @@ ResetTracker/temp.csv
 ResetTracker/*.exe
 ResetTracker/*.dll
 ResetTracker/obs/
-ResetTracker/data/
+data/
 ResetTracker/build/
 ResetTracker/dist/
 ResetTracker/records/
