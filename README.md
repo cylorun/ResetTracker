@@ -9,9 +9,10 @@ This tracker will **NOT** work with the reset tracker analytics site!
  - Atum 1.0.5+
  - SpeedrunIGT 10.7+
 
-#### Sheets
+#### Setup
 
  - Follow [Talking Mime's Tutorial](https://www.youtube.com/watch?v=KIAo3Lgsk_Q) to create credentials.json (0:01 - 1:41)
- - Make a copy of an existing spreadsheet and clear its data, or use the [template](https://docs.google.com/spreadsheets/d/1XvRLLQ5J1zAqraUkJ06qAGdYTeCFHhnmrv2nkWoXIO0/)
+ - Copy the [template](https://docs.google.com/spreadsheets/d/1dk69L2tfAh4SaUk5wXmf6yyKcpOBWAi71IRpnOZAtmk/edit#gid=1760430564)
  - Share your google sheet with the service account and give it editing permissions
+ - Put yuor credentials.json file in the same folder as the tracker
 
