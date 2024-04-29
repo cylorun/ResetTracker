@@ -132,7 +132,8 @@ TRAVEL_METHODS = [
     'minecraft:walk_one_cm',
     'minecraft:walk_under_water_one_cm',
     'minecraft:swim_one_cm',
-    'minecraft:boat_one_cm'
+    'minecraft:boat_one_cm',
+    'minecraft:sprint_one_cm'
 ]
 
 HEADER_LABELS = ['Date and Time', 'Iron Source', 'Enter Type', 'Gold Source', 'Spawn Biome', 'RTA', 'Wood',
