@@ -349,7 +349,7 @@ class Sheets:
         try:
             if len(data) == 0:
                 return
-            wks1.insert_rows(values=data, row=2, number=1, inherit=False)
+            wks1.insert_rows(values=data, row=3, number=1, inherit=False)
             f = open("data/temp.csv", "w+")
             f.close()
 
